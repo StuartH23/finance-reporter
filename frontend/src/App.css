@@ -60,6 +60,13 @@
   margin-bottom: 1.5rem;
 }
 
+.page-subtitle {
+  margin-top: -0.9rem;
+  margin-bottom: 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -172,4 +179,198 @@ td {
   text-align: center;
   padding: 3rem 1rem;
   color: var(--text-muted);
+}
+
+.budget-guide {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.budget-guide-title {
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.budget-guide-step {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.budget-guide-step + .budget-guide-step {
+  margin-top: 0.2rem;
+}
+
+.budget-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.budget-hint {
+  color: var(--text-muted);
+  font-size: 0.77rem;
+}
+
+.suggested-cell {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ghost-button {
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.12rem 0.5rem;
+}
+
+.ghost-button:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.resource-link {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.01);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.resource-link:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.resource-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.resource-description {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.signup-helper {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin-bottom: 0.8rem;
+}
+
+.feature-signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.feature-form-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.text-input {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.text-input:focus {
+  outline: 1px solid var(--accent);
+  border-color: var(--accent);
+}
+
+.feature-checkboxes {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.feature-option {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+}
+
+.feature-option input {
+  margin-top: 0.15rem;
+}
+
+.feature-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.feature-option small {
+  color: var(--text-muted);
+}
+
+.feature-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.primary-button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  padding: 0.52rem 0.72rem;
+  font-size: 0.8rem;
+}
+
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.feature-meta {
+  color: var(--text-muted);
+  font-size: 0.77rem;
+}
+
+.form-error {
+  color: #fca5a5;
+  font-size: 0.78rem;
+}
+
+.form-success {
+  color: #86efac;
+  font-size: 0.78rem;
 }

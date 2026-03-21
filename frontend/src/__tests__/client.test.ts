@@ -5,12 +5,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   getBudget,
-  getBudgetQuickCheck,
   getCategoryBreakdown,
   getLedger,
   getMonthlyPnl,
   getTransfers,
   getYearlyPnl,
+  submitFeatureInterest,
   updateBudget,
   uploadFiles,
 } from '../api/client'
@@ -74,11 +74,6 @@ describe('API client', () => {
     expect(lastUrl).toBe('/api/budget')
   })
 
-  it('getBudgetQuickCheck calls GET /api/budget/quick-check', async () => {
-    await getBudgetQuickCheck()
-    expect(lastUrl).toBe('/api/budget/quick-check')
-  })
-
   it('updateBudget calls PUT /api/budget with JSON body', async () => {
     await updateBudget({ Food: 500 })
     expect(lastUrl).toBe('/api/budget')
@@ -93,6 +88,20 @@ describe('API client', () => {
     expect(lastUrl).toBe('/api/upload')
     expect(lastOptions?.method).toBe('POST')
     expect(lastOptions?.body).toBeInstanceOf(FormData)
+  })
+
+  it('submitFeatureInterest calls POST /api/feature-interest with JSON body', async () => {
+    await submitFeatureInterest({
+      email: 'user@example.com',
+      features: ['Goal Buckets'],
+    })
+    expect(lastUrl).toBe('/api/feature-interest')
+    expect(lastOptions?.method).toBe('POST')
+    expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(lastOptions?.body as string)).toEqual({
+      email: 'user@example.com',
+      features: ['Goal Buckets'],
+    })
   })
 
   it('throws on non-ok response', async () => {

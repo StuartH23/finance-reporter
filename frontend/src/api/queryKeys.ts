@@ -8,7 +8,6 @@ export const queryKeys = {
   },
   budget: {
     list: ['budget'] as const,
-    quickCheck: ['budget', 'quick-check'] as const,
     vsActual: ['budget', 'vs-actual'] as const,
   },
 } as const

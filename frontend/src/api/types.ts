@@ -121,24 +121,18 @@ export interface BudgetVsActualResponse {
   summary: BudgetSummary | Record<string, never>
 }
 
-// Quick Check
-export interface QuickCheckCategory {
-  category: string
-  spent: number
-  budgeted: number
-  remaining: number | null
-  pct_used: number | null
-  over_budget: boolean | null
+// Feature interest
+export interface FeatureInterestRequest {
+  email: string
+  name?: string
+  features: string[]
+  notes?: string
 }
 
-export interface QuickCheckResponse {
-  month: string | null
-  status?: string
-  total_budget?: number
-  total_spent?: number
-  total_remaining?: number
-  pct_used?: number
-  categories?: QuickCheckCategory[]
+export interface FeatureInterestResponse {
+  status: string
+  total_signups: number
+  feature_counts: Record<string, number>
 }
 
 // Categories

@@ -1,8 +1,9 @@
 """Budget management endpoints."""
 
-from datetime import date
+from calendar import monthrange
+from datetime import date, datetime
 
-from fastapi import APIRouter, Cookie
+from fastapi import APIRouter, Cookie, Query
 
 from routers.upload import get_session_ledger
 from schemas import (
@@ -15,6 +16,38 @@ from schemas import (
 from sdk import TRANSFER_CATEGORIES, budget_vs_actual, load_budget, save_budget
 
 router = APIRouter(tags=["budget"])
+
+
+def _month_bounds(year: int, month: int) -> tuple[date, date]:
+    """Return first/last day for a given calendar month."""
+    return date(year, month, 1), date(year, month, monthrange(year, month)[1])
+
+
+def _complete_month_keys(pnl):
+    """Return YYYY-MM keys for months fully covered by parsed date range."""
+    if pnl.empty:
+        return set()
+
+    data_min = pnl["date"].min().date()
+    data_max = pnl["date"].max().date()
+    month_periods = pnl["date"].dt.to_period("M").unique()
+
+    complete: set[str] = set()
+    for period in month_periods:
+        month_start, month_end = _month_bounds(period.year, period.month)
+        if data_min <= month_start and data_max >= month_end:
+            complete.add(f"{period.year:04d}-{period.month:02d}")
+    return complete
+
+
+def _filter_to_complete_months(pnl):
+    """Filter parsed rows down to complete months only."""
+    complete_keys = _complete_month_keys(pnl)
+    if not complete_keys:
+        return pnl.iloc[0:0].copy(), complete_keys
+
+    month_keys = pnl["date"].dt.strftime("%Y-%m")
+    return pnl[month_keys.isin(complete_keys)].copy(), complete_keys
 
 
 @router.get("/budget", response_model=BudgetListResponse)
@@ -37,6 +70,7 @@ def get_budget_vs_actual(session_id: str | None = Cookie(default=None)):
     budget = load_budget()
     ledger = get_session_ledger(session_id)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
+    pnl, _ = _filter_to_complete_months(pnl)
 
     if pnl.empty or not budget:
         return {"comparison": [], "summary": {}}
@@ -64,29 +98,36 @@ def get_budget_vs_actual(session_id: str | None = Cookie(default=None)):
 
 
 @router.get("/budget/quick-check", response_model=QuickCheckResponse)
-def quick_check(session_id: str | None = Cookie(default=None)):
-    """Quick monthly budget status — how you're doing this month."""
+def quick_check(month: str | None = Query(default=None), session_id: str | None = Cookie(default=None)):
+    """Quick monthly budget status for a target month (or current/most recent)."""
     budget = load_budget()
     ledger = get_session_ledger(session_id)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
+    pnl, complete_month_keys = _filter_to_complete_months(pnl)
 
     if pnl.empty or not budget:
         return {"month": None, "status": "no_data"}
 
-    today = date.today()
-    current_month = pnl[
-        (pnl["date"].dt.year == today.year) & (pnl["date"].dt.month == today.month)
-    ].copy()
-
-    if current_month.empty:
-        # Fall back to most recent month
-        most_recent = pnl["date"].max()
+    if month:
+        try:
+            selected = datetime.strptime(month, "%Y-%m")
+        except ValueError:
+            return {"month": None, "status": "no_data"}
+        selected_key = selected.strftime("%Y-%m")
+        if selected_key not in complete_month_keys:
+            return {"month": selected.strftime("%B %Y"), "status": "no_data"}
         current_month = pnl[
-            (pnl["date"].dt.year == most_recent.year) & (pnl["date"].dt.month == most_recent.month)
+            (pnl["date"].dt.year == selected.year) & (pnl["date"].dt.month == selected.month)
         ].copy()
-        month_label = most_recent.strftime("%B %Y")
+        month_label = selected.strftime("%B %Y")
+        if current_month.empty:
+            return {"month": month_label, "status": "no_data"}
     else:
-        month_label = today.strftime("%B %Y")
+        today = date.today()
+        today_key = today.strftime("%Y-%m")
+        target_key = today_key if today_key in complete_month_keys else max(complete_month_keys)
+        current_month = pnl[pnl["date"].dt.strftime("%Y-%m") == target_key].copy()
+        month_label = datetime.strptime(target_key, "%Y-%m").strftime("%B %Y")
 
     spending = current_month[current_month["amount"] < 0].copy()
     spending["abs_amount"] = -spending["amount"]

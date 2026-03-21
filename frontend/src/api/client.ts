@@ -1,11 +1,12 @@
 import type {
   BudgetListResponse,
+  FeatureInterestRequest,
+  FeatureInterestResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
   CategoryBreakdownResponse,
   LedgerResponse,
   MonthlyPnlResponse,
-  QuickCheckResponse,
   TransferResponse,
   UploadResponse,
   YearlyPnlResponse,
@@ -63,6 +64,12 @@ export async function getBudgetVsActual(): Promise<BudgetVsActualResponse> {
   return request<BudgetVsActualResponse>('/budget/vs-actual')
 }
 
-export async function getBudgetQuickCheck(): Promise<QuickCheckResponse> {
-  return request<QuickCheckResponse>('/budget/quick-check')
+export async function submitFeatureInterest(
+  data: FeatureInterestRequest
+): Promise<FeatureInterestResponse> {
+  return request<FeatureInterestResponse>('/feature-interest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
 }

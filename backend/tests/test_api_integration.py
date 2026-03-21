@@ -74,3 +74,67 @@ def test_health():
     resp = client.get("/api/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
+
+
+def test_budget_quick_check_respects_month_query():
+    """Quick check should use the requested month when month=YYYY-MM is provided."""
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2025-01-01,Rent,-500.00\n"
+        b"2025-01-31,Rent,-500.00\n"
+        b"2025-02-01,Rent,-600.00\n"
+        b"2025-02-28,Rent,-600.00\n"
+    )
+    upload_resp = client.post("/api/upload", files=[("files", ("budget.csv", csv, "text/csv"))])
+    assert upload_resp.status_code == 200
+
+    jan_resp = client.get("/api/budget/quick-check?month=2025-01")
+    assert jan_resp.status_code == 200
+    jan_data = jan_resp.json()
+    assert jan_data["month"] == "January 2025"
+    assert jan_data["status"] is None
+    assert jan_data["total_spent"] == 1000.0
+
+    feb_resp = client.get("/api/budget/quick-check?month=2025-02")
+    assert feb_resp.status_code == 200
+    feb_data = feb_resp.json()
+    assert feb_data["month"] == "February 2025"
+    assert feb_data["status"] is None
+    assert feb_data["total_spent"] == 1200.0
+
+
+def test_budget_quick_check_rejects_partial_month():
+    """Quick check should not apply budget when selected month is only partially parsed."""
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2025-01-15,Rent,-1000.00\n"
+        b"2025-02-15,Rent,-1200.00\n"
+    )
+    upload_resp = client.post("/api/upload", files=[("files", ("budget.csv", csv, "text/csv"))])
+    assert upload_resp.status_code == 200
+
+    jan_resp = client.get("/api/budget/quick-check?month=2025-01")
+    assert jan_resp.status_code == 200
+    jan_data = jan_resp.json()
+    assert jan_data["month"] == "January 2025"
+    assert jan_data["status"] == "no_data"
+
+
+def test_budget_vs_actual_ignores_partial_months():
+    """Budget vs actual should return no comparison when no complete month is parsed."""
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2025-01-15,Rent,-1000.00\n"
+        b"2025-02-15,Groceries,-300.00\n"
+    )
+    upload_resp = client.post("/api/upload", files=[("files", ("budget.csv", csv, "text/csv"))])
+    assert upload_resp.status_code == 200
+
+    resp = client.get("/api/budget/vs-actual")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["comparison"] == []
+    assert data["summary"] == {}
