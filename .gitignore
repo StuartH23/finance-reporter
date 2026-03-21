@@ -1,0 +1,9 @@
+/pdfs/*
+.venv/
+backend/.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+frontend/node_modules/
+.DS_Store
+.vscode/
