@@ -48,6 +48,72 @@ class TransferResponse(BaseModel):
     summary: list[TransferSummaryItem]
 
 
+# --- Subscriptions ---
+
+
+class SubscriptionChargePoint(BaseModel):
+    date: str
+    amount: float
+
+
+class SubscriptionItem(BaseModel):
+    stream_id: str
+    merchant: str
+    cadence: str
+    confidence: float
+    active: bool
+    ignored: bool
+    essential: bool
+    amount: float
+    baseline_amount: float
+    expected_amount: float
+    next_expected_charge_date: str | None
+    last_charge_date: str
+    trend: str
+    price_increase: bool
+    charge_count: int
+    charge_history: list[SubscriptionChargePoint]
+    cancellation_candidate: bool
+    negotiation_opportunity: bool
+    is_new_recurring: bool
+    missed_expected_charge: bool
+
+
+class SubscriptionListResponse(BaseModel):
+    subscriptions: list[SubscriptionItem]
+    count: int
+
+
+class SubscriptionPreferenceUpdate(BaseModel):
+    essential: bool | None = None
+    ignored: bool | None = None
+
+
+class SubscriptionPreferenceResponse(BaseModel):
+    status: str
+    stream_id: str
+    essential: bool
+    ignored: bool
+
+
+class SubscriptionAlert(BaseModel):
+    stream_id: str
+    merchant: str
+    alert_type: str
+    message: str
+
+
+class SubscriptionAlertsResponse(BaseModel):
+    alerts: list[SubscriptionAlert]
+    count: int
+
+
+class ReminderResponse(BaseModel):
+    status: str
+    stream_id: str
+    message: str
+
+
 # --- P&L ---
 
 

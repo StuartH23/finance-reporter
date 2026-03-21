@@ -7,6 +7,10 @@ import type {
   CategoryBreakdownResponse,
   LedgerResponse,
   MonthlyPnlResponse,
+  ReminderResponse,
+  SubscriptionAlertsResponse,
+  SubscriptionListResponse,
+  SubscriptionPreferenceResponse,
   TransferResponse,
   UploadResponse,
   YearlyPnlResponse,
@@ -34,6 +38,51 @@ export async function getLedger(): Promise<LedgerResponse> {
 
 export async function getTransfers(): Promise<TransferResponse> {
   return request<TransferResponse>('/ledger/transfers')
+}
+
+export async function getSubscriptions(options?: {
+  status?: 'all' | 'active' | 'ignored'
+  filterIncreased?: boolean
+  filterOptional?: boolean
+  threshold?: number
+}): Promise<SubscriptionListResponse> {
+  const params = new URLSearchParams()
+  if (options?.status) params.set('status', options.status)
+  if (options?.filterIncreased) params.set('filter_increased', 'true')
+  if (options?.filterOptional) params.set('filter_optional', 'true')
+  if (options?.threshold !== undefined) params.set('threshold', String(options.threshold))
+  const qs = params.toString()
+  return request<SubscriptionListResponse>(`/subscriptions${qs ? `?${qs}` : ''}`)
+}
+
+export async function getSubscriptionAlerts(options?: {
+  threshold?: number
+  includeMissed?: boolean
+}): Promise<SubscriptionAlertsResponse> {
+  const params = new URLSearchParams()
+  if (options?.threshold !== undefined) params.set('threshold', String(options.threshold))
+  if (options?.includeMissed !== undefined) {
+    params.set('include_missed', String(options.includeMissed))
+  }
+  const qs = params.toString()
+  return request<SubscriptionAlertsResponse>(`/subscriptions/alerts${qs ? `?${qs}` : ''}`)
+}
+
+export async function updateSubscriptionPreferences(
+  streamId: string,
+  update: { essential?: boolean; ignored?: boolean }
+): Promise<SubscriptionPreferenceResponse> {
+  return request<SubscriptionPreferenceResponse>(`/subscriptions/${streamId}/preferences`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(update),
+  })
+}
+
+export async function remindCancel(streamId: string): Promise<ReminderResponse> {
+  return request<ReminderResponse>(`/subscriptions/${streamId}/remind-cancel`, {
+    method: 'POST',
+  })
 }
 
 export async function getMonthlyPnl(): Promise<MonthlyPnlResponse> {

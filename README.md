@@ -57,3 +57,25 @@ Transfer categories (Credit Card Payments, Venmo Transfers, Personal Transfers, 
 
 ## Budget
 Edit `backend/data/budget.csv` or use the Budget page in the UI to set monthly spending targets per category. The Quick Check view shows how your current month tracks against the budget.
+
+## Bill Autopilot + Subscription Center
+- Detects likely recurring charges by grouping transactions with normalized merchant names and scoring cadence fit (`weekly`, `monthly`, `annual`) plus amount stability.
+- Provides a Subscription Center at `/subscriptions` with:
+  - Active recurring streams, confidence, current amount, baseline, and next expected charge date.
+  - Filters for active/ignored streams, increased-only, and optional-only.
+  - Per-stream actions to ignore false positives, mark essential/optional, and trigger cancel reminders.
+- Generates alerts for:
+  - `price_increased`
+  - `new_recurring_charge_detected`
+  - `missed_expected_charge` (optional warning)
+
+### Tuning knobs
+- API threshold for price increase detection: `threshold` query param on:
+  - `GET /api/subscriptions` (default `0.10`)
+  - `GET /api/subscriptions/alerts` (default `0.10`)
+- Missed charge warning toggle:
+  - `GET /api/subscriptions/alerts?include_missed=true|false` (default `true`)
+
+### Notes
+- Subscription preferences (`ignored`, `essential`) are stored per session and cleared when a new upload replaces session ledger data.
+- No DB migration is required for this feature.

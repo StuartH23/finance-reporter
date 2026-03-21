@@ -5,6 +5,7 @@ from .categories import TRANSFER_CATEGORIES, categorize, load_categories
 from .csv_handler import ColumnGuess, guess_columns
 from .ledger import build_ledger, clean_amount, summarize
 from .pdf_parser import parse_pdf_words_to_df
+from .subscriptions import build_alerts, build_subscription_payload, detect_recurring_streams
 from .year_detection import infer_year
 
 __all__ = [
@@ -12,8 +13,11 @@ __all__ = [
     "ColumnGuess",
     "budget_vs_actual",
     "build_ledger",
+    "build_alerts",
+    "build_subscription_payload",
     "categorize",
     "clean_amount",
+    "detect_recurring_streams",
     "guess_columns",
     "infer_year",
     "load_budget",
