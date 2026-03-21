@@ -8,9 +8,13 @@ import {
   getCategoryBreakdown,
   getLedger,
   getMonthlyPnl,
+  getSubscriptionAlerts,
+  getSubscriptions,
   getTransfers,
   getYearlyPnl,
+  remindCancel,
   submitFeatureInterest,
+  updateSubscriptionPreferences,
   updateBudget,
   uploadFiles,
 } from '../api/client'
@@ -52,6 +56,23 @@ describe('API client', () => {
   it('getTransfers calls GET /api/ledger/transfers', async () => {
     await getTransfers()
     expect(lastUrl).toBe('/api/ledger/transfers')
+  })
+
+  it('getSubscriptions calls GET /api/subscriptions with filters', async () => {
+    await getSubscriptions({
+      status: 'active',
+      filterIncreased: true,
+      filterOptional: true,
+      threshold: 0.2,
+    })
+    expect(lastUrl).toBe(
+      '/api/subscriptions?status=active&filter_increased=true&filter_optional=true&threshold=0.2'
+    )
+  })
+
+  it('getSubscriptionAlerts calls GET /api/subscriptions/alerts', async () => {
+    await getSubscriptionAlerts({ threshold: 0.15, includeMissed: false })
+    expect(lastUrl).toBe('/api/subscriptions/alerts?threshold=0.15&include_missed=false')
   })
 
   it('getMonthlyPnl calls GET /api/pnl/monthly', async () => {
@@ -102,6 +123,20 @@ describe('API client', () => {
       email: 'user@example.com',
       features: ['Goal Buckets'],
     })
+  })
+
+  it('updateSubscriptionPreferences calls POST with JSON body', async () => {
+    await updateSubscriptionPreferences('abc123', { ignored: true })
+    expect(lastUrl).toBe('/api/subscriptions/abc123/preferences')
+    expect(lastOptions?.method).toBe('POST')
+    expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(lastOptions?.body as string)).toEqual({ ignored: true })
+  })
+
+  it('remindCancel calls POST /api/subscriptions/:id/remind-cancel', async () => {
+    await remindCancel('abc123')
+    expect(lastUrl).toBe('/api/subscriptions/abc123/remind-cancel')
+    expect(lastOptions?.method).toBe('POST')
   })
 
   it('throws on non-ok response', async () => {

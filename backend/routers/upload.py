@@ -22,6 +22,7 @@ router = APIRouter(tags=["upload"])
 
 # Per-session ledger storage keyed by session ID
 _sessions: dict[str, list[pd.DataFrame]] = {}
+_session_subscription_preferences: dict[str, dict[str, dict[str, bool]]] = {}
 
 EMPTY_LEDGER = pd.DataFrame(columns=["date", "description", "amount", "category", "source_file"])
 
@@ -40,6 +41,33 @@ def clear_session(session_id: str) -> None:
     """Clear stored ledger data for a session."""
     if session_id in _sessions:
         _sessions[session_id].clear()
+    if session_id in _session_subscription_preferences:
+        _session_subscription_preferences[session_id].clear()
+
+
+def get_subscription_preferences(session_id: str | None) -> dict[str, dict[str, bool]]:
+    """Return per-stream subscription preferences for a given session."""
+    if not session_id:
+        return {}
+    return _session_subscription_preferences.setdefault(session_id, {})
+
+
+def set_subscription_preference(
+    session_id: str | None,
+    stream_id: str,
+    *,
+    ignored: bool | None = None,
+    essential: bool | None = None,
+) -> None:
+    """Set stream preference flags for a session."""
+    if not session_id:
+        return
+    preferences = _session_subscription_preferences.setdefault(session_id, {})
+    stream = preferences.setdefault(stream_id, {})
+    if ignored is not None:
+        stream["ignored"] = ignored
+    if essential is not None:
+        stream["essential"] = essential
 
 
 def _ensure_session(session_id: str | None, response: Response) -> str:

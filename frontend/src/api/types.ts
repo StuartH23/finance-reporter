@@ -39,6 +39,65 @@ export interface TransferResponse {
   summary: TransferSummaryItem[]
 }
 
+// Subscriptions
+export interface SubscriptionChargePoint {
+  date: string
+  amount: number
+}
+
+export interface SubscriptionItem {
+  stream_id: string
+  merchant: string
+  cadence: 'weekly' | 'monthly' | 'annual' | string
+  confidence: number
+  active: boolean
+  ignored: boolean
+  essential: boolean
+  amount: number
+  baseline_amount: number
+  expected_amount: number
+  next_expected_charge_date: string | null
+  last_charge_date: string
+  trend: 'up' | 'down' | 'flat' | string
+  price_increase: boolean
+  charge_count: number
+  charge_history: SubscriptionChargePoint[]
+  cancellation_candidate: boolean
+  negotiation_opportunity: boolean
+  is_new_recurring: boolean
+  missed_expected_charge: boolean
+}
+
+export interface SubscriptionListResponse {
+  subscriptions: SubscriptionItem[]
+  count: number
+}
+
+export interface SubscriptionPreferenceResponse {
+  status: string
+  stream_id: string
+  essential: boolean
+  ignored: boolean
+}
+
+export interface SubscriptionAlert {
+  stream_id: string
+  merchant: string
+  alert_type: string
+  message: string
+}
+
+export interface SubscriptionAlertsResponse {
+  alerts: SubscriptionAlert[]
+  count: number
+}
+
+export interface ReminderResponse {
+  status: string
+  stream_id: string
+  message: string
+}
+
 // P&L
 export interface MonthlyPnl {
   month_str: string

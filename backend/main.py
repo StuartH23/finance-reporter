@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import budget, categories, feature_interest, ledger, pnl, upload
+from routers import budget, categories, feature_interest, ledger, pnl, subscriptions, upload
 from schemas import HealthResponse
 
 app = FastAPI(title="PnL Reporter API", version="1.0.0")
@@ -22,6 +22,7 @@ app.include_router(pnl.router, prefix="/api")
 app.include_router(budget.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(feature_interest.router, prefix="/api")
+app.include_router(subscriptions.router, prefix="/api")
 
 
 @app.get("/api/health", response_model=HealthResponse)
