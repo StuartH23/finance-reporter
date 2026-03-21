@@ -374,3 +374,30 @@ td {
   color: #86efac;
   font-size: 0.78rem;
 }
+
+.privacy-notice-updated {
+  color: var(--text-muted);
+  font-size: 0.77rem;
+  margin-bottom: 0.45rem;
+}
+
+.privacy-notice-intro {
+  color: var(--text);
+  font-size: 0.84rem;
+  margin-bottom: 0.7rem;
+}
+
+.privacy-notice-section + .privacy-notice-section {
+  margin-top: 0.65rem;
+}
+
+.privacy-notice-section h3 {
+  color: var(--text);
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+.privacy-notice-section p {
+  color: var(--text-muted);
+  font-size: 0.79rem;
+}
