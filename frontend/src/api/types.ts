@@ -144,6 +144,33 @@ export interface CategoryBreakdownResponse {
   spending_chart: SpendingChartItem[]
 }
 
+// Insights
+export interface InsightItem {
+  id: string
+  kind: 'spending_trend' | 'goal_trajectory' | 'cashflow_risk' | 'positive_reinforcement' | string
+  title: string
+  observation: string
+  significance: string
+  action: string
+  why_this_matters: string
+  do_this_now: string
+  confidence: number
+  template_key: string
+  template_vars: Record<string, string | number>
+  digest: string
+  period_label?: string | null
+}
+
+export interface InsightsResponse {
+  generated_at: string
+  locale: string
+  currency: string
+  period_label?: string | null
+  insights: InsightItem[]
+  digest: InsightItem[]
+  suppressed: number
+}
+
 // Budget
 export interface BudgetItem {
   category: string

@@ -6,6 +6,7 @@ import type {
   BudgetVsActualResponse,
   CategoryBreakdownResponse,
   LedgerResponse,
+  InsightsResponse,
   MonthlyPnlResponse,
   ReminderResponse,
   SubscriptionAlertsResponse,
@@ -95,6 +96,21 @@ export async function getYearlyPnl(): Promise<YearlyPnlResponse> {
 
 export async function getCategoryBreakdown(): Promise<CategoryBreakdownResponse> {
   return request<CategoryBreakdownResponse>('/pnl/categories')
+}
+
+export async function getInsights(options?: {
+  locale?: string
+  currency?: string
+  confidenceThreshold?: number
+}): Promise<InsightsResponse> {
+  const params = new URLSearchParams()
+  if (options?.locale) params.set('locale', options.locale)
+  if (options?.currency) params.set('currency', options.currency)
+  if (options?.confidenceThreshold !== undefined) {
+    params.set('confidence_threshold', String(options.confidenceThreshold))
+  }
+  const qs = params.toString()
+  return request<InsightsResponse>(`/insights${qs ? `?${qs}` : ''}`)
 }
 
 export async function getBudget(): Promise<BudgetListResponse> {

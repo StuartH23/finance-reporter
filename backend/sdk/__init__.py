@@ -3,6 +3,7 @@
 from .budget import budget_vs_actual, load_budget, save_budget
 from .categories import TRANSFER_CATEGORIES, categorize, load_categories
 from .csv_handler import ColumnGuess, guess_columns
+from .insights import build_insights
 from .ledger import build_ledger, clean_amount, summarize
 from .pdf_parser import parse_pdf_words_to_df
 from .subscriptions import build_alerts, build_subscription_payload, detect_recurring_streams
@@ -14,6 +15,7 @@ __all__ = [
     "budget_vs_actual",
     "build_ledger",
     "build_alerts",
+    "build_insights",
     "build_subscription_payload",
     "categorize",
     "clean_amount",

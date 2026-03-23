@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   getBudget,
   getCategoryBreakdown,
+  getInsights,
   getLedger,
   getMonthlyPnl,
   getSubscriptionAlerts,
@@ -88,6 +89,11 @@ describe('API client', () => {
   it('getCategoryBreakdown calls GET /api/pnl/categories', async () => {
     await getCategoryBreakdown()
     expect(lastUrl).toBe('/api/pnl/categories')
+  })
+
+  it('getInsights calls GET /api/insights with params', async () => {
+    await getInsights({ locale: 'en-US', currency: 'USD', confidenceThreshold: 0.7 })
+    expect(lastUrl).toBe('/api/insights?locale=en-US&currency=USD&confidence_threshold=0.7')
   })
 
   it('getBudget calls GET /api/budget', async () => {

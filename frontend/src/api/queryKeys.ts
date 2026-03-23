@@ -6,6 +6,7 @@ export const queryKeys = {
     yearly: ['pnl', 'yearly'] as const,
     categories: ['pnl', 'categories'] as const,
   },
+  insights: ['insights'] as const,
   budget: {
     list: ['budget'] as const,
     vsActual: ['budget', 'vs-actual'] as const,

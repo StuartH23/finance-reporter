@@ -161,6 +161,35 @@ class CategoryBreakdownResponse(BaseModel):
     spending_chart: list[SpendingChartItem]
 
 
+# --- Insights ---
+
+
+class InsightItem(BaseModel):
+    id: str
+    kind: str
+    title: str
+    observation: str
+    significance: str
+    action: str
+    why_this_matters: str
+    do_this_now: str
+    confidence: float
+    template_key: str
+    template_vars: dict[str, str | float | int]
+    digest: str
+    period_label: str | None = None
+
+
+class InsightsResponse(BaseModel):
+    generated_at: str
+    locale: str
+    currency: str
+    period_label: str | None = None
+    insights: list[InsightItem]
+    digest: list[InsightItem]
+    suppressed: int
+
+
 # --- Budget ---
 
 
