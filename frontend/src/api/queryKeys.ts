@@ -10,6 +10,11 @@ export const queryKeys = {
     list: ['budget'] as const,
     vsActual: ['budget', 'vs-actual'] as const,
   },
+  goals: {
+    list: ['goals'] as const,
+    paycheckPlan: ['goals', 'paycheck-plan'] as const,
+    savedPlan: ['goals', 'saved-plan'] as const,
+  },
   subscriptions: {
     list: ['subscriptions'] as const,
     alerts: ['subscriptions', 'alerts'] as const,

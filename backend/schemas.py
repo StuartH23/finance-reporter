@@ -222,6 +222,121 @@ class QuickCheckResponse(BaseModel):
     categories: list[QuickCheckCategory] | None = None
 
 
+# --- Goals ---
+
+
+class GoalContributionPoint(BaseModel):
+    month: str
+    amount: float
+
+
+class GoalCreate(BaseModel):
+    name: str
+    target_amount: float
+    target_date: str | None = None
+    priority: int
+    category: str
+    status: str = "active"
+
+
+class GoalUpdate(BaseModel):
+    name: str
+    target_amount: float
+    target_date: str | None = None
+    priority: int
+    category: str
+    status: str
+
+
+class GoalResponse(BaseModel):
+    id: str
+    name: str
+    target_amount: float
+    target_date: str | None
+    priority: int
+    category: str
+    status: str
+    created_at: str
+    updated_at: str
+    contributed_amount: float
+    remaining_amount: float
+    progress_pct: float
+    contribution_history: list[GoalContributionPoint]
+
+
+class GoalListResponse(BaseModel):
+    goals: list[GoalResponse]
+    count: int
+
+
+class GoalUpsertResponse(BaseModel):
+    status: str
+    goal: GoalResponse
+
+
+class PaycheckObligation(BaseModel):
+    name: str
+    amount: float
+
+
+class PaycheckGoalAllocation(BaseModel):
+    goal_id: str
+    name: str
+    category: str
+    priority: int
+    target_date: str | None
+    recommended_amount: float
+    remaining_after_allocation: float
+    required_per_paycheck: float | None
+    feasible: bool | None
+
+
+class PaycheckPlanRequest(BaseModel):
+    paycheck_amount: float
+    fixed_obligations: list[PaycheckObligation]
+    safety_buffer: float = 0
+    minimum_emergency_buffer: float = 0
+    mode: str = "balanced"
+    paychecks_per_month: int = 2
+    goal_ids: list[str] | None = None
+
+
+class PaycheckPlanResponse(BaseModel):
+    paycheck_amount: float
+    allocation_mode: str
+    fixed_obligations_total: float
+    needs: float
+    goals: float
+    discretionary: float
+    safety_buffer_reserved: float
+    goal_allocations: list[PaycheckGoalAllocation]
+    warnings: list[str]
+    explanations: list[str]
+    what_changed: list[str]
+
+
+class PaycheckPlanSaveRequest(BaseModel):
+    paycheck_amount: float
+    fixed_obligations: list[PaycheckObligation]
+    safety_buffer_reserved: float
+    minimum_emergency_buffer: float = 0
+    mode: str
+    needs: float
+    goals: float
+    discretionary: float
+    goal_allocations: list[PaycheckGoalAllocation]
+
+
+class PaycheckPlanSaveResponse(BaseModel):
+    status: str
+    plan: dict
+
+
+class SavedPaycheckPlanResponse(BaseModel):
+    status: str
+    plan: dict
+
+
 # --- Feature interest ---
 
 

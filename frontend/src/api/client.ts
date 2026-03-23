@@ -2,12 +2,19 @@ import type {
   BudgetListResponse,
   FeatureInterestRequest,
   FeatureInterestResponse,
+  GoalListResponse,
+  GoalUpsertResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
   CategoryBreakdownResponse,
   LedgerResponse,
   MonthlyPnlResponse,
+  PaycheckPlanRequest,
+  PaycheckPlanResponse,
+  PaycheckPlanSaveRequest,
+  PaycheckPlanSaveResponse,
   ReminderResponse,
+  SavedPaycheckPlanResponse,
   SubscriptionAlertsResponse,
   SubscriptionListResponse,
   SubscriptionPreferenceResponse,
@@ -111,6 +118,67 @@ export async function updateBudget(budget: Record<string, number>): Promise<Budg
 
 export async function getBudgetVsActual(): Promise<BudgetVsActualResponse> {
   return request<BudgetVsActualResponse>('/budget/vs-actual')
+}
+
+export async function getGoals(): Promise<GoalListResponse> {
+  return request<GoalListResponse>('/goals')
+}
+
+export async function createGoal(payload: {
+  name: string
+  target_amount: number
+  target_date?: string | null
+  priority: number
+  category: string
+  status: string
+}): Promise<GoalUpsertResponse> {
+  return request<GoalUpsertResponse>('/goals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateGoal(
+  goalId: string,
+  payload: {
+    name: string
+    target_amount: number
+    target_date?: string | null
+    priority: number
+    category: string
+    status: string
+  }
+): Promise<GoalUpsertResponse> {
+  return request<GoalUpsertResponse>(`/goals/${goalId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function recommendPaycheckPlan(
+  payload: PaycheckPlanRequest
+): Promise<PaycheckPlanResponse> {
+  return request<PaycheckPlanResponse>('/goals/paycheck-plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function savePaycheckPlan(
+  payload: PaycheckPlanSaveRequest
+): Promise<PaycheckPlanSaveResponse> {
+  return request<PaycheckPlanSaveResponse>('/goals/paycheck-plan/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function getSavedPaycheckPlan(): Promise<SavedPaycheckPlanResponse> {
+  return request<SavedPaycheckPlanResponse>('/goals/paycheck-plan/saved')
 }
 
 export async function submitFeatureInterest(

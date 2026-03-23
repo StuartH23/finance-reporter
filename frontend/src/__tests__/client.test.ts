@@ -4,10 +4,15 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  createGoal,
   getBudget,
   getCategoryBreakdown,
+  getGoals,
   getLedger,
   getMonthlyPnl,
+  getSavedPaycheckPlan,
+  recommendPaycheckPlan,
+  savePaycheckPlan,
   getSubscriptionAlerts,
   getSubscriptions,
   getTransfers,
@@ -95,12 +100,64 @@ describe('API client', () => {
     expect(lastUrl).toBe('/api/budget')
   })
 
+  it('getGoals calls GET /api/goals', async () => {
+    await getGoals()
+    expect(lastUrl).toBe('/api/goals')
+  })
+
+  it('createGoal calls POST /api/goals', async () => {
+    await createGoal({
+      name: 'Emergency Fund',
+      target_amount: 1000,
+      target_date: '2026-12-31',
+      priority: 1,
+      category: 'emergency',
+      status: 'active',
+    })
+    expect(lastUrl).toBe('/api/goals')
+    expect(lastOptions?.method).toBe('POST')
+  })
+
   it('updateBudget calls PUT /api/budget with JSON body', async () => {
     await updateBudget({ Food: 500 })
     expect(lastUrl).toBe('/api/budget')
     expect(lastOptions?.method).toBe('PUT')
     expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(JSON.parse(lastOptions?.body as string)).toEqual({ budget: { Food: 500 } })
+  })
+
+  it('recommendPaycheckPlan calls POST /api/goals/paycheck-plan', async () => {
+    await recommendPaycheckPlan({
+      paycheck_amount: 2000,
+      fixed_obligations: [{ name: 'Rent', amount: 1000 }],
+      safety_buffer: 150,
+      minimum_emergency_buffer: 100,
+      mode: 'balanced',
+      paychecks_per_month: 2,
+    })
+    expect(lastUrl).toBe('/api/goals/paycheck-plan')
+    expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('savePaycheckPlan calls POST /api/goals/paycheck-plan/save', async () => {
+    await savePaycheckPlan({
+      paycheck_amount: 2000,
+      fixed_obligations: [{ name: 'Rent', amount: 1000 }],
+      safety_buffer_reserved: 150,
+      minimum_emergency_buffer: 100,
+      mode: 'balanced',
+      needs: 1000,
+      goals: 550,
+      discretionary: 300,
+      goal_allocations: [],
+    })
+    expect(lastUrl).toBe('/api/goals/paycheck-plan/save')
+    expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('getSavedPaycheckPlan calls GET /api/goals/paycheck-plan/saved', async () => {
+    await getSavedPaycheckPlan()
+    expect(lastUrl).toBe('/api/goals/paycheck-plan/saved')
   })
 
   it('uploadFiles calls POST /api/upload with FormData', async () => {

@@ -80,6 +80,11 @@ def _ensure_session(session_id: str | None, response: Response) -> str:
     return sid
 
 
+def ensure_session_id(response: Response, session_id: str | None = None) -> str:
+    """Public wrapper for ensuring a session exists and returning its ID."""
+    return _ensure_session(session_id, response)
+
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_files(
     response: Response,
