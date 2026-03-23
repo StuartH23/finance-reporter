@@ -14,4 +14,7 @@ export const queryKeys = {
     list: ['subscriptions'] as const,
     alerts: ['subscriptions', 'alerts'] as const,
   },
+  actions: {
+    feed: ['actions', 'feed'] as const,
+  },
 } as const

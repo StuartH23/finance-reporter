@@ -7,6 +7,8 @@ import type {
   CategoryBreakdownResponse,
   LedgerResponse,
   MonthlyPnlResponse,
+  NextBestActionFeedResponse,
+  NextBestActionFeedbackResponse,
   ReminderResponse,
   SubscriptionAlertsResponse,
   SubscriptionListResponse,
@@ -19,8 +21,8 @@ import type {
 const BASE = '/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, options)
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+  const res = await fetch(BASE + path, options)
+  if (res.ok === false) throw new Error('API error: ' + res.status + ' ' + res.statusText)
   return res.json() as Promise<T>
 }
 
@@ -50,9 +52,9 @@ export async function getSubscriptions(options?: {
   if (options?.status) params.set('status', options.status)
   if (options?.filterIncreased) params.set('filter_increased', 'true')
   if (options?.filterOptional) params.set('filter_optional', 'true')
-  if (options?.threshold !== undefined) params.set('threshold', String(options.threshold))
+  if (typeof options?.threshold === 'number') params.set('threshold', String(options.threshold))
   const qs = params.toString()
-  return request<SubscriptionListResponse>(`/subscriptions${qs ? `?${qs}` : ''}`)
+  return request<SubscriptionListResponse>('/subscriptions' + (qs ? '?' + qs : ''))
 }
 
 export async function getSubscriptionAlerts(options?: {
@@ -60,19 +62,19 @@ export async function getSubscriptionAlerts(options?: {
   includeMissed?: boolean
 }): Promise<SubscriptionAlertsResponse> {
   const params = new URLSearchParams()
-  if (options?.threshold !== undefined) params.set('threshold', String(options.threshold))
-  if (options?.includeMissed !== undefined) {
+  if (typeof options?.threshold === 'number') params.set('threshold', String(options.threshold))
+  if (typeof options?.includeMissed === 'boolean') {
     params.set('include_missed', String(options.includeMissed))
   }
   const qs = params.toString()
-  return request<SubscriptionAlertsResponse>(`/subscriptions/alerts${qs ? `?${qs}` : ''}`)
+  return request<SubscriptionAlertsResponse>('/subscriptions/alerts' + (qs ? '?' + qs : ''))
 }
 
 export async function updateSubscriptionPreferences(
   streamId: string,
   update: { essential?: boolean; ignored?: boolean }
 ): Promise<SubscriptionPreferenceResponse> {
-  return request<SubscriptionPreferenceResponse>(`/subscriptions/${streamId}/preferences`, {
+  return request<SubscriptionPreferenceResponse>('/subscriptions/' + streamId + '/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(update),
@@ -80,7 +82,7 @@ export async function updateSubscriptionPreferences(
 }
 
 export async function remindCancel(streamId: string): Promise<ReminderResponse> {
-  return request<ReminderResponse>(`/subscriptions/${streamId}/remind-cancel`, {
+  return request<ReminderResponse>('/subscriptions/' + streamId + '/remind-cancel', {
     method: 'POST',
   })
 }
@@ -111,6 +113,24 @@ export async function updateBudget(budget: Record<string, number>): Promise<Budg
 
 export async function getBudgetVsActual(): Promise<BudgetVsActualResponse> {
   return request<BudgetVsActualResponse>('/budget/vs-actual')
+}
+
+export async function getNextBestActionFeed(): Promise<NextBestActionFeedResponse> {
+  return request<NextBestActionFeedResponse>('/actions/feed')
+}
+
+export async function submitActionFeedback(
+  actionId: string,
+  payload: { outcome: 'completed' | 'dismissed' | 'snoozed'; snoozeDays?: number }
+): Promise<NextBestActionFeedbackResponse> {
+  return request<NextBestActionFeedbackResponse>('/actions/' + actionId + '/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      outcome: payload.outcome,
+      snooze_days: payload.snoozeDays,
+    }),
+  })
 }
 
 export async function submitFeatureInterest(

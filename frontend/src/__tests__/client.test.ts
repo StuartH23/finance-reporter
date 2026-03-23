@@ -8,11 +8,13 @@ import {
   getCategoryBreakdown,
   getLedger,
   getMonthlyPnl,
+  getNextBestActionFeed,
   getSubscriptionAlerts,
   getSubscriptions,
   getTransfers,
   getYearlyPnl,
   remindCancel,
+  submitActionFeedback,
   submitFeatureInterest,
   updateSubscriptionPreferences,
   updateBudget,
@@ -95,6 +97,11 @@ describe('API client', () => {
     expect(lastUrl).toBe('/api/budget')
   })
 
+  it('getNextBestActionFeed calls GET /api/actions/feed', async () => {
+    await getNextBestActionFeed()
+    expect(lastUrl).toBe('/api/actions/feed')
+  })
+
   it('updateBudget calls PUT /api/budget with JSON body', async () => {
     await updateBudget({ Food: 500 })
     expect(lastUrl).toBe('/api/budget')
@@ -137,6 +144,17 @@ describe('API client', () => {
     await remindCancel('abc123')
     expect(lastUrl).toBe('/api/subscriptions/abc123/remind-cancel')
     expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('submitActionFeedback calls POST /api/actions/:id/feedback', async () => {
+    await submitActionFeedback('action1', { outcome: 'snoozed', snoozeDays: 3 })
+    expect(lastUrl).toBe('/api/actions/action1/feedback')
+    expect(lastOptions?.method).toBe('POST')
+    expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(lastOptions?.body as string)).toEqual({
+      outcome: 'snoozed',
+      snooze_days: 3,
+    })
   })
 
   it('throws on non-ok response', async () => {

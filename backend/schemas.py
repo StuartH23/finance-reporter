@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 # --- Upload ---
@@ -243,6 +245,46 @@ class FeatureInterestResponse(BaseModel):
 
 class CategoriesResponse(BaseModel):
     categories: list[dict[str, str]]
+
+
+# --- Next-best actions ---
+
+
+class NextBestAction(BaseModel):
+    action_id: str
+    action_type: Literal[
+        "save_transfer",
+        "spending_cap",
+        "bill_review",
+        "debt_extra_payment",
+        "subscription_cleanup",
+    ]
+    title: str
+    rationale: str
+    impact_estimate: str
+    impact_monthly: float
+    score: float
+    state: Literal["suggested", "completed", "dismissed", "snoozed"]
+
+
+class NextBestActionFeedResponse(BaseModel):
+    feed_date: str
+    count: int
+    actionable_data_exists: bool
+    actions: list[NextBestAction]
+
+
+class NextBestActionFeedbackRequest(BaseModel):
+    outcome: Literal["completed", "dismissed", "snoozed"]
+    snooze_days: int | None = None
+
+
+class NextBestActionFeedbackResponse(BaseModel):
+    status: str
+    action_id: str
+    outcome: Literal["completed", "dismissed", "snoozed"]
+    cooldown_until: str | None = None
+    snooze_until: str | None = None
 
 
 # --- Health ---

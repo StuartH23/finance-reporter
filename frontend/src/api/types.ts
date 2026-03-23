@@ -180,6 +180,42 @@ export interface BudgetVsActualResponse {
   summary: BudgetSummary | Record<string, never>
 }
 
+// Next-best actions
+export type NextBestActionType =
+  | 'save_transfer'
+  | 'spending_cap'
+  | 'bill_review'
+  | 'debt_extra_payment'
+  | 'subscription_cleanup'
+
+export type NextBestActionState = 'suggested' | 'completed' | 'dismissed' | 'snoozed'
+
+export interface NextBestAction {
+  action_id: string
+  action_type: NextBestActionType
+  title: string
+  rationale: string
+  impact_estimate: string
+  impact_monthly: number
+  score: number
+  state: NextBestActionState
+}
+
+export interface NextBestActionFeedResponse {
+  feed_date: string
+  count: number
+  actionable_data_exists: boolean
+  actions: NextBestAction[]
+}
+
+export interface NextBestActionFeedbackResponse {
+  status: string
+  action_id: string
+  outcome: 'completed' | 'dismissed' | 'snoozed'
+  cooldown_until?: string
+  snooze_until?: string
+}
+
 // Feature interest
 export interface FeatureInterestRequest {
   email: string

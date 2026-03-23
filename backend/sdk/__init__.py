@@ -4,6 +4,11 @@ from .budget import budget_vs_actual, load_budget, save_budget
 from .categories import TRANSFER_CATEGORIES, categorize, load_categories
 from .csv_handler import ColumnGuess, guess_columns
 from .ledger import build_ledger, clean_amount, summarize
+from .next_actions import (
+    apply_action_feedback,
+    default_personalization_state,
+    pick_daily_actions,
+)
 from .pdf_parser import parse_pdf_words_to_df
 from .subscriptions import build_alerts, build_subscription_payload, detect_recurring_streams
 from .year_detection import infer_year
@@ -22,6 +27,9 @@ __all__ = [
     "infer_year",
     "load_budget",
     "load_categories",
+    "default_personalization_state",
+    "pick_daily_actions",
+    "apply_action_feedback",
     "parse_pdf_words_to_df",
     "save_budget",
     "summarize",

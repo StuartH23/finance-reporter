@@ -504,3 +504,53 @@ td {
   color: var(--text-muted);
   font-size: 0.79rem;
 }
+
+.nba-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.nba-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nba-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.nba-type {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.nba-impact {
+  font-size: 0.75rem;
+  color: var(--green);
+}
+
+.nba-card h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.3rem;
+}
+
+.nba-card p {
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.nba-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+}
