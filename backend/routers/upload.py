@@ -23,6 +23,7 @@ router = APIRouter(tags=["upload"])
 # Per-session ledger storage keyed by session ID
 _sessions: dict[str, list[pd.DataFrame]] = {}
 _session_subscription_preferences: dict[str, dict[str, dict[str, bool]]] = {}
+_session_action_state: dict[str, dict] = {}
 
 EMPTY_LEDGER = pd.DataFrame(columns=["date", "description", "amount", "category", "source_file"])
 
@@ -43,6 +44,8 @@ def clear_session(session_id: str) -> None:
         _sessions[session_id].clear()
     if session_id in _session_subscription_preferences:
         _session_subscription_preferences[session_id].clear()
+    if session_id in _session_action_state:
+        _session_action_state[session_id].clear()
 
 
 def get_subscription_preferences(session_id: str | None) -> dict[str, dict[str, bool]]:
@@ -50,6 +53,13 @@ def get_subscription_preferences(session_id: str | None) -> dict[str, dict[str, 
     if not session_id:
         return {}
     return _session_subscription_preferences.setdefault(session_id, {})
+
+
+def get_action_state(session_id: str | None) -> dict:
+    """Return in-memory action ranking state for a session."""
+    if not session_id:
+        return {}
+    return _session_action_state.setdefault(session_id, {})
 
 
 def set_subscription_preference(
@@ -76,8 +86,14 @@ def _ensure_session(session_id: str | None, response: Response) -> str:
         return session_id
     sid = str(uuid.uuid4())
     _sessions[sid] = []
+    _session_action_state[sid] = {}
     response.set_cookie(key="session_id", value=sid, httponly=True, samesite="lax")
     return sid
+
+
+def ensure_session_id(response: Response, session_id: str | None = None) -> str:
+    """Public wrapper for ensuring a session exists and returning its ID."""
+    return _ensure_session(session_id, response)
 
 
 @router.post("/upload", response_model=UploadResponse)

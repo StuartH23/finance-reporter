@@ -4,15 +4,23 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  createGoal,
   getBudget,
   getCategoryBreakdown,
+  getGoals,
+  getInsights,
   getLedger,
   getMonthlyPnl,
+  getNextBestActionFeed,
+  getSavedPaycheckPlan,
+  recommendPaycheckPlan,
+  savePaycheckPlan,
   getSubscriptionAlerts,
   getSubscriptions,
   getTransfers,
   getYearlyPnl,
   remindCancel,
+  submitActionFeedback,
   submitFeatureInterest,
   updateSubscriptionPreferences,
   updateBudget,
@@ -90,9 +98,37 @@ describe('API client', () => {
     expect(lastUrl).toBe('/api/pnl/categories')
   })
 
+  it('getInsights calls GET /api/insights with params', async () => {
+    await getInsights({ locale: 'en-US', currency: 'USD', confidenceThreshold: 0.7 })
+    expect(lastUrl).toBe('/api/insights?locale=en-US&currency=USD&confidence_threshold=0.7')
+  })
+
   it('getBudget calls GET /api/budget', async () => {
     await getBudget()
     expect(lastUrl).toBe('/api/budget')
+  })
+
+  it('getGoals calls GET /api/goals', async () => {
+    await getGoals()
+    expect(lastUrl).toBe('/api/goals')
+  })
+
+  it('createGoal calls POST /api/goals', async () => {
+    await createGoal({
+      name: 'Emergency Fund',
+      target_amount: 1000,
+      target_date: '2026-12-31',
+      priority: 1,
+      category: 'emergency',
+      status: 'active',
+    })
+    expect(lastUrl).toBe('/api/goals')
+    expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('getNextBestActionFeed calls GET /api/actions/feed', async () => {
+    await getNextBestActionFeed()
+    expect(lastUrl).toBe('/api/actions/feed')
   })
 
   it('updateBudget calls PUT /api/budget with JSON body', async () => {
@@ -101,6 +137,40 @@ describe('API client', () => {
     expect(lastOptions?.method).toBe('PUT')
     expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(JSON.parse(lastOptions?.body as string)).toEqual({ budget: { Food: 500 } })
+  })
+
+  it('recommendPaycheckPlan calls POST /api/goals/paycheck-plan', async () => {
+    await recommendPaycheckPlan({
+      paycheck_amount: 2000,
+      fixed_obligations: [{ name: 'Rent', amount: 1000 }],
+      safety_buffer: 150,
+      minimum_emergency_buffer: 100,
+      mode: 'balanced',
+      paychecks_per_month: 2,
+    })
+    expect(lastUrl).toBe('/api/goals/paycheck-plan')
+    expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('savePaycheckPlan calls POST /api/goals/paycheck-plan/save', async () => {
+    await savePaycheckPlan({
+      paycheck_amount: 2000,
+      fixed_obligations: [{ name: 'Rent', amount: 1000 }],
+      safety_buffer_reserved: 150,
+      minimum_emergency_buffer: 100,
+      mode: 'balanced',
+      needs: 1000,
+      goals: 550,
+      discretionary: 300,
+      goal_allocations: [],
+    })
+    expect(lastUrl).toBe('/api/goals/paycheck-plan/save')
+    expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('getSavedPaycheckPlan calls GET /api/goals/paycheck-plan/saved', async () => {
+    await getSavedPaycheckPlan()
+    expect(lastUrl).toBe('/api/goals/paycheck-plan/saved')
   })
 
   it('uploadFiles calls POST /api/upload with FormData', async () => {
@@ -137,6 +207,17 @@ describe('API client', () => {
     await remindCancel('abc123')
     expect(lastUrl).toBe('/api/subscriptions/abc123/remind-cancel')
     expect(lastOptions?.method).toBe('POST')
+  })
+
+  it('submitActionFeedback calls POST /api/actions/:id/feedback', async () => {
+    await submitActionFeedback('action1', { outcome: 'snoozed', snoozeDays: 3 })
+    expect(lastUrl).toBe('/api/actions/action1/feedback')
+    expect(lastOptions?.method).toBe('POST')
+    expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(lastOptions?.body as string)).toEqual({
+      outcome: 'snoozed',
+      snooze_days: 3,
+    })
   })
 
   it('throws on non-ok response', async () => {

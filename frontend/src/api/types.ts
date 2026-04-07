@@ -144,6 +144,33 @@ export interface CategoryBreakdownResponse {
   spending_chart: SpendingChartItem[]
 }
 
+// Insights
+export interface InsightItem {
+  id: string
+  kind: 'spending_trend' | 'goal_trajectory' | 'cashflow_risk' | 'positive_reinforcement' | string
+  title: string
+  observation: string
+  significance: string
+  action: string
+  why_this_matters: string
+  do_this_now: string
+  confidence: number
+  template_key: string
+  template_vars: Record<string, string | number>
+  digest: string
+  period_label?: string | null
+}
+
+export interface InsightsResponse {
+  generated_at: string
+  locale: string
+  currency: string
+  period_label?: string | null
+  insights: InsightItem[]
+  digest: InsightItem[]
+  suppressed: number
+}
+
 // Budget
 export interface BudgetItem {
   category: string
@@ -180,6 +207,42 @@ export interface BudgetVsActualResponse {
   summary: BudgetSummary | Record<string, never>
 }
 
+// Next-best actions
+export type NextBestActionType =
+  | 'save_transfer'
+  | 'spending_cap'
+  | 'bill_review'
+  | 'debt_extra_payment'
+  | 'subscription_cleanup'
+
+export type NextBestActionState = 'suggested' | 'completed' | 'dismissed' | 'snoozed'
+
+export interface NextBestAction {
+  action_id: string
+  action_type: NextBestActionType
+  title: string
+  rationale: string
+  impact_estimate: string
+  impact_monthly: number
+  score: number
+  state: NextBestActionState
+}
+
+export interface NextBestActionFeedResponse {
+  feed_date: string
+  count: number
+  actionable_data_exists: boolean
+  actions: NextBestAction[]
+}
+
+export interface NextBestActionFeedbackResponse {
+  status: string
+  action_id: string
+  outcome: 'completed' | 'dismissed' | 'snoozed'
+  cooldown_until?: string
+  snooze_until?: string
+}
+
 // Feature interest
 export interface FeatureInterestRequest {
   email: string
@@ -207,4 +270,99 @@ export interface CategoriesResponse {
 // Health
 export interface HealthResponse {
   status: string
+}
+
+// Goals
+export interface GoalContributionPoint {
+  month: string
+  amount: number
+}
+
+export interface Goal {
+  id: string
+  name: string
+  target_amount: number
+  target_date: string | null
+  priority: number
+  category: string
+  status: string
+  created_at: string
+  updated_at: string
+  contributed_amount: number
+  remaining_amount: number
+  progress_pct: number
+  contribution_history: GoalContributionPoint[]
+}
+
+export interface GoalListResponse {
+  goals: Goal[]
+  count: number
+}
+
+export interface GoalUpsertResponse {
+  status: string
+  goal: Goal
+}
+
+export interface PaycheckObligation {
+  name: string
+  amount: number
+}
+
+export interface PaycheckGoalAllocation {
+  goal_id: string
+  name: string
+  category: string
+  priority: number
+  target_date: string | null
+  recommended_amount: number
+  remaining_after_allocation: number
+  required_per_paycheck: number | null
+  feasible: boolean | null
+}
+
+export interface PaycheckPlanRequest {
+  paycheck_amount: number
+  fixed_obligations: PaycheckObligation[]
+  safety_buffer: number
+  minimum_emergency_buffer: number
+  mode: 'balanced' | 'aggressive_savings'
+  paychecks_per_month: number
+  goal_ids?: string[]
+}
+
+export interface PaycheckPlanResponse {
+  paycheck_amount: number
+  allocation_mode: 'balanced' | 'aggressive_savings' | string
+  fixed_obligations_total: number
+  needs: number
+  goals: number
+  discretionary: number
+  safety_buffer_reserved: number
+  goal_allocations: PaycheckGoalAllocation[]
+  warnings: string[]
+  explanations: string[]
+  what_changed: string[]
+}
+
+export interface PaycheckPlanSaveRequest {
+  paycheck_amount: number
+  fixed_obligations: PaycheckObligation[]
+  safety_buffer_reserved: number
+  minimum_emergency_buffer: number
+  mode: 'balanced' | 'aggressive_savings'
+  needs: number
+  goals: number
+  discretionary: number
+  goal_allocations: PaycheckGoalAllocation[]
+}
+
+export interface PaycheckPlanSaveResponse {
+  status: string
+  plan: Record<string, unknown>
+}
+
+export interface SavedPaycheckPlanResponse {
+  status: 'ok' | 'empty' | string
+  plan: Record<string, unknown>
 }

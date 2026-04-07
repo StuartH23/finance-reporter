@@ -102,27 +102,26 @@ def quick_check(month: str | None = Query(default=None), session_id: str | None 
     """Quick monthly budget status for a target month (or current/most recent)."""
     budget = load_budget()
     ledger = get_session_ledger(session_id)
-    pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
-    pnl, complete_month_keys = _filter_to_complete_months(pnl)
-
-    if pnl.empty or not budget:
-        return {"month": None, "status": "no_data"}
+    pnl_raw = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
+    pnl, complete_month_keys = _filter_to_complete_months(pnl_raw)
 
     if month:
         try:
             selected = datetime.strptime(month, "%Y-%m")
         except ValueError:
             return {"month": None, "status": "no_data"}
+        month_label = selected.strftime("%B %Y")
         selected_key = selected.strftime("%Y-%m")
-        if selected_key not in complete_month_keys:
-            return {"month": selected.strftime("%B %Y"), "status": "no_data"}
+        if not budget or selected_key not in complete_month_keys:
+            return {"month": month_label, "status": "no_data"}
         current_month = pnl[
             (pnl["date"].dt.year == selected.year) & (pnl["date"].dt.month == selected.month)
         ].copy()
-        month_label = selected.strftime("%B %Y")
         if current_month.empty:
             return {"month": month_label, "status": "no_data"}
     else:
+        if pnl.empty or not budget:
+            return {"month": None, "status": "no_data"}
         today = date.today()
         today_key = today.strftime("%Y-%m")
         target_key = today_key if today_key in complete_month_keys else max(complete_month_keys)

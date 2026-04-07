@@ -239,6 +239,74 @@ td {
   border-color: var(--text-muted);
 }
 
+.ghost-button.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.insights-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.insights-header-row h2 {
+  margin-bottom: 0;
+}
+
+.insights-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.insights-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.insight-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.insight-item p {
+  margin: 0.25rem 0;
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.insight-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-bottom: 0.45rem;
+}
+
+.insight-title-row h3 {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.insight-confidence {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.insight-label {
+  color: var(--text-muted) !important;
+  font-size: 0.74rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem !important;
+}
+
 .resource-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -455,6 +523,56 @@ td {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.nba-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.nba-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nba-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.nba-type {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.nba-impact {
+  font-size: 0.75rem;
+  color: var(--green);
+}
+
+.nba-card h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.3rem;
+}
+
+.nba-card p {
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.nba-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
 }
 
 @media (max-width: 900px) {
