@@ -1,16 +1,55 @@
 # Finance Report Generator
 
-If you want implementation details, API notes, or deeper technical docs, use `DOCS.md`.
+A full-stack personal finance analysis app that converts raw bank statements into actionable insights, budgets, and next-best actions.
 
-## 1. Prerequisites
+This project is built for portfolio demonstration of practical product engineering across data ingestion, API design, and analytics UX.
+
+## What This Project Demonstrates
+
+- Building and shipping a decoupled `FastAPI + React` product
+- Parsing messy real-world data inputs (`CSV` and bank statement `PDF`)
+- Producing decision-oriented outputs (P&L trends, budget checks, insights, action feed)
+- Designing typed APIs and testable frontend/backend modules
+
+## Core Features
+
+- Statement upload via CSV or PDF
+- Ledger normalization and categorization
+- Monthly and yearly P&L reporting
+- Spending visualization and transaction drill-down
+- Budget editor and budget-vs-actual analysis
+- Goal budgeting planner
+- Subscription center workflow
+- Insight panel and personalized next-best-action feed
+
+## Architecture
+
+```text
+React + Vite (TypeScript)
+  -> /api requests
+FastAPI (Python)
+  -> routers (upload, ledger, pnl, insights, actions, budget, goals, categories, subscriptions)
+  -> sdk modules (parsing, categorization, analytics, recommendations)
+In-memory session state (development profile)
+```
+
+## Tech Stack
+
+- Frontend: React 19, TypeScript, Vite, TanStack Query, Recharts, Vitest, Biome
+- Backend: FastAPI, Pandas, pdfplumber, Pydantic
+- Tooling: pytest, Ruff, npm
+
+## Quick Start
+
+### Prerequisites
 
 - Python `3.13+`
 - Node.js `18+` and npm
-- macOS/Linux shell (commands below use `bash`/`zsh`)
+- macOS/Linux shell (`bash` or `zsh`)
 
-## 2. One-time setup
+### One-time setup
 
-From the repo root:
+From repo root:
 
 ```bash
 # Backend
@@ -26,36 +65,30 @@ npm install
 cd ..
 ```
 
-## 3. Start the app
-
-From the repo root:
+### Run the app
 
 ```bash
 python3 run.py
 ```
 
-This starts:
+Services:
 
+- Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8000`
-- Frontend UI: `http://localhost:5173`
 
-Open `http://localhost:5173` in your browser.
+## Usage Flow
 
-## 4. Generate your report
-
-1. On the Dashboard, upload one or more bank/credit-card statements (`.csv` or `.pdf`).
-2. Accept the Privacy Notice when prompted (required once per browser session).
-3. Review outputs on the Dashboard:
+1. Open `http://localhost:5173`
+2. Upload one or more bank/credit-card statements (`.csv` or `.pdf`)
+3. Accept the privacy notice (once per browser session)
+4. Review Dashboard outputs:
    - P&L tables
    - Spending chart
    - Transaction list
-   - Insights and next-best actions
-4. Use other tabs as needed:
-   - `Budget`
-   - `Goals`
-   - `Subscriptions`
+   - Insights and recommended actions
+5. Navigate to `Budget`, `Goals`, and `Subscriptions` for planning workflows
 
-## 5. Supported input format
+## Supported Input Formats
 
 ### CSV
 
@@ -64,24 +97,49 @@ The parser auto-detects common column names.
 - Date: `Date`, `Posting Date`, `Transaction Date`, `Posted Date`
 - Description: `Description`, `Merchant`, `Payee`, `Details`, `Memo`
 - Amount: `Amount`, `Transaction Amount`, `Amt`
-- Or split amount columns: debit/credit style columns (for example `Debit` + `Credit`)
+- Split amount columns are also supported (for example `Debit` + `Credit`)
 
 ### PDF
 
-- Chase statements are supported by the current PDF parser.
-- For other banks, export CSV for best reliability.
+- Chase statements are supported by the current parser
+- For non-Chase institutions, CSV export is the recommended path
 
-## 6. Stop the app
+## Quality Checks
 
-Press `Ctrl+C` in the terminal where `run.py` is running.
+```bash
+# Backend tests
+cd backend && .venv/bin/pytest -q
 
-## 7. Troubleshooting
+# Frontend tests
+cd frontend && npm test
+
+# Frontend lint + typecheck
+cd frontend && npm run lint && npm run typecheck
+```
+
+## Known Constraints
+
+- Data/session state is in-memory in the backend process
+- Restarting the backend clears uploaded session data
+- PDF parsing is currently optimized for Chase statement layout
+
+## Documentation
+
+- Detailed technical docs: `DOCS.md`
+- Feature tuning note: `docs/feature5-action-feed-tuning.md`
+
+## Roadmap
+
+- Persistent storage for multi-session history
+- Expanded PDF parser coverage across institutions
+- Deployable cloud environment with auth
+- CI/CD and release automation
+
+## Troubleshooting
 
 - `python3.13: command not found`
-  - Install Python 3.13, then recreate `backend/.venv`.
-- `ModuleNotFoundError` when starting backend
-  - Activate the backend venv and reinstall: `pip install -r backend/requirements.txt`.
-- Frontend does not load
-  - Reinstall dependencies: `cd frontend && npm install`.
-- Upload works but data disappears after restart
-  - Upload/session data is stored in memory for the running backend process; restarting clears it.
+  - Install Python 3.13, then recreate `backend/.venv`
+- `ModuleNotFoundError` on backend startup
+  - Re-activate venv and reinstall: `pip install -r backend/requirements.txt`
+- Frontend fails to start
+  - Reinstall dependencies: `cd frontend && npm install`
