@@ -2,8 +2,6 @@
 
 A full-stack personal finance analysis app that converts raw bank statements into actionable insights, budgets, and next-best actions.
 
-This project is built for portfolio demonstration of practical product engineering across data ingestion, API design, and analytics UX.
-
 ## What This Project Demonstrates
 
 - Building and shipping a decoupled `FastAPI + React` product
