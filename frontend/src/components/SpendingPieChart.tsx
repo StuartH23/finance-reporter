@@ -11,28 +11,32 @@ import { getCategoryBreakdown } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 
 const COLORS = [
-  '#6366f1',
-  '#8b5cf6',
-  '#a78bfa',
-  '#c084fc',
-  '#22c55e',
-  '#16a34a',
-  '#15803d',
-  '#eab308',
-  '#f59e0b',
-  '#f97316',
-  '#ef4444',
-  '#ec4899',
-  '#06b6d4',
-  '#14b8a6',
-  '#64748b',
+  '#00a7a2',
+  '#1f7ae0',
+  '#33b7f0',
+  '#25c48f',
+  '#f4a52c',
+  '#ef7f4b',
+  '#da5a6e',
+  '#6b88b6',
+  '#9dc0de',
+  '#4cc9c2',
+  '#208f8a',
+  '#4f9ed9',
+  '#7abf5a',
+  '#be8f2c',
+  '#7a90a8',
 ]
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function SpendingPieChart() {
+interface SpendingPieChartProps {
+  showBreakdownTable?: boolean
+}
+
+function SpendingPieChart({ showBreakdownTable = true }: SpendingPieChartProps) {
   const { data } = useQuery({
     queryKey: queryKeys.pnl.categories,
     queryFn: getCategoryBreakdown,
@@ -97,7 +101,7 @@ function SpendingPieChart() {
         </ResponsiveContainer>
       </div>
 
-      {categories.length > 0 && (
+      {showBreakdownTable && categories.length > 0 && (
         <div className="card">
           <h2>Category Breakdown</h2>
           <table>
