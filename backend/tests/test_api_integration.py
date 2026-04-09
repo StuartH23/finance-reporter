@@ -138,3 +138,44 @@ def test_budget_vs_actual_ignores_partial_months():
     data = resp.json()
     assert data["comparison"] == []
     assert data["summary"] == {}
+
+
+def test_next_best_action_feed_and_feedback_flow():
+    """Feed should return up to 3 actions with rationale/impact and respect dismissal cooldown."""
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-01,Payroll Deposit,3500.00\n"
+        b"2026-01-05,Rent Payment,-1400.00\n"
+        b"2026-01-10,Groceries,-450.00\n"
+        b"2026-01-18,Dining,-220.00\n"
+        b"2026-02-01,Payroll Deposit,3550.00\n"
+        b"2026-02-05,Rent Payment,-1400.00\n"
+        b"2026-02-10,Groceries,-500.00\n"
+        b"2026-02-18,Dining,-300.00\n"
+    )
+    upload_resp = client.post("/api/upload", files=[("files", ("actions.csv", csv, "text/csv"))])
+    assert upload_resp.status_code == 200
+
+    feed_resp = client.get("/api/actions/feed")
+    assert feed_resp.status_code == 200
+    feed = feed_resp.json()
+    assert feed["actionable_data_exists"] is True
+    assert 1 <= feed["count"] <= 3
+    assert len(feed["actions"]) == feed["count"]
+    for action in feed["actions"]:
+        assert action["rationale"]
+        assert action["impact_estimate"]
+
+    first_id = feed["actions"][0]["action_id"]
+    feedback_resp = client.post(f"/api/actions/{first_id}/feedback", json={"outcome": "dismissed"})
+    assert feedback_resp.status_code == 200
+    feedback = feedback_resp.json()
+    assert feedback["status"] == "ok"
+    assert feedback["outcome"] == "dismissed"
+    assert feedback["cooldown_until"] is not None
+
+    refreshed = client.get("/api/actions/feed")
+    assert refreshed.status_code == 200
+    refreshed_ids = {a["action_id"] for a in refreshed.json()["actions"]}
+    assert first_id not in refreshed_ids

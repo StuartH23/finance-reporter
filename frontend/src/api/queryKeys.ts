@@ -6,12 +6,21 @@ export const queryKeys = {
     yearly: ['pnl', 'yearly'] as const,
     categories: ['pnl', 'categories'] as const,
   },
+  insights: ['insights'] as const,
   budget: {
     list: ['budget'] as const,
     vsActual: ['budget', 'vs-actual'] as const,
   },
+  goals: {
+    list: ['goals'] as const,
+    paycheckPlan: ['goals', 'paycheck-plan'] as const,
+    savedPlan: ['goals', 'saved-plan'] as const,
+  },
   subscriptions: {
     list: ['subscriptions'] as const,
     alerts: ['subscriptions', 'alerts'] as const,
+  },
+  actions: {
+    feed: ['actions', 'feed'] as const,
   },
 } as const

@@ -1,6 +1,7 @@
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
 import Budget from './pages/Budget'
 import Dashboard from './pages/Dashboard'
+import Goals from './pages/Goals'
 import Subscriptions from './pages/Subscriptions'
 import './App.css'
 
@@ -15,6 +16,7 @@ function App() {
               Profit and Loss Report
             </NavLink>
             <NavLink to="/budget">Budget</NavLink>
+            <NavLink to="/goals">Goals</NavLink>
             <NavLink to="/subscriptions">Subscriptions</NavLink>
           </div>
         </nav>
@@ -22,6 +24,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/budget" element={<Budget />} />
+            <Route path="/goals" element={<Goals />} />
             <Route path="/subscriptions" element={<Subscriptions />} />
           </Routes>
         </main>

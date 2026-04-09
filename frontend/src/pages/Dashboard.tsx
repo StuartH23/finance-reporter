@@ -1,6 +1,7 @@
 import FileUploader from '../components/FileUploader'
-import PrivacyNotice from '../components/PrivacyNotice'
+import NextBestActionFeed from '../components/NextBestActionFeed'
 import PnlTable from '../components/PnlTable'
+import InsightsPanel from '../components/InsightsPanel'
 import SpendingPieChart from '../components/SpendingPieChart'
 import TransactionList from '../components/TransactionList'
 
@@ -9,7 +10,8 @@ function Dashboard() {
     <div>
       <h1 className="page-title">Dashboard</h1>
       <FileUploader />
-      <PrivacyNotice />
+      <NextBestActionFeed />
+      <InsightsPanel />
       <PnlTable />
       <SpendingPieChart />
       <TransactionList />

@@ -1,13 +1,23 @@
 import type {
   BudgetListResponse,
-  FeatureInterestRequest,
-  FeatureInterestResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
   CategoryBreakdownResponse,
+  FeatureInterestRequest,
+  FeatureInterestResponse,
+  GoalListResponse,
+  GoalUpsertResponse,
+  NextBestActionFeedResponse,
+  NextBestActionFeedbackResponse,
+  InsightsResponse,
   LedgerResponse,
   MonthlyPnlResponse,
+  PaycheckPlanRequest,
+  PaycheckPlanResponse,
+  PaycheckPlanSaveRequest,
+  PaycheckPlanSaveResponse,
   ReminderResponse,
+  SavedPaycheckPlanResponse,
   SubscriptionAlertsResponse,
   SubscriptionListResponse,
   SubscriptionPreferenceResponse,
@@ -97,6 +107,21 @@ export async function getCategoryBreakdown(): Promise<CategoryBreakdownResponse>
   return request<CategoryBreakdownResponse>('/pnl/categories')
 }
 
+export async function getInsights(options?: {
+  locale?: string
+  currency?: string
+  confidenceThreshold?: number
+}): Promise<InsightsResponse> {
+  const params = new URLSearchParams()
+  if (options?.locale) params.set('locale', options.locale)
+  if (options?.currency) params.set('currency', options.currency)
+  if (options?.confidenceThreshold !== undefined) {
+    params.set('confidence_threshold', String(options.confidenceThreshold))
+  }
+  const qs = params.toString()
+  return request<InsightsResponse>(`/insights${qs ? `?${qs}` : ''}`)
+}
+
 export async function getBudget(): Promise<BudgetListResponse> {
   return request<BudgetListResponse>('/budget')
 }
@@ -111,6 +136,85 @@ export async function updateBudget(budget: Record<string, number>): Promise<Budg
 
 export async function getBudgetVsActual(): Promise<BudgetVsActualResponse> {
   return request<BudgetVsActualResponse>('/budget/vs-actual')
+}
+
+export async function getGoals(): Promise<GoalListResponse> {
+  return request<GoalListResponse>('/goals')
+}
+
+export async function createGoal(payload: {
+  name: string
+  target_amount: number
+  target_date?: string | null
+  priority: number
+  category: string
+  status: string
+}): Promise<GoalUpsertResponse> {
+  return request<GoalUpsertResponse>('/goals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateGoal(
+  goalId: string,
+  payload: {
+    name: string
+    target_amount: number
+    target_date?: string | null
+    priority: number
+    category: string
+    status: string
+  }
+): Promise<GoalUpsertResponse> {
+  return request<GoalUpsertResponse>(`/goals/${goalId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function recommendPaycheckPlan(
+  payload: PaycheckPlanRequest
+): Promise<PaycheckPlanResponse> {
+  return request<PaycheckPlanResponse>('/goals/paycheck-plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function savePaycheckPlan(
+  payload: PaycheckPlanSaveRequest
+): Promise<PaycheckPlanSaveResponse> {
+  return request<PaycheckPlanSaveResponse>('/goals/paycheck-plan/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function getSavedPaycheckPlan(): Promise<SavedPaycheckPlanResponse> {
+  return request<SavedPaycheckPlanResponse>('/goals/paycheck-plan/saved')
+}
+
+export async function getNextBestActionFeed(): Promise<NextBestActionFeedResponse> {
+  return request<NextBestActionFeedResponse>('/actions/feed')
+}
+
+export async function submitActionFeedback(
+  actionId: string,
+  payload: { outcome: 'completed' | 'dismissed' | 'snoozed'; snoozeDays?: number }
+): Promise<NextBestActionFeedbackResponse> {
+  return request<NextBestActionFeedbackResponse>(`/actions/${actionId}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      outcome: payload.outcome,
+      snooze_days: payload.snoozeDays,
+    }),
+  })
 }
 
 export async function submitFeatureInterest(

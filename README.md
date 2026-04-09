@@ -20,6 +20,8 @@ python run.py
 
 This starts the FastAPI backend on `http://localhost:8000` and the React frontend on `http://localhost:5173`. Open `http://localhost:5173` in your browser. `Ctrl+C` stops both.
 
+On first upload attempt, users are prompted with an in-app Privacy Notice modal and must explicitly accept before files are processed.
+
 ### Run individually
 
 ```bash
@@ -79,3 +81,29 @@ Edit `backend/data/budget.csv` or use the Budget page in the UI to set monthly s
 ### Notes
 - Subscription preferences (`ignored`, `essential`) are stored per session and cleared when a new upload replaces session ledger data.
 - No DB migration is required for this feature.
+
+## Feature 3: Goal-Driven Budgeting
+- New goal model fields: `name`, `target_amount`, `target_date` (optional), `priority`, `category`, `status`.
+- Goal progress is recomputed from synced transaction history (`contributed_amount`, `remaining_amount`, `progress_pct`, and monthly contribution history).
+- Paycheck allocation supports two deterministic modes:
+  - `balanced`: larger discretionary share after obligations and safety buffer.
+  - `aggressive_savings`: larger goals share after obligations and safety buffer.
+- Guardrails:
+  - Required obligations are funded first and never under-allocated.
+  - Safety buffer is reserved before goals/discretionary split.
+  - Minimum emergency contribution is enforced when possible.
+  - Goals with target dates are checked for paycheck-level feasibility and warnings are returned when underfunded.
+- Users can accept the recommendation directly or edit needs/goals/discretionary and save a custom split.
+- “What changed” text compares the latest recommendation to the saved custom split for transparency.
+
+### Allocation Rules + Assumptions
+- Inputs: paycheck amount, fixed obligations, safety buffer, emergency minimum, allocation mode, paychecks per month, active goals.
+- Processing order: fixed obligations -> safety buffer -> goals/discretionary split -> weighted goal distribution.
+- Goal weighting uses priority and date urgency; allocations are capped by each goal’s remaining amount and resolved in cents for deterministic output.
+- Feasibility assumes `paychecks_per_month` and compares required-per-paycheck vs recommended amount.
+- Progress matching uses goal/category token matching against synced negative transactions, with debt keyword fallback for debt goals.
+
+### TODO: Future ML Personalization
+- Learn user override patterns to tune default mode and bucket shares per paycheck.
+- Learn per-goal contribution propensity from historical acceptance/edit behavior.
+- Personalize feasibility confidence by observed paycheck variability and seasonality.

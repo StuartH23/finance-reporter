@@ -6,7 +6,7 @@ import FileUploader from '../components/FileUploader'
 import PrivacyNotice from '../components/PrivacyNotice'
 
 describe('privacy copy', () => {
-  it('shows inline upload privacy notice and consent text', () => {
+  it('shows modal-prompt upload copy', () => {
     const queryClient = new QueryClient()
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
@@ -14,11 +14,9 @@ describe('privacy copy', () => {
       </QueryClientProvider>
     )
 
-    expect(html).toContain('We process uploaded CSV/PDF files in memory to generate your report.')
-    expect(html).toContain('do not write the original uploaded PDF file to disk')
-    expect(html).toContain(
-      'I understand this tool processes files for budgeting help, does not store original uploaded PDF files'
-    )
+    expect(html).toContain('We will prompt for Privacy Notice acceptance before first upload in this session.')
+    expect(html).toContain('Review Privacy Notice')
+    expect(html).toContain('Drop CSV or PDF files here, or click to browse')
   })
 
   it('shows architecture-specific privacy notice sections', () => {
@@ -32,5 +30,12 @@ describe('privacy copy', () => {
     expect(html).toContain('backend/data/feature_interest.csv')
     expect(html).toContain('session_id')
     expect(html).toContain('5. Scope note')
+  })
+
+  it('shows acceptance control when explicitly enabled', () => {
+    const html = renderToStaticMarkup(
+      <PrivacyNotice accepted={false} onAcceptedChange={() => {}} showAcceptanceControl />
+    )
+    expect(html).toContain('I have read and accept this Privacy Notice for statement uploads.')
   })
 })
