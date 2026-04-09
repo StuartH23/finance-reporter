@@ -1,9 +1,18 @@
 /pdfs/*
+.DS_Store
+.vscode/
+
+# Python environments and caches
 .venv/
 backend/.venv/
 __pycache__/
 *.pyc
 .mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Frontend dependencies and build output
 frontend/node_modules/
-.DS_Store
-.vscode/
+frontend/dist/
