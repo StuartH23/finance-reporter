@@ -1,11 +1,33 @@
-function PrivacyNotice() {
+interface PrivacyNoticeProps {
+  accepted?: boolean
+  onAcceptedChange?: (accepted: boolean) => void
+  showAcceptanceControl?: boolean
+  className?: string
+}
+
+function PrivacyNotice({
+  accepted = false,
+  onAcceptedChange,
+  showAcceptanceControl = false,
+  className = 'card',
+}: PrivacyNoticeProps) {
   return (
-    <div className="card">
+    <div className={className}>
       <h2>Privacy Notice</h2>
       <p className="privacy-notice-updated">Last updated: March 21, 2026</p>
       <p className="privacy-notice-intro">
         This tool is for budgeting help and organization, not financial, legal, or tax advice.
       </p>
+      {showAcceptanceControl && (
+        <label className="privacy-consent">
+          <input
+            type="checkbox"
+            checked={accepted}
+            onChange={(e) => onAcceptedChange?.(e.target.checked)}
+          />
+          <span>I have read and accept this Privacy Notice for statement uploads.</span>
+        </label>
+      )}
 
       <div className="privacy-notice-section">
         <h3>1. File uploads (/api/upload)</h3>
@@ -50,6 +72,19 @@ function PrivacyNotice() {
           separate retention and logging behavior.
         </p>
       </div>
+      <style>{`
+        .privacy-consent {
+          display: flex;
+          gap: 0.55rem;
+          align-items: flex-start;
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          margin: 0.4rem 0 0.8rem;
+        }
+        .privacy-consent input {
+          margin-top: 0.14rem;
+        }
+      `}</style>
     </div>
   )
 }

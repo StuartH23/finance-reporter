@@ -20,6 +20,8 @@ python run.py
 
 This starts the FastAPI backend on `http://localhost:8000` and the React frontend on `http://localhost:5173`. Open `http://localhost:5173` in your browser. `Ctrl+C` stops both.
 
+On first upload attempt, users are prompted with an in-app Privacy Notice modal and must explicitly accept before files are processed.
+
 ### Run individually
 
 ```bash

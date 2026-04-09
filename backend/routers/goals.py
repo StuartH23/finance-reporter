@@ -82,15 +82,13 @@ def _validate_saved_split(data: PaycheckPlanSaveRequest) -> None:
             detail="Goal allocation rows must sum to the goals bucket total.",
         )
 
-    emergency_total = round(
-        sum(
-            float(item.recommended_amount)
-            for item in data.goal_allocations
-            if "emergency" in item.category.lower()
-        ),
-        2,
-    )
-    if data.minimum_emergency_buffer > 0 and emergency_total + 0.01 < data.minimum_emergency_buffer:
+    emergency_rows = [item for item in data.goal_allocations if "emergency" in item.category.lower()]
+    emergency_total = round(sum(float(item.recommended_amount) for item in emergency_rows), 2)
+    if (
+        data.minimum_emergency_buffer > 0
+        and emergency_rows
+        and emergency_total + 0.01 < data.minimum_emergency_buffer
+    ):
         raise HTTPException(
             status_code=400,
             detail="Custom split must satisfy the minimum emergency-buffer contribution.",

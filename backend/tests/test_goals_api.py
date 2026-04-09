@@ -138,3 +138,50 @@ def test_recommendation_warns_when_goal_is_infeasible():
     assert recommendation.status_code == 200
     warnings = recommendation.json()["warnings"]
     assert any("needs about" in warning for warning in warnings)
+
+
+def test_minimum_emergency_opt_in_does_not_block_save_without_emergency_goal():
+    client = TestClient(app)
+    create = client.post(
+        "/api/goals",
+        json={
+            "name": "Vacation",
+            "target_amount": 1500,
+            "target_date": "2026-12-31",
+            "priority": 2,
+            "category": "vacation",
+            "status": "active",
+        },
+    )
+    assert create.status_code == 200
+
+    recommendation = client.post(
+        "/api/goals/paycheck-plan",
+        json={
+            "paycheck_amount": 2000,
+            "fixed_obligations": [{"name": "Rent", "amount": 1000}],
+            "safety_buffer": 100,
+            "minimum_emergency_buffer": 100,
+            "mode": "balanced",
+            "paychecks_per_month": 2,
+        },
+    )
+    assert recommendation.status_code == 200
+    rec = recommendation.json()
+    assert any("no active emergency goal" in warning for warning in rec["warnings"])
+
+    save = client.post(
+        "/api/goals/paycheck-plan/save",
+        json={
+            "paycheck_amount": rec["paycheck_amount"],
+            "fixed_obligations": [{"name": "Rent", "amount": 1000}],
+            "safety_buffer_reserved": rec["safety_buffer_reserved"],
+            "minimum_emergency_buffer": 100,
+            "mode": rec["allocation_mode"],
+            "needs": rec["needs"],
+            "goals": rec["goals"],
+            "discretionary": rec["discretionary"],
+            "goal_allocations": rec["goal_allocations"],
+        },
+    )
+    assert save.status_code == 200

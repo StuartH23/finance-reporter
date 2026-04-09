@@ -31,6 +31,62 @@ function toInputAmount(value: number) {
   return Number.isFinite(value) ? String(value) : '0'
 }
 
+function toCents(value: number) {
+  return Math.max(0, Math.round(value * 100))
+}
+
+function fromCents(value: number) {
+  return Math.round(value) / 100
+}
+
+function rebalanceGoalAllocations(
+  allocations: PaycheckPlanResponse['goal_allocations'],
+  targetGoals: number
+): PaycheckPlanResponse['goal_allocations'] {
+  if (allocations.length === 0) return []
+
+  const targetCents = toCents(targetGoals)
+  const source = allocations.map((item, index) => {
+    const currentCents = toCents(item.recommended_amount)
+    const remainingBeforeCents = toCents(item.remaining_after_allocation + item.recommended_amount)
+    return { index, currentCents, remainingBeforeCents }
+  })
+  const currentTotal = source.reduce((sum, row) => sum + row.currentCents, 0)
+
+  const weights =
+    currentTotal > 0
+      ? source.map((row) => row.currentCents)
+      : source.map(() => 1)
+  const weightTotal = weights.reduce((sum, value) => sum + value, 0)
+  const raw = source.map((_, idx) => (targetCents * weights[idx]) / weightTotal)
+  const allocated = raw.map((value) => Math.floor(value))
+  let remainder = targetCents - allocated.reduce((sum, value) => sum + value, 0)
+
+  const fractions = raw
+    .map((value, idx) => ({ idx, frac: value - Math.floor(value) }))
+    .sort((a, b) => b.frac - a.frac || a.idx - b.idx)
+
+  for (const row of fractions) {
+    if (remainder <= 0) break
+    allocated[row.idx] += 1
+    remainder -= 1
+  }
+
+  return allocations.map((item, idx) => {
+    const recommendedAmount = fromCents(allocated[idx])
+    const remainingAfter = fromCents(
+      Math.max(0, source[idx].remainingBeforeCents - allocated[idx])
+    )
+    const required = item.required_per_paycheck
+    return {
+      ...item,
+      recommended_amount: recommendedAmount,
+      remaining_after_allocation: remainingAfter,
+      feasible: required === null ? null : recommendedAmount + 0.01 >= required,
+    }
+  })
+}
+
 interface DraftPlan {
   paycheck_amount: number
   fixed_obligations: PaycheckObligation[]
@@ -56,6 +112,7 @@ function GoalBudgetPlanner() {
   const [paycheckAmount, setPaycheckAmount] = useState('2000')
   const [safetyBuffer, setSafetyBuffer] = useState('150')
   const [minimumEmergencyBuffer, setMinimumEmergencyBuffer] = useState('100')
+  const [enforceEmergencyMinimum, setEnforceEmergencyMinimum] = useState(false)
   const [paychecksPerMonth, setPaychecksPerMonth] = useState('2')
   const [mode, setMode] = useState<'balanced' | 'aggressive_savings'>('balanced')
   const [obligations, setObligations] = useState<PaycheckObligation[]>([
@@ -66,6 +123,9 @@ function GoalBudgetPlanner() {
   const [recommendedPlan, setRecommendedPlan] = useState<PaycheckPlanResponse | null>(null)
   const [draftPlan, setDraftPlan] = useState<DraftPlan | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const effectiveMinimumEmergencyBuffer = enforceEmergencyMinimum
+    ? parseAmount(minimumEmergencyBuffer)
+    : 0
 
   const { data: goalsData } = useQuery({
     queryKey: queryKeys.goals.list,
@@ -111,7 +171,7 @@ function GoalBudgetPlanner() {
         paycheck_amount: parseAmount(paycheckAmount),
         fixed_obligations: obligations,
         safety_buffer: parseAmount(safetyBuffer),
-        minimum_emergency_buffer: parseAmount(minimumEmergencyBuffer),
+        minimum_emergency_buffer: effectiveMinimumEmergencyBuffer,
         mode,
         paychecks_per_month: Math.max(1, Number.parseInt(paychecksPerMonth, 10) || 2),
         goal_ids: activeGoals.map((goal) => goal.id),
@@ -122,7 +182,7 @@ function GoalBudgetPlanner() {
         paycheck_amount: plan.paycheck_amount,
         fixed_obligations: obligations,
         safety_buffer_reserved: plan.safety_buffer_reserved,
-        minimum_emergency_buffer: parseAmount(minimumEmergencyBuffer),
+        minimum_emergency_buffer: effectiveMinimumEmergencyBuffer,
         mode: plan.allocation_mode === 'aggressive_savings' ? 'aggressive_savings' : 'balanced',
         needs: plan.needs,
         goals: plan.goals,
@@ -148,6 +208,7 @@ function GoalBudgetPlanner() {
   const draftTotal = draftPlan
     ? draftPlan.needs + draftPlan.goals + draftPlan.discretionary + draftPlan.safety_buffer_reserved
     : 0
+  const draftTotalValid = draftPlan ? Math.abs(draftTotal - draftPlan.paycheck_amount) < 0.01 : false
 
   return (
     <div>
@@ -307,12 +368,30 @@ function GoalBudgetPlanner() {
           </label>
           <label className="field-label">
             Min Emergency Contribution
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                margin: '0.2rem 0 0.3rem',
+                fontWeight: 400,
+                color: 'var(--text-muted)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={enforceEmergencyMinimum}
+                onChange={(e) => setEnforceEmergencyMinimum(e.target.checked)}
+              />
+              <span>Enforce minimum emergency contribution</span>
+            </div>
             <input
               className="text-input"
               type="number"
               min="0"
               value={minimumEmergencyBuffer}
               onChange={(e) => setMinimumEmergencyBuffer(e.target.value)}
+              disabled={!enforceEmergencyMinimum}
             />
           </label>
           <label className="field-label">
@@ -472,13 +551,24 @@ function GoalBudgetPlanner() {
             <p className={'budget-hint ' + (Math.abs(draftTotal - draftPlan.paycheck_amount) < 0.01 ? '' : 'form-error')}>
               Draft total: {fmtMoney(draftTotal)} of {fmtMoney(draftPlan.paycheck_amount)} paycheck
             </p>
+            <p className="budget-hint">If you change the goals bucket, goal rows are auto-rebalanced on save.</p>
 
             <div className="feature-actions" style={{ marginTop: '0.65rem' }}>
               <button
                 type="button"
                 className="primary-button"
-                onClick={() => saveMutation.mutate(draftPlan)}
-                disabled={saveMutation.isPending}
+                onClick={() => {
+                  const goalAllocations = rebalanceGoalAllocations(draftPlan.goal_allocations, draftPlan.goals)
+                  const normalizedGoals = fromCents(
+                    goalAllocations.reduce((sum, item) => sum + toCents(item.recommended_amount), 0)
+                  )
+                  saveMutation.mutate({
+                    ...draftPlan,
+                    goals: normalizedGoals,
+                    goal_allocations: goalAllocations,
+                  })
+                }}
+                disabled={saveMutation.isPending || !draftTotalValid}
               >
                 {saveMutation.isPending ? 'Saving...' : 'Save Custom Split'}
               </button>
@@ -490,7 +580,7 @@ function GoalBudgetPlanner() {
                     paycheck_amount: recommendedPlan.paycheck_amount,
                     fixed_obligations: obligations,
                     safety_buffer_reserved: recommendedPlan.safety_buffer_reserved,
-                    minimum_emergency_buffer: parseAmount(minimumEmergencyBuffer),
+                    minimum_emergency_buffer: effectiveMinimumEmergencyBuffer,
                     mode:
                       recommendedPlan.allocation_mode === 'aggressive_savings'
                         ? 'aggressive_savings'

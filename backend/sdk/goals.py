@@ -265,6 +265,10 @@ def build_paycheck_plan(
 
     active_goals = [goal for goal in goals if goal.remaining_amount > 0]
     emergency_goals = [goal for goal in active_goals if "emergency" in goal.category.lower()]
+    if min_emergency_cents > 0 and not emergency_goals:
+        warnings.append(
+            "Minimum emergency contribution is enabled, but no active emergency goal is selected."
+        )
     if emergency_goals and min_emergency_cents > 0:
         emergency_remaining = _to_cents(sum(goal.remaining_amount for goal in emergency_goals))
         emergency_min = min(min_emergency_cents, emergency_remaining)
