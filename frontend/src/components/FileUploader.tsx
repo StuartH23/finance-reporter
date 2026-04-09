@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type DragEvent, type KeyboardEvent, useRef, useState } from 'react'
+import { type DragEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { uploadFiles } from '../api/client'
 import type { UploadResponse } from '../api/types'
 import PrivacyNotice from './PrivacyNotice'
@@ -22,6 +22,15 @@ function FileUploader() {
 
   const queuePrivacyPrompt = () => {
     setShowPrivacyModal(true)
+  }
+
+  const beginBrowseFlow = () => {
+    if (!privacyAccepted) {
+      setPendingBrowse(true)
+      queuePrivacyPrompt()
+      return
+    }
+    inputRef.current?.click()
   }
 
   const handleFiles = (files: FileList | null) => {
@@ -65,11 +74,20 @@ function FileUploader() {
     handleFiles(e.dataTransfer.files)
   }
 
+  useEffect(() => {
+    const onAddTransaction = () => {
+      document.getElementById('upload-statements')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      beginBrowseFlow()
+    }
+    window.addEventListener('app:add-transaction', onAddTransaction)
+    return () => window.removeEventListener('app:add-transaction', onAddTransaction)
+  }, [privacyAccepted])
+
   const results: UploadResponse | undefined = uploadMutation.data
   const errorMessage = uploadMutation.error?.message
 
   return (
-    <div className="card">
+    <div className="card" id="upload-statements">
       <h2>Upload Statements</h2>
       <p className="privacy-inline-note">
         We will prompt for Privacy Notice acceptance before first upload in this session.
@@ -85,22 +103,12 @@ function FileUploader() {
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         onClick={() => {
-          if (!privacyAccepted) {
-            setPendingBrowse(true)
-            queuePrivacyPrompt()
-            return
-          }
-          inputRef.current?.click()
+          beginBrowseFlow()
         }}
         onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
-            if (!privacyAccepted) {
-              setPendingBrowse(true)
-              queuePrivacyPrompt()
-              return
-            }
-            inputRef.current?.click()
+            beginBrowseFlow()
           }
         }}
       >
@@ -222,15 +230,15 @@ function FileUploader() {
         }
         .upload-privacy-confirmation {
           margin-top: 0.5rem;
-          color: #86efac;
+          color: var(--green);
           font-size: 0.78rem;
         }
         .error-text { color: var(--red); margin-top: 0.5rem; }
         .privacy-modal-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(3, 7, 18, 0.9);
-          backdrop-filter: blur(2px);
+          background: rgba(15, 35, 63, 0.55);
+          backdrop-filter: blur(4px);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -241,10 +249,10 @@ function FileUploader() {
           position: relative;
           width: min(920px, 95vw);
           max-height: 92vh;
-          border: 1px solid #3a425a;
+          border: 1px solid var(--border);
           border-radius: 12px;
           background: var(--surface);
-          box-shadow: 0 26px 80px rgba(0, 0, 0, 0.55);
+          box-shadow: var(--shadow-soft);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -261,48 +269,48 @@ function FileUploader() {
           width: 32px;
           height: 32px;
           border-radius: 999px;
-          border: 1px solid #3a425a;
-          background: #1a2134;
-          color: #cfd6ef;
+          border: 1px solid var(--border);
+          background: var(--surface-muted);
+          color: var(--text-muted);
           font-size: 1.1rem;
           line-height: 1;
         }
         .privacy-modal-close:hover {
-          background: #222a41;
-          color: #eef3ff;
+          background: #eaf2fb;
+          color: var(--text);
         }
         .privacy-modal-content h2 {
           margin-bottom: 0.75rem;
-          color: #e8ecff;
+          color: var(--text);
           font-size: 0.84rem;
           text-transform: uppercase;
           letter-spacing: 0.06em;
         }
         .privacy-modal-content .privacy-notice-updated {
-          color: #aab2cb;
+          color: var(--text-muted);
           font-size: 0.82rem;
           margin-bottom: 0.55rem;
         }
         .privacy-modal-content .privacy-notice-intro {
-          color: #e5eaf9;
+          color: var(--text);
           margin-bottom: 0.85rem;
           font-size: 0.86rem;
         }
         .privacy-modal-content .privacy-consent {
           margin: 0 0 0.9rem;
-          color: #d6dbec;
+          color: var(--text-muted);
           font-size: 0.84rem;
         }
         .privacy-modal-content .privacy-notice-section + .privacy-notice-section {
           margin-top: 0.85rem;
         }
         .privacy-modal-content .privacy-notice-section h3 {
-          color: #edf1ff;
+          color: var(--text);
           margin-bottom: 0.28rem;
           font-size: 0.88rem;
         }
         .privacy-modal-content .privacy-notice-section p {
-          color: #c8cfe3;
+          color: var(--text-muted);
           line-height: 1.48;
           font-size: 0.86rem;
           max-width: 84ch;
@@ -313,19 +321,19 @@ function FileUploader() {
           gap: 0.6rem;
           padding: 0.85rem 1rem 1rem;
           border-top: 1px solid var(--border);
-          background: #161b29;
+          background: var(--surface-muted);
         }
         .danger-button {
-          border: 1px solid #dc2626;
-          background: #dc2626;
-          color: #fff;
+          border: 1px solid var(--red);
+          background: var(--red);
+          color: #ffffff;
           border-radius: 6px;
           padding: 0.52rem 0.72rem;
           font-size: 0.8rem;
         }
         .danger-button:hover {
-          background: #b91c1c;
-          border-color: #b91c1c;
+          background: #a03137;
+          border-color: #a03137;
         }
       `}</style>
     </div>
