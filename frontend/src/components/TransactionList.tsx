@@ -3,14 +3,10 @@ import { useState } from 'react'
 import { getLedger } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { CashFlowGranularity } from '../api/types'
+import { normalizeMerchantLabel } from '../utils/merchant'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
-function normalizeMerchant(value: string) {
-  const normalized = value.trim().replace(/\s+/g, ' ')
-  return normalized.length ? normalized : 'Unknown Merchant'
 }
 
 function matchesPeriod(date: string, periodKey: string, granularity: CashFlowGranularity) {
@@ -61,7 +57,7 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
     if (filters?.category && tx.category !== filters.category) {
       return false
     }
-    if (filters?.merchant && normalizeMerchant(tx.description) !== filters.merchant) {
+    if (filters?.merchant && normalizeMerchantLabel(tx.description) !== filters.merchant) {
       return false
     }
     return true

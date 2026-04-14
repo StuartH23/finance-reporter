@@ -27,6 +27,7 @@ import type {
   UploadResponse,
   YearlyPnlResponse,
 } from '../api/types'
+import { normalizeMerchantLabel } from '../utils/merchant'
 import { getDemoMode } from './mode'
 
 const TRANSFER_CATEGORIES = new Set([
@@ -522,11 +523,6 @@ function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
-function normalizeMerchant(value: string) {
-  const normalized = value.trim().replace(/\s+/g, ' ')
-  return normalized.length ? normalized : 'Unknown Merchant'
-}
-
 function periodSortValue(periodKey: string, granularity: 'month' | 'quarter') {
   if (granularity === 'month') return periodKey
   const [yearStr, quarterStr] = periodKey.split('-Q')
@@ -610,7 +606,7 @@ function buildDemoCashFlow(searchParams: URLSearchParams): CashFlowResponse {
 
   const grouped = new Map<string, { amount: number; transactions: number }>()
   for (const tx of expenseRows) {
-    const key = groupBy === 'category' ? tx.category : normalizeMerchant(tx.description)
+    const key = groupBy === 'category' ? tx.category : normalizeMerchantLabel(tx.description)
     const current = grouped.get(key)
     if (current) {
       current.amount += Math.abs(tx.amount)

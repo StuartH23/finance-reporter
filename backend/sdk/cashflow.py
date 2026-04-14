@@ -92,12 +92,16 @@ def _collapse_expense_groups(
 
     top = grouped.head(max_groups).copy()
     other = grouped.iloc[max_groups:]
-    top.loc[len(top)] = {
-        "group_key": "Other",
-        "amount": float(other["amount"].sum()),
-        "transactions": int(other["transactions"].sum()),
-    }
-    return top
+    other_row = pd.DataFrame(
+        [
+            {
+                "group_key": "Other",
+                "amount": float(other["amount"].sum()),
+                "transactions": int(other["transactions"].sum()),
+            }
+        ]
+    )
+    return pd.concat([top, other_row], ignore_index=True)
 
 
 def _allocate_income_to_expenses(income_total: float, expense_amounts: list[float]) -> list[float]:
