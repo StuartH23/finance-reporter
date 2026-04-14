@@ -163,6 +163,51 @@ class CategoryBreakdownResponse(BaseModel):
     spending_chart: list[SpendingChartItem]
 
 
+class CashFlowPeriod(BaseModel):
+    key: str
+    label: str
+
+
+class CashFlowTotals(BaseModel):
+    income: float
+    expenses: float
+    net: float
+
+
+class CashFlowNode(BaseModel):
+    id: str
+    label: str
+    type: Literal["income", "expense", "savings", "shortfall"]
+    value: float
+    group_key: str | None = None
+
+
+class CashFlowLink(BaseModel):
+    source: str
+    target: str
+    value: float
+
+
+class CashFlowGroup(BaseModel):
+    key: str
+    label: str
+    amount: float
+    transactions: int
+
+
+class CashFlowResponse(BaseModel):
+    granularity: Literal["month", "quarter"]
+    group_by: Literal["category", "merchant"]
+    period_key: str | None
+    period_label: str | None
+    available_periods: list[CashFlowPeriod]
+    totals: CashFlowTotals
+    nodes: list[CashFlowNode]
+    links: list[CashFlowLink]
+    groups: list[CashFlowGroup]
+    transaction_count: int
+
+
 # --- Insights ---
 
 

@@ -1,0 +1,96 @@
+"""Tests for cashflow endpoint and payload behavior."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from fastapi.testclient import TestClient
+
+from main import app
+
+
+def _upload_sample_ledger(client: TestClient) -> None:
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-01,Payroll,4000.00\n"
+        b"2026-01-03,Rent,-1500.00\n"
+        b"2026-01-08,Whole Foods,-220.00\n"
+        b"2026-01-11,Whole Foods,-140.00\n"
+        b"2026-01-15,Savings Transfer,-300.00\n"
+        b"2026-02-01,Payroll,4200.00\n"
+        b"2026-02-04,Rent,-1500.00\n"
+        b"2026-02-08,Trader Joe's,-180.00\n"
+        b"2026-02-12,Trader Joe's,-120.00\n"
+        b"2026-02-16,Car Insurance,-190.00\n"
+        b"2026-02-24,Electric Utility,-110.00\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("cashflow.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+
+def test_cashflow_monthly_category_default_period():
+    client = TestClient(app)
+    _upload_sample_ledger(client)
+
+    response = client.get("/api/cashflow")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["granularity"] == "month"
+    assert data["group_by"] == "category"
+    assert data["period_key"] == "2026-02"
+    assert data["period_label"] == "February 2026"
+    assert len(data["available_periods"]) == 2
+    assert data["available_periods"][0]["key"] == "2026-02"
+    assert data["totals"]["income"] == 4200.0
+    assert data["totals"]["expenses"] > 0
+    assert data["transaction_count"] == 6
+    assert any(node["type"] == "expense" for node in data["nodes"])
+    assert any(node["type"] == "savings" for node in data["nodes"])
+    assert len(data["links"]) > 0
+
+
+def test_cashflow_quarter_merchant_with_explicit_period():
+    client = TestClient(app)
+    _upload_sample_ledger(client)
+
+    response = client.get("/api/cashflow?granularity=quarter&group_by=merchant&period=2026-Q1")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["granularity"] == "quarter"
+    assert data["group_by"] == "merchant"
+    assert data["period_key"] == "2026-Q1"
+    assert data["period_label"] == "Q1 2026"
+    assert data["available_periods"][0]["key"] == "2026-Q1"
+
+    labels = {group["label"] for group in data["groups"]}
+    assert "Whole Foods" in labels
+    assert "Trader Joe's" in labels
+    assert data["totals"]["income"] == 8200.0
+    assert data["transaction_count"] == 11
+
+
+def test_cashflow_rejects_invalid_period_format():
+    client = TestClient(app)
+    _upload_sample_ledger(client)
+
+    response = client.get("/api/cashflow?granularity=quarter&period=2026-02")
+    assert response.status_code == 422
+    assert "Invalid period" in response.json()["detail"]
+
+
+def test_cashflow_returns_empty_for_missing_period():
+    client = TestClient(app)
+    _upload_sample_ledger(client)
+
+    response = client.get("/api/cashflow?granularity=month&period=2025-01")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["period_key"] == "2025-01"
+    assert data["nodes"] == []
+    assert data["links"] == []
+    assert data["groups"] == []
+    assert data["transaction_count"] == 0

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Budget from './pages/Budget'
+import CashFlow from './pages/CashFlow'
 import Dashboard from './pages/Dashboard'
 import { resetDemoState } from './demo/demoApi'
 import { getDemoMode, setDemoMode } from './demo/mode'
@@ -12,15 +13,18 @@ import './App.css'
 type NavItem = {
   to: string
   label: string
-  icon: 'dashboard' | 'budget' | 'goals' | 'subscriptions'
+  icon: 'dashboard' | 'cashflow' | 'budget' | 'goals' | 'subscriptions'
 }
 
 const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/cash-flow', label: 'Cash Flow', icon: 'cashflow' },
   { to: '/budget', label: 'Budget', icon: 'budget' },
   { to: '/goals', label: 'Goals', icon: 'goals' },
   { to: '/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
 ]
+
+const SIDEBAR_PREF_KEY = 'pnl-reporter.sidebar-collapsed'
 
 function NavIcon({ icon }: { icon: NavItem['icon'] }) {
   if (icon === 'budget') {
@@ -54,6 +58,16 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
     )
   }
 
+  if (icon === 'cashflow') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h5v12H4z" />
+        <path d="M10 4h5v15h-5z" />
+        <path d="M16 10h4v9h-4z" />
+      </svg>
+    )
+  }
+
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 10.5 12 4l8 6.5" />
@@ -67,6 +81,14 @@ function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const [demoModeEnabled, setDemoModeEnabled] = useState(() => getDemoMode())
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      return window.localStorage.getItem(SIDEBAR_PREF_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const current = navItems.find((item) =>
     item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to),
   )
@@ -90,6 +112,14 @@ function AppShell() {
     return () => window.removeEventListener('demo-mode-changed', onDemoModeChanged)
   }, [])
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_PREF_KEY, sidebarCollapsed ? '1' : '0')
+    } catch {
+      // Ignore persistence errors.
+    }
+  }, [sidebarCollapsed])
+
   const enableDemoMode = () => {
     if (!getDemoMode()) {
       resetDemoState()
@@ -110,8 +140,24 @@ function AppShell() {
   }
 
   return (
-    <div className="app">
-      <aside className="icon-rail" aria-label="Primary Navigation">
+    <div className={`app ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside
+        className={`icon-rail ${sidebarCollapsed ? 'collapsed' : ''}`}
+        aria-label="Primary Navigation"
+      >
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={() => setSidebarCollapsed((prev) => !prev)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!sidebarCollapsed}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 5 4 12l5 7" />
+            <path d="M15 5l5 7-5 7" />
+          </svg>
+          <span className="rail-label">{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
+        </button>
         <div className="rail-nav">
           {navItems.map((item) => (
             <NavLink
@@ -119,10 +165,11 @@ function AppShell() {
               to={item.to}
               end={item.to === '/'}
               className="rail-link"
-              title={item.label}
+              title={sidebarCollapsed ? item.label : undefined}
               aria-label={item.label}
             >
               <NavIcon icon={item.icon} />
+              <span className="rail-label">{item.label}</span>
             </NavLink>
           ))}
         </div>
@@ -130,11 +177,11 @@ function AppShell() {
 
       <section className="workspace">
         <header className="workspace-header">
-          <div className="breadcrumbs" aria-label="Breadcrumb">
+          <nav className="breadcrumbs" aria-label="Breadcrumb">
             <span>Home</span>
             <span>/</span>
             <strong>{current?.label ?? 'Dashboard'}</strong>
-          </div>
+          </nav>
           <div className="header-actions">
             <button
               type="button"
@@ -162,7 +209,13 @@ function AppShell() {
 
         <main className="workspace-main">
           <Routes>
-            <Route path="/" element={<Dashboard demoModeEnabled={demoModeEnabled} onEnableDemoMode={enableDemoMode} />} />
+            <Route
+              path="/"
+              element={
+                <Dashboard demoModeEnabled={demoModeEnabled} onEnableDemoMode={enableDemoMode} />
+              }
+            />
+            <Route path="/cash-flow" element={<CashFlow />} />
             <Route path="/budget" element={<Budget />} />
             <Route path="/goals" element={<Goals />} />
             <Route path="/subscriptions" element={<Subscriptions />} />

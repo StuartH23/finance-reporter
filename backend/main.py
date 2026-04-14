@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     actions,
     budget,
+    cashflow,
     categories,
     feature_interest,
     goals,
@@ -30,6 +31,7 @@ app.add_middleware(
 app.include_router(upload.router, prefix="/api")
 app.include_router(ledger.router, prefix="/api")
 app.include_router(pnl.router, prefix="/api")
+app.include_router(cashflow.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
 app.include_router(actions.router, prefix="/api")
 app.include_router(budget.router, prefix="/api")

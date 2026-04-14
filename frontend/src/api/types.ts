@@ -144,6 +144,56 @@ export interface CategoryBreakdownResponse {
   spending_chart: SpendingChartItem[]
 }
 
+// Cash flow
+export type CashFlowGranularity = 'month' | 'quarter'
+export type CashFlowGroupBy = 'category' | 'merchant'
+export type CashFlowNodeType = 'income' | 'expense' | 'savings' | 'shortfall'
+
+export interface CashFlowPeriod {
+  key: string
+  label: string
+}
+
+export interface CashFlowTotals {
+  income: number
+  expenses: number
+  net: number
+}
+
+export interface CashFlowNode {
+  id: string
+  label: string
+  type: CashFlowNodeType
+  value: number
+  group_key: string | null
+}
+
+export interface CashFlowLink {
+  source: string
+  target: string
+  value: number
+}
+
+export interface CashFlowGroup {
+  key: string
+  label: string
+  amount: number
+  transactions: number
+}
+
+export interface CashFlowResponse {
+  granularity: CashFlowGranularity
+  group_by: CashFlowGroupBy
+  period_key: string | null
+  period_label: string | null
+  available_periods: CashFlowPeriod[]
+  totals: CashFlowTotals
+  nodes: CashFlowNode[]
+  links: CashFlowLink[]
+  groups: CashFlowGroup[]
+  transaction_count: number
+}
+
 // Insights
 export interface InsightItem {
   id: string
