@@ -1,6 +1,7 @@
 """PnL Reporter SDK — reusable financial data processing library."""
 
 from .budget import budget_vs_actual, load_budget, save_budget
+from .cashflow import build_cashflow_payload, normalize_merchant, period_key_is_valid
 from .categories import TRANSFER_CATEGORIES, categorize, load_categories
 from .csv_handler import ColumnGuess, guess_columns
 from .goals import build_paycheck_plan, compute_goal_progress, what_changed_lines
@@ -20,6 +21,7 @@ __all__ = [
     "ColumnGuess",
     "budget_vs_actual",
     "build_paycheck_plan",
+    "build_cashflow_payload",
     "build_ledger",
     "build_alerts",
     "build_insights",
@@ -32,8 +34,10 @@ __all__ = [
     "infer_year",
     "load_budget",
     "load_categories",
+    "normalize_merchant",
     "default_personalization_state",
     "pick_daily_actions",
+    "period_key_is_valid",
     "apply_action_feedback",
     "parse_pdf_words_to_df",
     "save_budget",

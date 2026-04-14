@@ -6,6 +6,19 @@ export const queryKeys = {
     yearly: ['pnl', 'yearly'] as const,
     categories: ['pnl', 'categories'] as const,
   },
+  cashflow: {
+    byParams: (params?: {
+      granularity?: 'month' | 'quarter'
+      groupBy?: 'category' | 'merchant'
+      period?: string
+    }) =>
+      [
+        'cashflow',
+        params?.granularity ?? 'month',
+        params?.groupBy ?? 'category',
+        params?.period ?? 'latest',
+      ] as const,
+  },
   insights: ['insights'] as const,
   budget: {
     list: ['budget'] as const,

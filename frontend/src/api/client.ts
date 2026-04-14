@@ -2,6 +2,7 @@ import type {
   BudgetListResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
+  CashFlowResponse,
   CategoryBreakdownResponse,
   FeatureInterestRequest,
   FeatureInterestResponse,
@@ -84,7 +85,7 @@ export async function getSubscriptionAlerts(options?: {
 
 export async function updateSubscriptionPreferences(
   streamId: string,
-  update: { essential?: boolean; ignored?: boolean }
+  update: { essential?: boolean; ignored?: boolean },
 ): Promise<SubscriptionPreferenceResponse> {
   return request<SubscriptionPreferenceResponse>(`/subscriptions/${streamId}/preferences`, {
     method: 'POST',
@@ -109,6 +110,19 @@ export async function getYearlyPnl(): Promise<YearlyPnlResponse> {
 
 export async function getCategoryBreakdown(): Promise<CategoryBreakdownResponse> {
   return request<CategoryBreakdownResponse>('/pnl/categories')
+}
+
+export async function getCashFlow(options?: {
+  granularity?: 'month' | 'quarter'
+  groupBy?: 'category' | 'merchant'
+  period?: string
+}): Promise<CashFlowResponse> {
+  const params = new URLSearchParams()
+  if (options?.granularity) params.set('granularity', options.granularity)
+  if (options?.groupBy) params.set('group_by', options.groupBy)
+  if (options?.period) params.set('period', options.period)
+  const qs = params.toString()
+  return request<CashFlowResponse>(`/cashflow${qs ? `?${qs}` : ''}`)
 }
 
 export async function getInsights(options?: {
@@ -170,7 +184,7 @@ export async function updateGoal(
     priority: number
     category: string
     status: string
-  }
+  },
 ): Promise<GoalUpsertResponse> {
   return request<GoalUpsertResponse>(`/goals/${goalId}`, {
     method: 'PUT',
@@ -180,7 +194,7 @@ export async function updateGoal(
 }
 
 export async function recommendPaycheckPlan(
-  payload: PaycheckPlanRequest
+  payload: PaycheckPlanRequest,
 ): Promise<PaycheckPlanResponse> {
   return request<PaycheckPlanResponse>('/goals/paycheck-plan', {
     method: 'POST',
@@ -190,7 +204,7 @@ export async function recommendPaycheckPlan(
 }
 
 export async function savePaycheckPlan(
-  payload: PaycheckPlanSaveRequest
+  payload: PaycheckPlanSaveRequest,
 ): Promise<PaycheckPlanSaveResponse> {
   return request<PaycheckPlanSaveResponse>('/goals/paycheck-plan/save', {
     method: 'POST',
@@ -209,7 +223,7 @@ export async function getNextBestActionFeed(): Promise<NextBestActionFeedRespons
 
 export async function submitActionFeedback(
   actionId: string,
-  payload: { outcome: 'completed' | 'dismissed' | 'snoozed'; snoozeDays?: number }
+  payload: { outcome: 'completed' | 'dismissed' | 'snoozed'; snoozeDays?: number },
 ): Promise<NextBestActionFeedbackResponse> {
   return request<NextBestActionFeedbackResponse>(`/actions/${actionId}/feedback`, {
     method: 'POST',
@@ -222,7 +236,7 @@ export async function submitActionFeedback(
 }
 
 export async function submitFeatureInterest(
-  data: FeatureInterestRequest
+  data: FeatureInterestRequest,
 ): Promise<FeatureInterestResponse> {
   return request<FeatureInterestResponse>('/feature-interest', {
     method: 'POST',

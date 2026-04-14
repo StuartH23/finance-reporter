@@ -3,6 +3,7 @@ import type {
   BudgetListResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
+  CashFlowResponse,
   CategoryBreakdownResponse,
   FeatureInterestResponse,
   Goal,
@@ -54,26 +55,134 @@ function nowIso() {
 
 function createInitialLedgerTransactions() {
   return [
-    { date: '2026-01-01', description: 'Salary Payment', amount: 4200, category: 'Income', source_file: 'demo_jan.csv' },
-    { date: '2026-01-03', description: 'Groceries', amount: -132.45, category: 'Groceries', source_file: 'demo_jan.csv' },
-    { date: '2026-01-09', description: 'Netflix', amount: -15.99, category: 'Subscriptions', source_file: 'demo_jan.csv' },
-    { date: '2026-01-15', description: 'Rent', amount: -1450, category: 'Housing', source_file: 'demo_jan.csv' },
-    { date: '2026-01-28', description: 'Gas Station', amount: -61.2, category: 'Gas & Auto', source_file: 'demo_jan.csv' },
-    { date: '2026-01-31', description: 'Transfer To Savings', amount: -250, category: 'Investments', source_file: 'demo_jan.csv' },
+    {
+      date: '2026-01-01',
+      description: 'Salary Payment',
+      amount: 4200,
+      category: 'Income',
+      source_file: 'demo_jan.csv',
+    },
+    {
+      date: '2026-01-03',
+      description: 'Groceries',
+      amount: -132.45,
+      category: 'Groceries',
+      source_file: 'demo_jan.csv',
+    },
+    {
+      date: '2026-01-09',
+      description: 'Netflix',
+      amount: -15.99,
+      category: 'Subscriptions',
+      source_file: 'demo_jan.csv',
+    },
+    {
+      date: '2026-01-15',
+      description: 'Rent',
+      amount: -1450,
+      category: 'Housing',
+      source_file: 'demo_jan.csv',
+    },
+    {
+      date: '2026-01-28',
+      description: 'Gas Station',
+      amount: -61.2,
+      category: 'Gas & Auto',
+      source_file: 'demo_jan.csv',
+    },
+    {
+      date: '2026-01-31',
+      description: 'Transfer To Savings',
+      amount: -250,
+      category: 'Investments',
+      source_file: 'demo_jan.csv',
+    },
 
-    { date: '2026-02-01', description: 'Salary Payment', amount: 4250, category: 'Income', source_file: 'demo_feb.csv' },
-    { date: '2026-02-05', description: 'Groceries', amount: -148.1, category: 'Groceries', source_file: 'demo_feb.csv' },
-    { date: '2026-02-13', description: 'Restaurant', amount: -89.6, category: 'Meals & Dining', source_file: 'demo_feb.csv' },
-    { date: '2026-02-17', description: 'Rent', amount: -1450, category: 'Housing', source_file: 'demo_feb.csv' },
-    { date: '2026-02-25', description: 'Utilities', amount: -104.48, category: 'Utilities', source_file: 'demo_feb.csv' },
-    { date: '2026-02-28', description: 'Travel Deposit', amount: -120, category: 'Travel', source_file: 'demo_feb.csv' },
+    {
+      date: '2026-02-01',
+      description: 'Salary Payment',
+      amount: 4250,
+      category: 'Income',
+      source_file: 'demo_feb.csv',
+    },
+    {
+      date: '2026-02-05',
+      description: 'Groceries',
+      amount: -148.1,
+      category: 'Groceries',
+      source_file: 'demo_feb.csv',
+    },
+    {
+      date: '2026-02-13',
+      description: 'Restaurant',
+      amount: -89.6,
+      category: 'Meals & Dining',
+      source_file: 'demo_feb.csv',
+    },
+    {
+      date: '2026-02-17',
+      description: 'Rent',
+      amount: -1450,
+      category: 'Housing',
+      source_file: 'demo_feb.csv',
+    },
+    {
+      date: '2026-02-25',
+      description: 'Utilities',
+      amount: -104.48,
+      category: 'Utilities',
+      source_file: 'demo_feb.csv',
+    },
+    {
+      date: '2026-02-28',
+      description: 'Travel Deposit',
+      amount: -120,
+      category: 'Travel',
+      source_file: 'demo_feb.csv',
+    },
 
-    { date: '2026-03-01', description: 'Salary Payment', amount: 4300, category: 'Income', source_file: 'demo_mar.csv' },
-    { date: '2026-03-04', description: 'Groceries', amount: -152.22, category: 'Groceries', source_file: 'demo_mar.csv' },
-    { date: '2026-03-11', description: 'Gym Membership', amount: -29.99, category: 'Subscriptions', source_file: 'demo_mar.csv' },
-    { date: '2026-03-18', description: 'Rent', amount: -1450, category: 'Housing', source_file: 'demo_mar.csv' },
-    { date: '2026-03-24', description: 'Car Payment', amount: -515, category: 'Car Payment', source_file: 'demo_mar.csv' },
-    { date: '2026-03-31', description: 'Savings Transfer', amount: -300, category: 'Investments', source_file: 'demo_mar.csv' },
+    {
+      date: '2026-03-01',
+      description: 'Salary Payment',
+      amount: 4300,
+      category: 'Income',
+      source_file: 'demo_mar.csv',
+    },
+    {
+      date: '2026-03-04',
+      description: 'Groceries',
+      amount: -152.22,
+      category: 'Groceries',
+      source_file: 'demo_mar.csv',
+    },
+    {
+      date: '2026-03-11',
+      description: 'Gym Membership',
+      amount: -29.99,
+      category: 'Subscriptions',
+      source_file: 'demo_mar.csv',
+    },
+    {
+      date: '2026-03-18',
+      description: 'Rent',
+      amount: -1450,
+      category: 'Housing',
+      source_file: 'demo_mar.csv',
+    },
+    {
+      date: '2026-03-24',
+      description: 'Car Payment',
+      amount: -515,
+      category: 'Car Payment',
+      source_file: 'demo_mar.csv',
+    },
+    {
+      date: '2026-03-31',
+      description: 'Savings Transfer',
+      amount: -300,
+      category: 'Investments',
+      source_file: 'demo_mar.csv',
+    },
   ]
 }
 
@@ -129,7 +238,8 @@ function createInitialState() {
         significance: 'Consistency makes automation safer and easier.',
         action: 'Schedule a recurring transfer right after payday.',
         why_this_matters: 'Consistent margin is the best predictor of savings follow-through.',
-        do_this_now: 'Increase your automatic transfer by $100 this month and review after 30 days.',
+        do_this_now:
+          'Increase your automatic transfer by $100 this month and review after 30 days.',
         confidence: 0.84,
         template_key: 'cashflow_margin',
         template_vars: { margin: 2152.79 },
@@ -143,7 +253,8 @@ function createInitialState() {
         observation: 'Housing accounts for more than half of total monthly spend.',
         significance: 'Small wins in adjacent categories can still boost overall savings quickly.',
         action: 'Trim one discretionary category by 10% to offset fixed housing costs.',
-        why_this_matters: 'Fixed costs are harder to change, so variable categories drive flexibility.',
+        why_this_matters:
+          'Fixed costs are harder to change, so variable categories drive flexibility.',
         do_this_now: 'Set a Dining cap 10% lower for the next 4 weeks.',
         confidence: 0.79,
         template_key: 'housing_weight',
@@ -356,7 +467,8 @@ function buildBudgetVsActual(): BudgetVsActualResponse {
   const comparison: BudgetComparison[] = demoState.budget.budget.map((item) => {
     const avgActual = Math.round((avgByCategory[item.category] ?? 0) / 3)
     const diff = item.monthly_budget - avgActual
-    const pctUsed = item.monthly_budget > 0 ? Math.round((avgActual / item.monthly_budget) * 1000) / 10 : 0
+    const pctUsed =
+      item.monthly_budget > 0 ? Math.round((avgActual / item.monthly_budget) * 1000) / 10 : 0
     return {
       category: item.category,
       monthly_budget: item.monthly_budget,
@@ -406,6 +518,190 @@ function buildTransfers(): TransferResponse {
   }
 }
 
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+function normalizeMerchant(value: string) {
+  const normalized = value.trim().replace(/\s+/g, ' ')
+  return normalized.length ? normalized : 'Unknown Merchant'
+}
+
+function periodSortValue(periodKey: string, granularity: 'month' | 'quarter') {
+  if (granularity === 'month') return periodKey
+  const [yearStr, quarterStr] = periodKey.split('-Q')
+  return `${yearStr}-${quarterStr}`
+}
+
+function periodLabel(periodKey: string, granularity: 'month' | 'quarter') {
+  if (granularity === 'month') {
+    const parsed = new Date(`${periodKey}-01T00:00:00`)
+    if (Number.isNaN(parsed.getTime())) return periodKey
+    return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+  const [yearStr, quarterStr] = periodKey.split('-Q')
+  return `Q${quarterStr} ${yearStr}`
+}
+
+function buildDemoCashFlow(searchParams: URLSearchParams): CashFlowResponse {
+  const granularity = (searchParams.get('granularity') === 'quarter' ? 'quarter' : 'month') as
+    | 'month'
+    | 'quarter'
+  const groupBy = (searchParams.get('group_by') === 'merchant' ? 'merchant' : 'category') as
+    | 'category'
+    | 'merchant'
+  const period = searchParams.get('period')
+
+  const transactions = demoState.transactions.filter((tx) => !TRANSFER_CATEGORIES.has(tx.category))
+  if (!transactions.length) {
+    return {
+      granularity,
+      group_by: groupBy,
+      period_key: period,
+      period_label: period ? periodLabel(period, granularity) : null,
+      available_periods: [],
+      totals: { income: 0, expenses: 0, net: 0 },
+      nodes: [],
+      links: [],
+      groups: [],
+      transaction_count: 0,
+    }
+  }
+
+  const withPeriod = transactions.map((tx) => {
+    const date = new Date(`${tx.date}T00:00:00`)
+    const periodKey =
+      granularity === 'month'
+        ? tx.date.slice(0, 7)
+        : `${date.getUTCFullYear()}-Q${Math.floor(date.getUTCMonth() / 3) + 1}`
+    return { ...tx, periodKey }
+  })
+
+  const availablePeriodKeys = [...new Set(withPeriod.map((tx) => tx.periodKey))].sort((a, b) => {
+    const left = periodSortValue(a, granularity)
+    const right = periodSortValue(b, granularity)
+    return left < right ? 1 : -1
+  })
+
+  const selectedPeriod = period ?? availablePeriodKeys[0]
+  const periodRows = withPeriod.filter((tx) => tx.periodKey === selectedPeriod)
+  if (!periodRows.length) {
+    return {
+      granularity,
+      group_by: groupBy,
+      period_key: selectedPeriod,
+      period_label: periodLabel(selectedPeriod, granularity),
+      available_periods: availablePeriodKeys.map((key) => ({
+        key,
+        label: periodLabel(key, granularity),
+      })),
+      totals: { income: 0, expenses: 0, net: 0 },
+      nodes: [],
+      links: [],
+      groups: [],
+      transaction_count: 0,
+    }
+  }
+
+  const income = roundMoney(
+    periodRows.filter((tx) => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0),
+  )
+  const expenseRows = periodRows.filter((tx) => tx.amount < 0)
+
+  const grouped = new Map<string, { amount: number; transactions: number }>()
+  for (const tx of expenseRows) {
+    const key = groupBy === 'category' ? tx.category : normalizeMerchant(tx.description)
+    const current = grouped.get(key)
+    if (current) {
+      current.amount += Math.abs(tx.amount)
+      current.transactions += 1
+    } else {
+      grouped.set(key, { amount: Math.abs(tx.amount), transactions: 1 })
+    }
+  }
+
+  const groups = Array.from(grouped.entries())
+    .map(([key, value]) => ({
+      key,
+      label: key,
+      amount: roundMoney(value.amount),
+      transactions: value.transactions,
+    }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const expenses = roundMoney(groups.reduce((sum, group) => sum + group.amount, 0))
+  const net = roundMoney(income - expenses)
+  const savings = roundMoney(Math.max(0, net))
+  const shortfall = roundMoney(Math.max(0, -net))
+
+  const nodes: CashFlowResponse['nodes'] = [
+    { id: 'income', label: 'Income', type: 'income', value: income, group_key: null },
+  ]
+  const links: CashFlowResponse['links'] = []
+  const shortfallLinks: CashFlowResponse['links'] = []
+
+  const ratio = expenses > 0 ? Math.min(1, income / expenses) : 1
+  for (const [index, group] of groups.entries()) {
+    const nodeId = `expense-${index + 1}`
+    nodes.push({
+      id: nodeId,
+      label: group.label,
+      type: 'expense',
+      value: group.amount,
+      group_key: group.key,
+    })
+    const incomeShare = roundMoney(group.amount * ratio)
+    if (incomeShare > 0) {
+      links.push({ source: 'income', target: nodeId, value: incomeShare })
+    }
+    const missingShare = roundMoney(group.amount - incomeShare)
+    if (missingShare > 0) {
+      shortfallLinks.push({ source: 'shortfall', target: nodeId, value: missingShare })
+    }
+  }
+
+  if (savings > 0) {
+    nodes.push({
+      id: 'savings',
+      label: 'Savings',
+      type: 'savings',
+      value: savings,
+      group_key: null,
+    })
+    links.push({ source: 'income', target: 'savings', value: savings })
+  }
+  if (shortfall > 0) {
+    nodes.push({
+      id: 'shortfall',
+      label: 'Shortfall',
+      type: 'shortfall',
+      value: shortfall,
+      group_key: null,
+    })
+    links.push(...shortfallLinks)
+  }
+
+  return {
+    granularity,
+    group_by: groupBy,
+    period_key: selectedPeriod,
+    period_label: periodLabel(selectedPeriod, granularity),
+    available_periods: availablePeriodKeys.map((key) => ({
+      key,
+      label: periodLabel(key, granularity),
+    })),
+    totals: {
+      income,
+      expenses,
+      net,
+    },
+    nodes,
+    links,
+    groups,
+    transaction_count: periodRows.length,
+  }
+}
+
 function buildSubscriptionsList(searchParams: URLSearchParams): SubscriptionListResponse {
   const status = searchParams.get('status') ?? 'active'
   const filterIncreased = searchParams.get('filter_increased') === 'true'
@@ -440,7 +736,11 @@ function buildSubscriptionsList(searchParams: URLSearchParams): SubscriptionList
 function buildSubscriptionAlerts(searchParams: URLSearchParams): SubscriptionAlertsResponse {
   const threshold = Number.parseFloat(searchParams.get('threshold') ?? '0.1')
   const alerts = demoState.subscriptions
-    .filter((sub) => sub.baseline_amount > 0 && (sub.amount - sub.baseline_amount) / sub.baseline_amount >= threshold)
+    .filter(
+      (sub) =>
+        sub.baseline_amount > 0 &&
+        (sub.amount - sub.baseline_amount) / sub.baseline_amount >= threshold,
+    )
     .map((sub) => ({
       stream_id: sub.stream_id,
       merchant: sub.merchant,
@@ -469,7 +769,10 @@ function buildPaycheckPlan(): PaycheckPlanResponse {
         priority: goal.priority,
         target_date: goal.target_date,
         recommended_amount: goal.id === 'goal-1' ? 300 : 180,
-        remaining_after_allocation: Math.max(0, goal.remaining_amount - (goal.id === 'goal-1' ? 300 : 180)),
+        remaining_after_allocation: Math.max(
+          0,
+          goal.remaining_amount - (goal.id === 'goal-1' ? 300 : 180),
+        ),
         required_per_paycheck: goal.id === 'goal-1' ? 240 : 120,
         feasible: true,
       })),
@@ -520,6 +823,10 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
     return clone(demoState.categories) as T
   }
 
+  if (method === 'GET' && pathname === '/cashflow') {
+    return buildDemoCashFlow(url.searchParams) as T
+  }
+
   if (method === 'GET' && pathname === '/insights') {
     return clone(demoState.insights) as T
   }
@@ -548,7 +855,10 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   }
 
   if (method === 'GET' && pathname === '/goals') {
-    const response: GoalListResponse = { goals: clone(demoState.goals), count: demoState.goals.length }
+    const response: GoalListResponse = {
+      goals: clone(demoState.goals),
+      count: demoState.goals.length,
+    }
     return response as T
   }
 
@@ -673,7 +983,8 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   if (method === 'POST' && pathname.startsWith('/actions/') && pathname.endsWith('/feedback')) {
     const actionId = pathname.split('/')[2]
     const parsed = parseBody(options)
-    const outcome = (parsed.outcome as 'completed' | 'dismissed' | 'snoozed' | undefined) ?? 'dismissed'
+    const outcome =
+      (parsed.outcome as 'completed' | 'dismissed' | 'snoozed' | undefined) ?? 'dismissed'
     demoState.actions = demoState.actions.map((action) =>
       action.action_id === actionId ? { ...action, state: outcome } : action,
     )
@@ -682,7 +993,8 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
       status: 'ok',
       action_id: actionId,
       outcome,
-      snooze_until: outcome === 'snoozed' ? new Date(Date.now() + 2 * 86400000).toISOString() : undefined,
+      snooze_until:
+        outcome === 'snoozed' ? new Date(Date.now() + 2 * 86400000).toISOString() : undefined,
     }
     return response as T
   }
@@ -690,7 +1002,9 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   if (method === 'POST' && pathname === '/upload') {
     let files: string[] = []
     if (options?.body instanceof FormData) {
-      files = options.body.getAll('files').map((entry) => String((entry as File).name ?? 'statement.csv'))
+      files = options.body
+        .getAll('files')
+        .map((entry) => String((entry as File).name ?? 'statement.csv'))
     }
 
     const listedFiles = files.length ? files : ['demo_statement.csv']

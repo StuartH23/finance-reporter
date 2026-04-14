@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   createGoal,
   getBudget,
+  getCashFlow,
   getCategoryBreakdown,
   getGoals,
   getInsights,
@@ -74,7 +75,7 @@ describe('API client', () => {
       threshold: 0.2,
     })
     expect(lastUrl).toBe(
-      '/api/subscriptions?status=active&filter_increased=true&filter_optional=true&threshold=0.2'
+      '/api/subscriptions?status=active&filter_increased=true&filter_optional=true&threshold=0.2',
     )
   })
 
@@ -96,6 +97,11 @@ describe('API client', () => {
   it('getCategoryBreakdown calls GET /api/pnl/categories', async () => {
     await getCategoryBreakdown()
     expect(lastUrl).toBe('/api/pnl/categories')
+  })
+
+  it('getCashFlow calls GET /api/cashflow with params', async () => {
+    await getCashFlow({ granularity: 'quarter', groupBy: 'merchant', period: '2026-Q1' })
+    expect(lastUrl).toBe('/api/cashflow?granularity=quarter&group_by=merchant&period=2026-Q1')
   })
 
   it('getInsights calls GET /api/insights with params', async () => {
