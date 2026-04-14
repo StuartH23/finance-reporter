@@ -7,7 +7,11 @@ function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function PnlTable() {
+interface PnlTableProps {
+  onActiveYearChange?: (year: number | null) => void
+}
+
+function PnlTable({ onActiveYearChange }: PnlTableProps) {
   const { data: yearlyData } = useQuery({
     queryKey: queryKeys.pnl.yearly,
     queryFn: getYearlyPnl,
@@ -33,6 +37,10 @@ function PnlTable() {
   const selectedYearly = activeYear !== null ? yearly.find((y) => y.year === activeYear) : null
   const monthlyForYear =
     activeYear !== null ? monthly.filter((m) => m.month_str.startsWith(`${activeYear}-`)) : monthly
+
+  useEffect(() => {
+    onActiveYearChange?.(activeYear)
+  }, [activeYear, onActiveYearChange])
 
   if (!yearly.length && !monthly.length) return null
 

@@ -5,6 +5,7 @@ export const queryKeys = {
     monthly: ['pnl', 'monthly'] as const,
     yearly: ['pnl', 'yearly'] as const,
     categories: ['pnl', 'categories'] as const,
+    categoriesByYear: (year?: number | null) => ['pnl', 'categories', year ?? 'all'] as const,
   },
   cashflow: {
     byParams: (params?: {

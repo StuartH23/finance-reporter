@@ -24,7 +24,7 @@ function DashboardKpis() {
 
   const { data: categoryData } = useQuery({
     queryKey: queryKeys.pnl.categories,
-    queryFn: getCategoryBreakdown,
+    queryFn: () => getCategoryBreakdown(),
   })
 
   const sortedMonths = [...(monthlyData?.months ?? [])].sort((a, b) => {

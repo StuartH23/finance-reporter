@@ -14,17 +14,17 @@ import {
   getMonthlyPnl,
   getNextBestActionFeed,
   getSavedPaycheckPlan,
-  recommendPaycheckPlan,
-  savePaycheckPlan,
   getSubscriptionAlerts,
   getSubscriptions,
   getTransfers,
   getYearlyPnl,
+  recommendPaycheckPlan,
   remindCancel,
+  savePaycheckPlan,
   submitActionFeedback,
   submitFeatureInterest,
-  updateSubscriptionPreferences,
   updateBudget,
+  updateSubscriptionPreferences,
   uploadFiles,
 } from '../api/client'
 
@@ -97,6 +97,9 @@ describe('API client', () => {
   it('getCategoryBreakdown calls GET /api/pnl/categories', async () => {
     await getCategoryBreakdown()
     expect(lastUrl).toBe('/api/pnl/categories')
+
+    await getCategoryBreakdown({ year: 2025 })
+    expect(lastUrl).toBe('/api/pnl/categories?year=2025')
   })
 
   it('getCashFlow calls GET /api/cashflow with params', async () => {

@@ -1,3 +1,4 @@
+import { getDemoResponse } from '../demo/demoApi'
 import type {
   BudgetListResponse,
   BudgetUpdateResponse,
@@ -8,11 +9,11 @@ import type {
   FeatureInterestResponse,
   GoalListResponse,
   GoalUpsertResponse,
-  NextBestActionFeedResponse,
-  NextBestActionFeedbackResponse,
   InsightsResponse,
   LedgerResponse,
   MonthlyPnlResponse,
+  NextBestActionFeedbackResponse,
+  NextBestActionFeedResponse,
   PaycheckPlanRequest,
   PaycheckPlanResponse,
   PaycheckPlanSaveRequest,
@@ -26,7 +27,6 @@ import type {
   UploadResponse,
   YearlyPnlResponse,
 } from './types'
-import { getDemoResponse } from '../demo/demoApi'
 
 const BASE = '/api'
 
@@ -108,8 +108,13 @@ export async function getYearlyPnl(): Promise<YearlyPnlResponse> {
   return request<YearlyPnlResponse>('/pnl/yearly')
 }
 
-export async function getCategoryBreakdown(): Promise<CategoryBreakdownResponse> {
-  return request<CategoryBreakdownResponse>('/pnl/categories')
+export async function getCategoryBreakdown(options?: {
+  year?: number
+}): Promise<CategoryBreakdownResponse> {
+  const params = new URLSearchParams()
+  if (options?.year !== undefined) params.set('year', String(options.year))
+  const qs = params.toString()
+  return request<CategoryBreakdownResponse>(`/pnl/categories${qs ? `?${qs}` : ''}`)
 }
 
 export async function getCashFlow(options?: {
