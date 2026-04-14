@@ -3,11 +3,14 @@
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient
 
 from main import app
+from sdk.cashflow import _collapse_expense_groups
 
 
 def _upload_sample_ledger(client: TestClient) -> None:
@@ -94,3 +97,22 @@ def test_cashflow_returns_empty_for_missing_period():
     assert data["links"] == []
     assert data["groups"] == []
     assert data["transaction_count"] == 0
+
+
+def test_collapse_expense_groups_appends_other_without_overwriting_top_index():
+    # Categories are alphabetical A-I, so grouped index 7 is category H before sorting.
+    # H has the highest spend and must remain visible in top groups.
+    expenses = pd.DataFrame(
+        {
+            "category": list("ABCDEFGHI"),
+            "description": [f"{char} merchant" for char in list("ABCDEFGHI")],
+            "amount": [-10.0, -20.0, -30.0, -40.0, -50.0, -60.0, -70.0, -1000.0, -80.0],
+        }
+    )
+
+    collapsed = _collapse_expense_groups(expenses, group_by="category", max_groups=7)
+
+    labels = set(collapsed["group_key"].tolist())
+    assert len(collapsed) == 8
+    assert "H" in labels
+    assert "Other" in labels
