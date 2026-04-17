@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getNextBestActionFeed, submitActionFeedback } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { NextBestAction } from '../api/types'
+import { useGuestFeature } from '../guest/GuestFeatureProvider'
 
 function fmt(amount: number) {
   return `$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -26,20 +27,39 @@ function typeLabel(type: NextBestAction['action_type']) {
 
 function NextBestActionFeed() {
   const queryClient = useQueryClient()
+  const { guardGuestFeature } = useGuestFeature()
   const feedQuery = useQuery({
     queryKey: queryKeys.actions.feed,
     queryFn: getNextBestActionFeed,
   })
 
   const feedbackMutation = useMutation({
-    mutationFn: ({ actionId, outcome }: { actionId: string; outcome: 'completed' | 'dismissed' | 'snoozed' }) =>
-      submitActionFeedback(actionId, { outcome, snoozeDays: 2 }),
+    mutationFn: ({
+      actionId,
+      outcome,
+    }: {
+      actionId: string
+      outcome: 'completed' | 'dismissed' | 'snoozed'
+    }) => submitActionFeedback(actionId, { outcome, snoozeDays: 2 }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.actions.feed })
     },
   })
 
   const actions = feedQuery.data?.actions ?? []
+
+  const submitFeedback = (actionId: string, outcome: 'completed' | 'dismissed' | 'snoozed') => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save action status',
+        message:
+          'Guest Demo shows sample action ideas. Sign in to complete, dismiss, or snooze actions for your own account.',
+      })
+    ) {
+      return
+    }
+    feedbackMutation.mutate({ actionId, outcome })
+  }
 
   if (!feedQuery.isLoading && !feedQuery.data?.actionable_data_exists) {
     return null
@@ -52,7 +72,9 @@ function NextBestActionFeed() {
 
       {feedQuery.isLoading && <p>Loading actions...</p>}
       {!feedQuery.isLoading && actions.length === 0 && (
-        <p className="empty-state">No actions right now. Upload recent transactions to generate personalized actions.</p>
+        <p className="empty-state">
+          No actions right now. Upload recent transactions to generate personalized actions.
+        </p>
       )}
 
       {actions.length > 0 && (
@@ -70,21 +92,21 @@ function NextBestActionFeed() {
                 <button
                   type="button"
                   className="primary-button"
-                  onClick={() => feedbackMutation.mutate({ actionId: action.action_id, outcome: 'completed' })}
+                  onClick={() => submitFeedback(action.action_id, 'completed')}
                 >
                   Complete
                 </button>
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => feedbackMutation.mutate({ actionId: action.action_id, outcome: 'dismissed' })}
+                  onClick={() => submitFeedback(action.action_id, 'dismissed')}
                 >
                   Dismiss
                 </button>
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => feedbackMutation.mutate({ actionId: action.action_id, outcome: 'snoozed' })}
+                  onClick={() => submitFeedback(action.action_id, 'snoozed')}
                 >
                   Snooze
                 </button>

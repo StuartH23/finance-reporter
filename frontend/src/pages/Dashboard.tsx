@@ -12,11 +12,12 @@ import SpendingPieChart from '../components/SpendingPieChart'
 import TransactionList from '../components/TransactionList'
 
 interface DashboardProps {
+  canEnableDemo: boolean
   demoModeEnabled: boolean
   onEnableDemoMode: () => void
 }
 
-function Dashboard({ demoModeEnabled, onEnableDemoMode }: DashboardProps) {
+function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: DashboardProps) {
   const [activePnlYear, setActivePnlYear] = useState<number | null>(null)
 
   const { data: ledgerData, isLoading: ledgerLoading } = useQuery({
@@ -39,7 +40,7 @@ function Dashboard({ demoModeEnabled, onEnableDemoMode }: DashboardProps) {
   return (
     <div className="dashboard-page">
       <h1 className="page-title">Dashboard</h1>
-      {!demoModeEnabled && !ledgerLoading && !hasTransactions && (
+      {canEnableDemo && !demoModeEnabled && !ledgerLoading && !hasTransactions && (
         <ExperiencePreview onEnableDemo={onEnableDemoMode} />
       )}
       <DashboardKpis />

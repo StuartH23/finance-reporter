@@ -30,11 +30,30 @@ import type {
 
 const BASE = '/api'
 
+type AccessTokenProvider = () => Promise<string | null> | string | null
+
+let accessTokenProvider: AccessTokenProvider | null = null
+
+export function setAccessTokenProvider(provider: AccessTokenProvider | null) {
+  accessTokenProvider = provider
+}
+
+async function withAuthHeader(options?: RequestInit): Promise<RequestInit | undefined> {
+  if (!accessTokenProvider) return options
+
+  const token = await accessTokenProvider()
+  if (!token) return options
+
+  const headers = new Headers(options?.headers)
+  headers.set('Authorization', `Bearer ${token}`)
+  return { ...options, headers }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const demoResponse = getDemoResponse<T>(path, options)
   if (demoResponse !== null) return demoResponse
 
-  const res = await fetch(`${BASE}${path}`, options)
+  const res = await fetch(`${BASE}${path}`, await withAuthHeader(options))
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }

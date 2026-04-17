@@ -11,12 +11,14 @@ describe('privacy copy', () => {
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <FileUploader />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     )
 
-    expect(html).toContain('We will prompt for Privacy Notice acceptance before first upload in this session.')
-    expect(html).toContain('Review Privacy Notice')
-    expect(html).toContain('Drop CSV or PDF files here, or click to browse')
+    expect(html).toContain('Statement Upload')
+    expect(html).toContain('Upload CSV or PDF statements when you want to use your own data.')
+    expect(html).toContain('Upload Statements')
+    expect(html).toContain('Upload Options')
+    expect(html).not.toContain('Drop CSV or PDF files here, or click to browse')
   })
 
   it('shows architecture-specific privacy notice sections', () => {
@@ -34,7 +36,7 @@ describe('privacy copy', () => {
 
   it('shows acceptance control when explicitly enabled', () => {
     const html = renderToStaticMarkup(
-      <PrivacyNotice accepted={false} onAcceptedChange={() => {}} showAcceptanceControl />
+      <PrivacyNotice accepted={false} onAcceptedChange={() => {}} showAcceptanceControl />,
     )
     expect(html).toContain('I have read and accept this Privacy Notice for statement uploads.')
   })

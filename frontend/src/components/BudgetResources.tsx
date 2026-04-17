@@ -1,7 +1,8 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 
 import { submitFeatureInterest } from '../api/client'
 import type { FeatureInterestResponse } from '../api/types'
+import { useGuestFeature } from '../guest/GuestFeatureProvider'
 
 const tipLinks = [
   {
@@ -29,7 +30,8 @@ const tipLinks = [
 const appIdeas = [
   {
     feature: 'Rollover Budgets',
-    detail: 'Carry unused budget into next month for variable categories (groceries, dining, gifts).',
+    detail:
+      'Carry unused budget into next month for variable categories (groceries, dining, gifts).',
   },
   {
     feature: 'Flexible vs Category Budget Modes',
@@ -37,7 +39,8 @@ const appIdeas = [
   },
   {
     feature: 'Move Money Between Categories',
-    detail: 'Tap overspent category and fund it from another category without changing total budget.',
+    detail:
+      'Tap overspent category and fund it from another category without changing total budget.',
   },
   {
     feature: 'Goal Buckets',
@@ -51,17 +54,22 @@ const initialFeatureState = appIdeas.reduce<Record<string, boolean>>((acc, item)
 }, {})
 
 function BudgetResources() {
+  const { guardGuestFeature } = useGuestFeature()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [notes, setNotes] = useState('')
-  const [selectedFeatures, setSelectedFeatures] = useState<Record<string, boolean>>(initialFeatureState)
+  const [selectedFeatures, setSelectedFeatures] =
+    useState<Record<string, boolean>>(initialFeatureState)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<FeatureInterestResponse | null>(null)
 
   const selectedFeatureNames = useMemo(
-    () => Object.entries(selectedFeatures).filter(([, selected]) => selected).map(([feature]) => feature),
-    [selectedFeatures]
+    () =>
+      Object.entries(selectedFeatures)
+        .filter(([, selected]) => selected)
+        .map(([feature]) => feature),
+    [selectedFeatures],
   )
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -75,6 +83,15 @@ function BudgetResources() {
     }
     if (selectedFeatureNames.length === 0) {
       setError('Pick at least one feature.')
+      return
+    }
+    if (
+      guardGuestFeature({
+        title: 'Sign in to join the feature list',
+        message:
+          'Guest Demo lets you browse upcoming budget ideas. Sign in to save your feature interests and get updates.',
+      })
+    ) {
       return
     }
 
@@ -121,8 +138,8 @@ function BudgetResources() {
         Want these features? Join the signup list.
       </div>
       <p className="signup-helper">
-        Add your email and choose the ideas you care about most. We will use this to prioritize what to
-        build next.
+        Add your email and choose the ideas you care about most. We will use this to prioritize what
+        to build next.
       </p>
       <form className="feature-signup-form" onSubmit={onSubmit}>
         <div className="feature-form-grid">
@@ -187,7 +204,8 @@ function BudgetResources() {
         {error && <div className="form-error">{error}</div>}
         {result && (
           <div className="form-success">
-            Thanks, you are on the list. Current total signups: <strong>{result.total_signups}</strong>.
+            Thanks, you are on the list. Current total signups:{' '}
+            <strong>{result.total_signups}</strong>.
           </div>
         )}
       </form>

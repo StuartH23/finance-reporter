@@ -11,14 +11,32 @@ FRONTEND_DIR = os.path.join(ROOT, "frontend")
 VENV_PYTHON = os.path.join(BACKEND_DIR, ".venv", "bin", "python")
 
 
+def load_env_file(path):
+    env = {}
+    if not os.path.exists(path):
+        return env
+
+    with open(path, encoding="utf-8") as env_file:
+        for raw_line in env_file:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            env[key.strip()] = value.strip().strip('"').strip("'")
+    return env
+
+
 def main():
     procs = []
+    backend_env = os.environ.copy()
+    backend_env.update(load_env_file(os.path.join(BACKEND_DIR, ".env.local")))
 
     # Backend: uvicorn via the venv python
     print("[run.py] Starting backend on http://localhost:8000 ...")
     backend = subprocess.Popen(
         [VENV_PYTHON, "-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
         cwd=BACKEND_DIR,
+        env=backend_env,
     )
     procs.append(backend)
 
