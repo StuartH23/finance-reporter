@@ -8,6 +8,7 @@ import {
 } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { SubscriptionItem } from '../api/types'
+import { useGuestFeature } from '../guest/GuestFeatureProvider'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -37,6 +38,7 @@ function Sparkline({ history }: { history: SubscriptionItem['charge_history'] })
 
 function SubscriptionCenter() {
   const queryClient = useQueryClient()
+  const { guardGuestFeature } = useGuestFeature()
   const [status, setStatus] = useState<'all' | 'active' | 'ignored'>('active')
   const [filterIncreased, setFilterIncreased] = useState(false)
   const [filterOptional, setFilterOptional] = useState(false)
@@ -45,13 +47,7 @@ function SubscriptionCenter() {
   const [reminderMessage, setReminderMessage] = useState('')
 
   const listQuery = useQuery({
-    queryKey: [
-      ...queryKeys.subscriptions.list,
-      status,
-      filterIncreased,
-      filterOptional,
-      threshold,
-    ],
+    queryKey: [...queryKeys.subscriptions.list, status, filterIncreased, filterOptional, threshold],
     queryFn: () => getSubscriptions({ status, filterIncreased, filterOptional, threshold }),
   })
   const alertsQuery = useQuery({
@@ -66,8 +62,13 @@ function SubscriptionCenter() {
   }, [list, selectedStreamId])
 
   const prefMutation = useMutation({
-    mutationFn: ({ streamId, update }: { streamId: string; update: { essential?: boolean; ignored?: boolean } }) =>
-      updateSubscriptionPreferences(streamId, update),
+    mutationFn: ({
+      streamId,
+      update,
+    }: {
+      streamId: string
+      update: { essential?: boolean; ignored?: boolean }
+    }) => updateSubscriptionPreferences(streamId, update),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.list })
       queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.alerts })
@@ -78,6 +79,35 @@ function SubscriptionCenter() {
     mutationFn: (streamId: string) => remindCancel(streamId),
     onSuccess: (data) => setReminderMessage(data.message),
   })
+
+  const updatePreference = (
+    streamId: string,
+    update: { essential?: boolean; ignored?: boolean },
+  ) => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save subscription choices',
+        message:
+          'Guest Demo lets you review sample subscription alerts. Sign in to ignore subscriptions, mark essentials, and save reminders.',
+      })
+    ) {
+      return
+    }
+    prefMutation.mutate({ streamId, update })
+  }
+
+  const setCancelReminder = (streamId: string) => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save reminders',
+        message:
+          'Guest Demo can show subscription insights, but reminders are locked. Sign in to save cancel reminders to your account.',
+      })
+    ) {
+      return
+    }
+    remindMutation.mutate(streamId)
+  }
 
   return (
     <div className="card">
@@ -131,7 +161,9 @@ function SubscriptionCenter() {
       )}
 
       {listQuery.isLoading && <p>Loading subscriptions...</p>}
-      {!listQuery.isLoading && !list.length && <p className="empty-state">No subscriptions detected yet.</p>}
+      {!listQuery.isLoading && !list.length && (
+        <p className="empty-state">No subscriptions detected yet.</p>
+      )}
 
       {list.length > 0 && (
         <div className="sub-grid">
@@ -158,20 +190,15 @@ function SubscriptionCenter() {
                 {selected.cadence} - Confidence {pct(selected.confidence)} - Trend {selected.trend}
               </p>
               <p>
-                Current {fmt(selected.amount)} - Baseline {fmt(selected.baseline_amount)} - Next expected{' '}
-                {selected.next_expected_charge_date ?? 'n/a'}
+                Current {fmt(selected.amount)} - Baseline {fmt(selected.baseline_amount)} - Next
+                expected {selected.next_expected_charge_date ?? 'n/a'}
               </p>
               <Sparkline history={selected.charge_history} />
               <div className="sub-actions">
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() =>
-                    prefMutation.mutate({
-                      streamId: selected.stream_id,
-                      update: { ignored: true },
-                    })
-                  }
+                  onClick={() => updatePreference(selected.stream_id, { ignored: true })}
                 >
                   Ignore
                 </button>
@@ -179,10 +206,7 @@ function SubscriptionCenter() {
                   type="button"
                   className="ghost-button"
                   onClick={() =>
-                    prefMutation.mutate({
-                      streamId: selected.stream_id,
-                      update: { essential: !selected.essential },
-                    })
+                    updatePreference(selected.stream_id, { essential: !selected.essential })
                   }
                 >
                   {selected.essential ? 'Mark Optional' : 'Mark Essential'}
@@ -190,7 +214,7 @@ function SubscriptionCenter() {
                 <button
                   type="button"
                   className="primary-button"
-                  onClick={() => remindMutation.mutate(selected.stream_id)}
+                  onClick={() => setCancelReminder(selected.stream_id)}
                 >
                   Remind To Cancel
                 </button>

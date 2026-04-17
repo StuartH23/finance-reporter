@@ -1,6 +1,6 @@
 """P&L summary endpoints."""
 
-from fastapi import APIRouter, Cookie
+from fastapi import APIRouter, Cookie, Query
 
 from routers.upload import get_session_ledger
 from schemas import CategoryBreakdownResponse, MonthlyPnlResponse, YearlyPnlResponse
@@ -53,13 +53,21 @@ def yearly_pnl(session_id: str | None = Cookie(default=None)):
 
 
 @router.get("/pnl/categories", response_model=CategoryBreakdownResponse)
-def category_breakdown(session_id: str | None = Cookie(default=None)):
+def category_breakdown(
+    year: int | None = Query(default=None, ge=1900, le=2100),
+    session_id: str | None = Cookie(default=None),
+):
     """Return spending breakdown by category."""
     ledger = get_session_ledger(session_id)
     if ledger.empty:
         return {"categories": [], "spending_chart": []}
 
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
+    if year is not None:
+        pnl = pnl[pnl["date"].dt.year == year]
+
+    if pnl.empty:
+        return {"categories": [], "spending_chart": []}
 
     # Full category breakdown
     cat_summary = (

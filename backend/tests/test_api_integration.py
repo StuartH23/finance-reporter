@@ -104,6 +104,39 @@ def test_budget_quick_check_respects_month_query():
     assert feb_data["total_spent"] == 1200.0
 
 
+def test_pnl_categories_respects_year_query():
+    """Category breakdown should filter to the requested calendar year."""
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2024-01-05,Salary,1000.00\n"
+        b"2024-01-10,Rent,-400.00\n"
+        b"2025-01-05,Salary,2000.00\n"
+        b"2025-01-10,Rent,-700.00\n"
+    )
+    upload_resp = client.post("/api/upload", files=[("files", ("pnl.csv", csv, "text/csv"))])
+    assert upload_resp.status_code == 200
+
+    all_years = client.get("/api/pnl/categories")
+    assert all_years.status_code == 200
+    all_data = all_years.json()
+    assert sum(item["total"] for item in all_data["spending_chart"]) == 1100.0
+
+    only_2025 = client.get("/api/pnl/categories?year=2025")
+    assert only_2025.status_code == 200
+    data_2025 = only_2025.json()
+    assert sum(item["total"] for item in data_2025["spending_chart"]) == 700.0
+    categories_2025 = {item["category"] for item in data_2025["spending_chart"]}
+    assert categories_2025 == {"Housing"}
+
+    only_2024 = client.get("/api/pnl/categories?year=2024")
+    assert only_2024.status_code == 200
+    data_2024 = only_2024.json()
+    assert sum(item["total"] for item in data_2024["spending_chart"]) == 400.0
+    categories_2024 = {item["category"] for item in data_2024["spending_chart"]}
+    assert categories_2024 == {"Housing"}
+
+
 def test_budget_quick_check_rejects_partial_month():
     """Quick check should not apply budget when selected month is only partially parsed."""
     client = TestClient(app)

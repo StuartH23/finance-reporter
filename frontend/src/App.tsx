@@ -1,11 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './auth/AuthProvider'
+import { resetDemoState } from './demo/demoApi'
+import { getDemoMode, setDemoMode } from './demo/mode'
+import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvider'
+import AuthCallback from './pages/AuthCallback'
 import Budget from './pages/Budget'
 import CashFlow from './pages/CashFlow'
 import Dashboard from './pages/Dashboard'
-import { resetDemoState } from './demo/demoApi'
-import { getDemoMode, setDemoMode } from './demo/mode'
 import Goals from './pages/Goals'
 import Subscriptions from './pages/Subscriptions'
 import './App.css'
@@ -77,6 +80,8 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
 }
 
 function AppShell() {
+  const auth = useAuth()
+  const guestFeature = useGuestFeature()
   const queryClient = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
@@ -93,7 +98,7 @@ function AppShell() {
     item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to),
   )
 
-  const dispatchDashboardEvent = (name: 'app:view-reports' | 'app:add-transaction') => {
+  const dispatchDashboardEvent = (name: 'app:view-reports' | 'app:upload-statements') => {
     const dispatch = () => window.dispatchEvent(new CustomEvent(name))
     if (location.pathname !== '/') {
       navigate('/')
@@ -107,10 +112,11 @@ function AppShell() {
     const onDemoModeChanged = (event: Event) => {
       const custom = event as CustomEvent<boolean>
       setDemoModeEnabled(Boolean(custom.detail))
+      queryClient.clear()
     }
     window.addEventListener('demo-mode-changed', onDemoModeChanged)
     return () => window.removeEventListener('demo-mode-changed', onDemoModeChanged)
-  }, [])
+  }, [queryClient])
 
   useEffect(() => {
     try {
@@ -120,7 +126,7 @@ function AppShell() {
     }
   }, [sidebarCollapsed])
 
-  const enableDemoMode = () => {
+  const enableGuestDemoMode = () => {
     if (!getDemoMode()) {
       resetDemoState()
     }
@@ -129,15 +135,19 @@ function AppShell() {
     queryClient.clear()
   }
 
-  const toggleDemoMode = () => {
-    const next = !getDemoMode()
-    if (next) {
-      resetDemoState()
-    }
-    setDemoMode(next)
-    setDemoModeEnabled(next)
+  const authLabel =
+    auth.claims?.email || auth.claims?.name || auth.claims?.given_name || 'Signed in'
+  const isAuthCallback = location.pathname === '/auth/callback'
+  const isGuestDemo = demoModeEnabled && guestFeature.isGuestDemo
+  const requiresSignIn =
+    auth.isConfigured && !auth.isSignedIn && !demoModeEnabled && !isAuthCallback
+
+  useEffect(() => {
+    if (!auth.isSignedIn || !demoModeEnabled) return
+    setDemoMode(false)
+    setDemoModeEnabled(false)
     queryClient.clear()
-  }
+  }, [auth.isSignedIn, demoModeEnabled, queryClient])
 
   return (
     <div className={`app ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -183,13 +193,30 @@ function AppShell() {
             <strong>{current?.label ?? 'Dashboard'}</strong>
           </nav>
           <div className="header-actions">
-            <button
-              type="button"
-              className={`header-button toggle ${demoModeEnabled ? 'active' : ''}`}
-              onClick={toggleDemoMode}
-            >
-              {demoModeEnabled ? 'Demo: On' : 'Demo Mode'}
-            </button>
+            {auth.isConfigured && (
+              <>
+                {auth.isSignedIn && <span className="header-auth-label">{authLabel}</span>}
+                <button
+                  type="button"
+                  className="header-button secondary"
+                  onClick={() => {
+                    if (auth.isSignedIn) {
+                      queryClient.clear()
+                      auth.signOut()
+                      return
+                    }
+                    if (demoModeEnabled) {
+                      setDemoMode(false)
+                      setDemoModeEnabled(false)
+                      queryClient.clear()
+                    }
+                    void auth.signIn()
+                  }}
+                >
+                  {auth.isSignedIn ? 'Sign Out' : 'Sign In'}
+                </button>
+              </>
+            )}
             <button
               type="button"
               className="header-button secondary"
@@ -199,27 +226,66 @@ function AppShell() {
             </button>
             <button
               type="button"
-              className="header-button primary"
-              onClick={() => dispatchDashboardEvent('app:add-transaction')}
+              className={`header-button ${isGuestDemo ? 'secondary' : 'primary'}`}
+              onClick={() => {
+                if (isGuestDemo) {
+                  guestFeature.showGuestFeature({
+                    title: 'Sign in to unlock uploads',
+                    message:
+                      'Guest Demo uses sample transactions only. Sign in with email or Google to upload statements and save your own finance data.',
+                  })
+                  return
+                }
+                dispatchDashboardEvent('app:upload-statements')
+              }}
             >
-              Add Transaction
+              {isGuestDemo ? 'Uploads Locked' : 'Upload Statements'}
             </button>
           </div>
         </header>
 
         <main className="workspace-main">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Dashboard demoModeEnabled={demoModeEnabled} onEnableDemoMode={enableDemoMode} />
-              }
-            />
-            <Route path="/cash-flow" element={<CashFlow />} />
-            <Route path="/budget" element={<Budget />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/subscriptions" element={<Subscriptions />} />
-          </Routes>
+          {requiresSignIn ? (
+            <div className="auth-screen">
+              <section className="card auth-required-card">
+                <h2>Sign In Required</h2>
+                <p>
+                  Sign in to upload statements and save finance data, or continue as a read-only
+                  guest with sample data.
+                </p>
+                <div className="auth-required-actions">
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => void auth.signIn()}
+                  >
+                    Sign In
+                  </button>
+                  <button type="button" className="ghost-button" onClick={enableGuestDemoMode}>
+                    Continue as Guest Demo
+                  </button>
+                </div>
+              </section>
+            </div>
+          ) : (
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Dashboard
+                    canEnableDemo={!auth.isConfigured || !auth.isSignedIn}
+                    demoModeEnabled={demoModeEnabled}
+                    onEnableDemoMode={enableGuestDemoMode}
+                  />
+                }
+              />
+              <Route path="/cash-flow" element={<CashFlow />} />
+              <Route path="/budget" element={<Budget />} />
+              <Route path="/goals" element={<Goals />} />
+              <Route path="/subscriptions" element={<Subscriptions />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+            </Routes>
+          )}
         </main>
       </section>
     </div>
@@ -229,7 +295,11 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <AuthProvider>
+        <GuestFeatureProvider>
+          <AppShell />
+        </GuestFeatureProvider>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

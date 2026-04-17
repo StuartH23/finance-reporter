@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { getBudget, getLedger, getBudgetVsActual, getMonthlyPnl, updateBudget } from '../api/client'
+import { getBudget, getBudgetVsActual, getLedger, getMonthlyPnl, updateBudget } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { BudgetItem } from '../api/types'
+import { useGuestFeature } from '../guest/GuestFeatureProvider'
 
 type BudgetMode = 'diy' | 'guided'
 type GuidedPreset = '50-30-20' | '60-30-10' | 'custom'
@@ -92,6 +93,7 @@ interface BudgetEditorProps {
 
 function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEditorProps) {
   const queryClient = useQueryClient()
+  const { guardGuestFeature } = useGuestFeature()
   const [items, setItems] = useState<BudgetItem[]>([])
   const [saved, setSaved] = useState(false)
   const [suggestionStatus, setSuggestionStatus] = useState<string | null>(null)
@@ -302,6 +304,15 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
   }
 
   const handleSave = () => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save budgets',
+        message:
+          'Guest Demo lets you explore budget recommendations without writing changes. Sign in to save category budgets to your account.',
+      })
+    ) {
+      return
+    }
     const budget: Record<string, number> = {}
     for (const item of items) {
       budget[item.category] = Math.max(0, Math.round(item.monthly_budget))
@@ -364,7 +375,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
     const sumWeights = weights.reduce((sum, v) => sum + (v > 0 ? v : 0), 0)
     const fallbackWeight = sumWeights <= 0
     const raw = bucketCategories.map((_, idx) =>
-      fallbackWeight ? targetTotal / bucketCategories.length : (targetTotal * weights[idx]) / sumWeights,
+      fallbackWeight
+        ? targetTotal / bucketCategories.length
+        : (targetTotal * weights[idx]) / sumWeights,
     )
 
     const rounded = raw.map((n) => Math.round(n))
@@ -477,12 +490,16 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
 
         {budgetMode === 'guided' && (
           <>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <div
+              style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}
+            >
               <button
                 type="button"
                 className="ghost-button"
                 onClick={() => setGuidedPreset('50-30-20')}
-                style={{ borderColor: guidedPreset === '50-30-20' ? 'var(--accent)' : 'var(--border)' }}
+                style={{
+                  borderColor: guidedPreset === '50-30-20' ? 'var(--accent)' : 'var(--border)',
+                }}
               >
                 50 / 30 / 20
               </button>
@@ -490,7 +507,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                 type="button"
                 className="ghost-button"
                 onClick={() => setGuidedPreset('60-30-10')}
-                style={{ borderColor: guidedPreset === '60-30-10' ? 'var(--accent)' : 'var(--border)' }}
+                style={{
+                  borderColor: guidedPreset === '60-30-10' ? 'var(--accent)' : 'var(--border)',
+                }}
               >
                 60 / 30 / 10
               </button>
@@ -498,7 +517,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                 type="button"
                 className="ghost-button"
                 onClick={() => setGuidedPreset('custom')}
-                style={{ borderColor: guidedPreset === 'custom' ? 'var(--accent)' : 'var(--border)' }}
+                style={{
+                  borderColor: guidedPreset === 'custom' ? 'var(--accent)' : 'var(--border)',
+                }}
               >
                 Custom
               </button>
@@ -575,7 +596,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
               </div>
               <div className="metric">
                 <div className="label">Total</div>
-                <div className={`value ${splitTotal === 100 ? 'positive' : 'negative'}`}>{splitTotal}%</div>
+                <div className={`value ${splitTotal === 100 ? 'positive' : 'negative'}`}>
+                  {splitTotal}%
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
@@ -588,7 +611,8 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                 Apply Split To Categories
               </button>
               <span className="budget-hint">
-                Percentages can change with your goals. Shift Wants down and Savings/Debt up when needed.
+                Percentages can change with your goals. Shift Wants down and Savings/Debt up when
+                needed.
               </span>
             </div>
           </>
@@ -626,9 +650,15 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
       {budgetMode === 'guided' && (
         <div className="budget-guide" style={{ marginBottom: '1rem' }}>
           <p className="budget-guide-title">Next Steps Checklist</p>
-          <p className="budget-guide-step">1. Review your last 1-3 months of spending by category.</p>
-          <p className="budget-guide-step">2. Pick one small change this week (subscription, groceries, or savings transfer).</p>
-          <p className="budget-guide-step">3. Automate savings and debt payments to stay consistent.</p>
+          <p className="budget-guide-step">
+            1. Review your last 1-3 months of spending by category.
+          </p>
+          <p className="budget-guide-step">
+            2. Pick one small change this week (subscription, groceries, or savings transfer).
+          </p>
+          <p className="budget-guide-step">
+            3. Automate savings and debt payments to stay consistent.
+          </p>
           <p className="budget-guide-step" style={{ marginTop: '0.45rem' }}>
             Alternative methods: envelope budgeting, zero-based budgeting, and reverse budgeting.
           </p>
@@ -666,7 +696,8 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
         </div>
         <div className="metric">
           <div className="label">
-            Over/Under Budget ({selectedMonthKey ? monthLabelFromKey(selectedMonthKey) : 'selected'})
+            Over/Under Budget ({selectedMonthKey ? monthLabelFromKey(selectedMonthKey) : 'selected'}
+            )
           </div>
           <div className={`value ${selectedMonthRemaining >= 0 ? 'positive' : 'negative'}`}>
             {selectedMonthRemaining < 0 ? '-' : ''}

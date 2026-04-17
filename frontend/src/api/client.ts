@@ -1,3 +1,4 @@
+import { getDemoResponse } from '../demo/demoApi'
 import type {
   BudgetListResponse,
   BudgetUpdateResponse,
@@ -8,11 +9,11 @@ import type {
   FeatureInterestResponse,
   GoalListResponse,
   GoalUpsertResponse,
-  NextBestActionFeedResponse,
-  NextBestActionFeedbackResponse,
   InsightsResponse,
   LedgerResponse,
   MonthlyPnlResponse,
+  NextBestActionFeedbackResponse,
+  NextBestActionFeedResponse,
   PaycheckPlanRequest,
   PaycheckPlanResponse,
   PaycheckPlanSaveRequest,
@@ -26,15 +27,33 @@ import type {
   UploadResponse,
   YearlyPnlResponse,
 } from './types'
-import { getDemoResponse } from '../demo/demoApi'
 
 const BASE = '/api'
+
+type AccessTokenProvider = () => Promise<string | null> | string | null
+
+let accessTokenProvider: AccessTokenProvider | null = null
+
+export function setAccessTokenProvider(provider: AccessTokenProvider | null) {
+  accessTokenProvider = provider
+}
+
+async function withAuthHeader(options?: RequestInit): Promise<RequestInit | undefined> {
+  if (!accessTokenProvider) return options
+
+  const token = await accessTokenProvider()
+  if (!token) return options
+
+  const headers = new Headers(options?.headers)
+  headers.set('Authorization', `Bearer ${token}`)
+  return { ...options, headers }
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const demoResponse = getDemoResponse<T>(path, options)
   if (demoResponse !== null) return demoResponse
 
-  const res = await fetch(`${BASE}${path}`, options)
+  const res = await fetch(`${BASE}${path}`, await withAuthHeader(options))
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }
@@ -108,8 +127,13 @@ export async function getYearlyPnl(): Promise<YearlyPnlResponse> {
   return request<YearlyPnlResponse>('/pnl/yearly')
 }
 
-export async function getCategoryBreakdown(): Promise<CategoryBreakdownResponse> {
-  return request<CategoryBreakdownResponse>('/pnl/categories')
+export async function getCategoryBreakdown(options?: {
+  year?: number
+}): Promise<CategoryBreakdownResponse> {
+  const params = new URLSearchParams()
+  if (options?.year !== undefined) params.set('year', String(options.year))
+  const qs = params.toString()
+  return request<CategoryBreakdownResponse>(`/pnl/categories${qs ? `?${qs}` : ''}`)
 }
 
 export async function getCashFlow(options?: {

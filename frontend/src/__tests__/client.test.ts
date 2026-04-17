@@ -2,7 +2,7 @@
  * Tests for the API client — verifies that each function calls fetch with
  * the correct URL and method, and propagates errors correctly.
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createGoal,
   getBudget,
@@ -14,22 +14,24 @@ import {
   getMonthlyPnl,
   getNextBestActionFeed,
   getSavedPaycheckPlan,
-  recommendPaycheckPlan,
-  savePaycheckPlan,
   getSubscriptionAlerts,
   getSubscriptions,
   getTransfers,
   getYearlyPnl,
+  recommendPaycheckPlan,
   remindCancel,
+  savePaycheckPlan,
+  setAccessTokenProvider,
   submitActionFeedback,
   submitFeatureInterest,
-  updateSubscriptionPreferences,
   updateBudget,
+  updateSubscriptionPreferences,
   uploadFiles,
 } from '../api/client'
 
 let lastUrl: string
 let lastOptions: RequestInit | undefined
+const originalWindow = globalThis.window
 
 function fakeFetch(url: string | URL | Request, options?: RequestInit) {
   lastUrl = String(url)
@@ -52,8 +54,33 @@ function failingFetch() {
 beforeEach(() => {
   lastUrl = ''
   lastOptions = undefined
+  setAccessTokenProvider(null)
   globalThis.fetch = fakeFetch as unknown as typeof fetch
 })
+
+afterEach(() => {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: originalWindow,
+  })
+})
+
+function installGuestDemoWindow() {
+  const values = new Map<string, string>([
+    ['finance-reporter.demo_mode', 'true'],
+    ['finance-reporter.guest_demo', 'true'],
+  ])
+  const localStorage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
+  }
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage },
+  })
+}
 
 describe('API client', () => {
   it('getLedger calls GET /api/ledger', async () => {
@@ -97,6 +124,9 @@ describe('API client', () => {
   it('getCategoryBreakdown calls GET /api/pnl/categories', async () => {
     await getCategoryBreakdown()
     expect(lastUrl).toBe('/api/pnl/categories')
+
+    await getCategoryBreakdown({ year: 2025 })
+    expect(lastUrl).toBe('/api/pnl/categories?year=2025')
   })
 
   it('getCashFlow calls GET /api/cashflow with params', async () => {
@@ -229,5 +259,40 @@ describe('API client', () => {
   it('throws on non-ok response', async () => {
     globalThis.fetch = failingFetch as unknown as typeof fetch
     await expect(getLedger()).rejects.toThrow('API error: 500 Internal Server Error')
+  })
+
+  it('adds a bearer token when an access token provider is configured', async () => {
+    setAccessTokenProvider(() => 'test-access-token')
+
+    await updateBudget({ Food: 500 })
+
+    const headers = new Headers(lastOptions?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer test-access-token')
+    expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('serves guest demo reads locally without calling fetch', async () => {
+    installGuestDemoWindow()
+    globalThis.fetch = (() => {
+      throw new Error('fetch should not be called for guest demo reads')
+    }) as unknown as typeof fetch
+
+    const ledger = await getLedger()
+
+    expect(ledger.count).toBeGreaterThan(0)
+    expect(lastUrl).toBe('')
+  })
+
+  it('blocks guest demo uploads and writes before fetch', async () => {
+    installGuestDemoWindow()
+    const file = new File(['test'], 'test.csv', { type: 'text/csv' })
+
+    await expect(uploadFiles([file])).rejects.toThrow(
+      'Guest demo is read-only. Sign in to upload personal statements.',
+    )
+    await expect(updateBudget({ Food: 500 })).rejects.toThrow(
+      'Guest demo is read-only. Sign in to save changes.',
+    )
+    expect(lastUrl).toBe('')
   })
 })

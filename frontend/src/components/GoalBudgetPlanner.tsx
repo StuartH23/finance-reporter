@@ -10,6 +10,7 @@ import {
 } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { Goal, PaycheckObligation, PaycheckPlanResponse } from '../api/types'
+import { useGuestFeature } from '../guest/GuestFeatureProvider'
 
 function fmtMoney(value: number) {
   return (
@@ -41,7 +42,7 @@ function fromCents(value: number) {
 
 function rebalanceGoalAllocations(
   allocations: PaycheckPlanResponse['goal_allocations'],
-  targetGoals: number
+  targetGoals: number,
 ): PaycheckPlanResponse['goal_allocations'] {
   if (allocations.length === 0) return []
 
@@ -53,10 +54,7 @@ function rebalanceGoalAllocations(
   })
   const currentTotal = source.reduce((sum, row) => sum + row.currentCents, 0)
 
-  const weights =
-    currentTotal > 0
-      ? source.map((row) => row.currentCents)
-      : source.map(() => 1)
+  const weights = currentTotal > 0 ? source.map((row) => row.currentCents) : source.map(() => 1)
   const weightTotal = weights.reduce((sum, value) => sum + value, 0)
   const raw = source.map((_, idx) => (targetCents * weights[idx]) / weightTotal)
   const allocated = raw.map((value) => Math.floor(value))
@@ -74,9 +72,7 @@ function rebalanceGoalAllocations(
 
   return allocations.map((item, idx) => {
     const recommendedAmount = fromCents(allocated[idx])
-    const remainingAfter = fromCents(
-      Math.max(0, source[idx].remainingBeforeCents - allocated[idx])
-    )
+    const remainingAfter = fromCents(Math.max(0, source[idx].remainingBeforeCents - allocated[idx]))
     const required = item.required_per_paycheck
     return {
       ...item,
@@ -101,6 +97,7 @@ interface DraftPlan {
 
 function GoalBudgetPlanner() {
   const queryClient = useQueryClient()
+  const { guardGuestFeature } = useGuestFeature()
   const [goalName, setGoalName] = useState('')
   const [goalAmount, setGoalAmount] = useState('1000')
   const [goalTargetDate, setGoalTargetDate] = useState('')
@@ -204,11 +201,39 @@ function GoalBudgetPlanner() {
     },
   })
 
+  const saveGoal = () => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save goals',
+        message:
+          'Guest Demo lets you test goal planning with sample data. Sign in to create goals and keep progress tied to your account.',
+      })
+    ) {
+      return
+    }
+    goalMutation.mutate()
+  }
+
+  const savePlan = (payload: DraftPlan) => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save paycheck plans',
+        message:
+          'Guest Demo can calculate a paycheck split, but saved plans are locked. Sign in to keep custom splits and recommendations.',
+      })
+    ) {
+      return
+    }
+    saveMutation.mutate(payload)
+  }
+
   const goalProgressPct = (goal: Goal) => Math.max(0, Math.min(100, goal.progress_pct || 0))
   const draftTotal = draftPlan
     ? draftPlan.needs + draftPlan.goals + draftPlan.discretionary + draftPlan.safety_buffer_reserved
     : 0
-  const draftTotalValid = draftPlan ? Math.abs(draftTotal - draftPlan.paycheck_amount) < 0.01 : false
+  const draftTotalValid = draftPlan
+    ? Math.abs(draftTotal - draftPlan.paycheck_amount) < 0.01
+    : false
 
   return (
     <div>
@@ -272,7 +297,11 @@ function GoalBudgetPlanner() {
           </label>
           <label className="field-label">
             Status
-            <select className="text-input" value={goalStatus} onChange={(e) => setGoalStatus(e.target.value)}>
+            <select
+              className="text-input"
+              value={goalStatus}
+              onChange={(e) => setGoalStatus(e.target.value)}
+            >
               <option value="active">Active</option>
               <option value="paused">Paused</option>
               <option value="completed">Completed</option>
@@ -283,7 +312,7 @@ function GoalBudgetPlanner() {
           <button
             type="button"
             className="primary-button"
-            onClick={() => goalMutation.mutate()}
+            onClick={saveGoal}
             disabled={goalMutation.isPending || goalName.trim().length === 0}
           >
             {goalMutation.isPending ? 'Saving...' : editingGoalId ? 'Update Goal' : 'Create Goal'}
@@ -521,7 +550,9 @@ function GoalBudgetPlanner() {
                   type="number"
                   min="0"
                   value={toInputAmount(draftPlan.needs)}
-                  onChange={(e) => setDraftPlan({ ...draftPlan, needs: parseAmount(e.target.value) })}
+                  onChange={(e) =>
+                    setDraftPlan({ ...draftPlan, needs: parseAmount(e.target.value) })
+                  }
                 />
               </label>
               <label className="field-label">
@@ -531,7 +562,9 @@ function GoalBudgetPlanner() {
                   type="number"
                   min="0"
                   value={toInputAmount(draftPlan.goals)}
-                  onChange={(e) => setDraftPlan({ ...draftPlan, goals: parseAmount(e.target.value) })}
+                  onChange={(e) =>
+                    setDraftPlan({ ...draftPlan, goals: parseAmount(e.target.value) })
+                  }
                 />
               </label>
               <label className="field-label">
@@ -548,21 +581,34 @@ function GoalBudgetPlanner() {
               </label>
             </div>
 
-            <p className={'budget-hint ' + (Math.abs(draftTotal - draftPlan.paycheck_amount) < 0.01 ? '' : 'form-error')}>
+            <p
+              className={
+                'budget-hint ' +
+                (Math.abs(draftTotal - draftPlan.paycheck_amount) < 0.01 ? '' : 'form-error')
+              }
+            >
               Draft total: {fmtMoney(draftTotal)} of {fmtMoney(draftPlan.paycheck_amount)} paycheck
             </p>
-            <p className="budget-hint">If you change the goals bucket, goal rows are auto-rebalanced on save.</p>
+            <p className="budget-hint">
+              If you change the goals bucket, goal rows are auto-rebalanced on save.
+            </p>
 
             <div className="feature-actions" style={{ marginTop: '0.65rem' }}>
               <button
                 type="button"
                 className="primary-button"
                 onClick={() => {
-                  const goalAllocations = rebalanceGoalAllocations(draftPlan.goal_allocations, draftPlan.goals)
-                  const normalizedGoals = fromCents(
-                    goalAllocations.reduce((sum, item) => sum + toCents(item.recommended_amount), 0)
+                  const goalAllocations = rebalanceGoalAllocations(
+                    draftPlan.goal_allocations,
+                    draftPlan.goals,
                   )
-                  saveMutation.mutate({
+                  const normalizedGoals = fromCents(
+                    goalAllocations.reduce(
+                      (sum, item) => sum + toCents(item.recommended_amount),
+                      0,
+                    ),
+                  )
+                  savePlan({
                     ...draftPlan,
                     goals: normalizedGoals,
                     goal_allocations: goalAllocations,
@@ -576,7 +622,7 @@ function GoalBudgetPlanner() {
                 type="button"
                 className="ghost-button"
                 onClick={() =>
-                  saveMutation.mutate({
+                  savePlan({
                     paycheck_amount: recommendedPlan.paycheck_amount,
                     fixed_obligations: obligations,
                     safety_buffer_reserved: recommendedPlan.safety_buffer_reserved,

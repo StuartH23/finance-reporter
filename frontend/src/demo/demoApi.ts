@@ -13,8 +13,8 @@ import type {
   LedgerResponse,
   MonthlyPnlResponse,
   NextBestAction,
-  NextBestActionFeedResponse,
   NextBestActionFeedbackResponse,
+  NextBestActionFeedResponse,
   PaycheckPlanResponse,
   PaycheckPlanSaveResponse,
   ReminderResponse,
@@ -788,12 +788,27 @@ function feedActions(): NextBestAction[] {
   return demoState.actions.filter((action) => action.state === 'suggested').slice(0, 3)
 }
 
+function guestReadOnlyMessage(pathname: string) {
+  if (pathname === '/upload') {
+    return 'Guest demo is read-only. Sign in to upload personal statements.'
+  }
+  return 'Guest demo is read-only. Sign in to save changes.'
+}
+
+function guestWriteBlocked(method: string, pathname: string) {
+  return method !== 'GET' && !(method === 'POST' && pathname === '/goals/paycheck-plan')
+}
+
 export function getDemoResponse<T>(path: string, options?: RequestInit): T | null {
   if (!getDemoMode()) return null
 
   const url = new URL(path, 'http://demo.local')
-  const method = (options?.method ?? 'GET').toUpperCase()
+  const method: string = (options?.method ?? 'GET').toUpperCase()
   const pathname = url.pathname
+
+  if (guestWriteBlocked(method, pathname)) {
+    throw new Error(guestReadOnlyMessage(pathname))
+  }
 
   if (method === 'GET' && pathname === '/ledger') {
     const response: LedgerResponse = {

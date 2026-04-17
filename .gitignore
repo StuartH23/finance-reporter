@@ -1,6 +1,14 @@
 /pdfs/*
 .DS_Store
 .vscode/
+.env
+.env.local
+*.env.local
+frontend/.env*
+backend/.env*
+!.env.example
+!frontend/.env.example
+!backend/.env.example
 
 # Python environments and caches
 .venv/
