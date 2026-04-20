@@ -14,7 +14,7 @@ describe('subscription center', () => {
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <SubscriptionCenter />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     )
 
     expect(html).toContain('Subscription Center')

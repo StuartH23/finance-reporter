@@ -1,6 +1,7 @@
 """File upload and parsing endpoint."""
 
 import io
+import os
 import uuid
 
 import pandas as pd
@@ -26,6 +27,27 @@ _session_subscription_preferences: dict[str, dict[str, dict[str, bool]]] = {}
 _session_action_state: dict[str, dict] = {}
 
 EMPTY_LEDGER = pd.DataFrame(columns=["date", "description", "amount", "category", "source_file"])
+PRODUCTION_ENVS = {"prod", "production"}
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _session_cookie_options() -> dict[str, object]:
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    samesite = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower()
+    if samesite not in {"lax", "strict", "none"}:
+        samesite = "lax"
+
+    secure = _env_flag("SESSION_COOKIE_SECURE", app_env in PRODUCTION_ENVS)
+    if samesite == "none":
+        secure = True
+
+    return {"httponly": True, "samesite": samesite, "secure": secure}
 
 
 def get_session_ledger(session_id: str | None = None) -> pd.DataFrame:
@@ -87,7 +109,7 @@ def _ensure_session(session_id: str | None, response: Response) -> str:
     sid = str(uuid.uuid4())
     _sessions[sid] = []
     _session_action_state[sid] = {}
-    response.set_cookie(key="session_id", value=sid, httponly=True, samesite="lax")
+    response.set_cookie(key="session_id", value=sid, **_session_cookie_options())
     return sid
 
 

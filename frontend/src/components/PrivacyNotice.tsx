@@ -68,8 +68,8 @@ function PrivacyNotice({
         <h3>5. Scope note</h3>
         <p>
           This notice describes app-level behavior in this codebase. External deployment
-          infrastructure such as reverse proxies, hosting logs, monitoring tools, and backups may have
-          separate retention and logging behavior.
+          infrastructure such as reverse proxies, hosting logs, monitoring tools, and backups may
+          have separate retention and logging behavior.
         </p>
       </div>
       <style>{`

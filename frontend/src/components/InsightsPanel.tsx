@@ -23,7 +23,10 @@ function InsightsPanel() {
 
   const insights = data?.insights ?? []
   const digest = data?.digest ?? []
-  const visible = useMemo(() => (view === 'dashboard' ? insights : digest), [view, insights, digest])
+  const visible = useMemo(
+    () => (view === 'dashboard' ? insights : digest),
+    [view, insights, digest],
+  )
 
   if (!insights.length) {
     return (

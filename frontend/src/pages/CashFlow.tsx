@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import TransactionList from '../components/TransactionList'
-import CashFlowSankeyChart from '../components/CashFlowSankeyChart'
 import type { CashFlowSegmentSelection } from '../components/CashFlowSankeyChart'
+import CashFlowSankeyChart from '../components/CashFlowSankeyChart'
 import InsightsPanel from '../components/InsightsPanel'
 import SpendingPieChart from '../components/SpendingPieChart'
+import TransactionList from '../components/TransactionList'
 
 function CashFlow() {
   const [selection, setSelection] = useState<CashFlowSegmentSelection | null>(null)

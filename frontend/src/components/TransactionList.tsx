@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getLedger } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
-import type { CashFlowGranularity } from '../api/types'
+import type { CashFlowGranularity, Transaction } from '../api/types'
 import { normalizeMerchantLabel } from '../utils/merchant'
 
 function fmt(n: number) {
@@ -19,6 +19,26 @@ function matchesPeriod(date: string, periodKey: string, granularity: CashFlowGra
   const month = Number.parseInt(date.slice(5, 7), 10)
   const quarter = Math.floor((month - 1) / 3) + 1
   return quarter === Number.parseInt(quarterStr, 10)
+}
+
+function transactionKey(transaction: Transaction) {
+  return [
+    transaction.date,
+    transaction.description,
+    transaction.amount,
+    transaction.category,
+    transaction.source_file,
+  ].join('|')
+}
+
+function keyedTransactions(transactions: Transaction[]) {
+  const occurrences = new Map<string, number>()
+  return transactions.map((transaction) => {
+    const baseKey = transactionKey(transaction)
+    const occurrence = (occurrences.get(baseKey) ?? 0) + 1
+    occurrences.set(baseKey, occurrence)
+    return { transaction, key: `${baseKey}|${occurrence}` }
+  })
 }
 
 interface TransactionFilters {
@@ -74,6 +94,7 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
   }
 
   const visible = expanded ? filtered : filtered.slice(0, 50)
+  const visibleRows = keyedTransactions(visible)
 
   return (
     <div className="card">
@@ -91,8 +112,8 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
           </tr>
         </thead>
         <tbody>
-          {visible.map((t, i) => (
-            <tr key={`${t.date}-${t.description}-${i}`}>
+          {visibleRows.map(({ transaction: t, key }) => (
+            <tr key={key}>
               <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
               <td>{t.description}</td>
               <td className={`amount ${t.amount >= 0 ? 'positive' : 'negative'}`}>
