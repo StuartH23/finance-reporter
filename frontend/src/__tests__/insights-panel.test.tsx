@@ -1,9 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-
-import type { InsightsResponse } from '../api/types'
 import { queryKeys } from '../api/queryKeys'
+import type { InsightsResponse } from '../api/types'
 import InsightsPanel from '../components/InsightsPanel'
 
 describe('insights panel', () => {
@@ -17,7 +16,7 @@ describe('insights panel', () => {
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <InsightsPanel />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     )
 
     expect(html).toContain('Coach Insights')
@@ -74,7 +73,7 @@ describe('insights panel', () => {
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <InsightsPanel />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     )
 
     expect(html).toContain('Coach Insights (March 2026)')

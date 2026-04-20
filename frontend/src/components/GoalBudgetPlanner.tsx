@@ -95,6 +95,19 @@ interface DraftPlan {
   goal_allocations: PaycheckPlanResponse['goal_allocations']
 }
 
+type EditablePaycheckObligation = PaycheckObligation & { rowId: string }
+
+let obligationRowId = 0
+
+function createEditableObligation(name: string, amount: number): EditablePaycheckObligation {
+  obligationRowId += 1
+  return { rowId: `obligation-${obligationRowId}`, name, amount }
+}
+
+function toPaycheckObligations(obligations: EditablePaycheckObligation[]): PaycheckObligation[] {
+  return obligations.map((item) => ({ name: item.name, amount: item.amount }))
+}
+
 function GoalBudgetPlanner() {
   const queryClient = useQueryClient()
   const { guardGuestFeature } = useGuestFeature()
@@ -112,9 +125,9 @@ function GoalBudgetPlanner() {
   const [enforceEmergencyMinimum, setEnforceEmergencyMinimum] = useState(false)
   const [paychecksPerMonth, setPaychecksPerMonth] = useState('2')
   const [mode, setMode] = useState<'balanced' | 'aggressive_savings'>('balanced')
-  const [obligations, setObligations] = useState<PaycheckObligation[]>([
-    { name: 'Rent', amount: 1000 },
-    { name: 'Utilities', amount: 120 },
+  const [obligations, setObligations] = useState<EditablePaycheckObligation[]>([
+    createEditableObligation('Rent', 1000),
+    createEditableObligation('Utilities', 120),
   ])
 
   const [recommendedPlan, setRecommendedPlan] = useState<PaycheckPlanResponse | null>(null)
@@ -136,6 +149,7 @@ function GoalBudgetPlanner() {
 
   const goals = goalsData?.goals ?? []
   const activeGoals = useMemo(() => goals.filter((goal) => goal.status === 'active'), [goals])
+  const fixedObligations = useMemo(() => toPaycheckObligations(obligations), [obligations])
 
   const goalMutation = useMutation({
     mutationFn: async () => {
@@ -166,7 +180,7 @@ function GoalBudgetPlanner() {
     mutationFn: () =>
       recommendPaycheckPlan({
         paycheck_amount: parseAmount(paycheckAmount),
-        fixed_obligations: obligations,
+        fixed_obligations: fixedObligations,
         safety_buffer: parseAmount(safetyBuffer),
         minimum_emergency_buffer: effectiveMinimumEmergencyBuffer,
         mode,
@@ -177,7 +191,7 @@ function GoalBudgetPlanner() {
       setRecommendedPlan(plan)
       setDraftPlan({
         paycheck_amount: plan.paycheck_amount,
-        fixed_obligations: obligations,
+        fixed_obligations: fixedObligations,
         safety_buffer_reserved: plan.safety_buffer_reserved,
         minimum_emergency_buffer: effectiveMinimumEmergencyBuffer,
         mode: plan.allocation_mode === 'aggressive_savings' ? 'aggressive_savings' : 'balanced',
@@ -451,7 +465,7 @@ function GoalBudgetPlanner() {
           Fixed Obligations
         </p>
         {obligations.map((item, idx) => (
-          <div key={idx} style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.4rem' }}>
+          <div key={item.rowId} style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.4rem' }}>
             <input
               className="text-input"
               style={{ flex: 1 }}
@@ -488,7 +502,7 @@ function GoalBudgetPlanner() {
         <button
           type="button"
           className="ghost-button"
-          onClick={() => setObligations([...obligations, { name: '', amount: 0 }])}
+          onClick={() => setObligations([...obligations, createEditableObligation('', 0)])}
         >
           Add Obligation
         </button>
@@ -624,7 +638,7 @@ function GoalBudgetPlanner() {
                 onClick={() =>
                   savePlan({
                     paycheck_amount: recommendedPlan.paycheck_amount,
-                    fixed_obligations: obligations,
+                    fixed_obligations: fixedObligations,
                     safety_buffer_reserved: recommendedPlan.safety_buffer_reserved,
                     minimum_emergency_buffer: effectiveMinimumEmergencyBuffer,
                     mode:

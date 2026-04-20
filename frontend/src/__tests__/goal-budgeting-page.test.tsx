@@ -15,7 +15,7 @@ describe('goal budgeting planner', () => {
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <GoalBudgetPlanner />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     )
 
     expect(html).toContain('Goal Creation Wizard')

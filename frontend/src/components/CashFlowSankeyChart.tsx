@@ -55,12 +55,11 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
   useEffect(() => {
     if (!period || !data) return
     const exists = data.available_periods.some((item) => item.key === period)
-    if (!exists) setPeriod('')
-  }, [data, period])
-
-  useEffect(() => {
-    onSegmentSelect?.(null)
-  }, [granularity, groupBy, period, onSegmentSelect])
+    if (!exists) {
+      setPeriod('')
+      onSegmentSelect?.(null)
+    }
+  }, [data, period, onSegmentSelect])
 
   const chartData = useMemo(() => {
     if (!data?.nodes.length || !data.links.length) return null
@@ -153,6 +152,7 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
               onChange={(event) => {
                 setGranularity(event.target.value as CashFlowGranularity)
                 setPeriod('')
+                onSegmentSelect?.(null)
               }}
             >
               <option value="month">Month</option>
@@ -163,7 +163,10 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
             <span>Group By</span>
             <select
               value={groupBy}
-              onChange={(event) => setGroupBy(event.target.value as CashFlowGroupBy)}
+              onChange={(event) => {
+                setGroupBy(event.target.value as CashFlowGroupBy)
+                onSegmentSelect?.(null)
+              }}
             >
               <option value="category">Category</option>
               <option value="merchant">Merchant</option>
@@ -171,7 +174,13 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
           </label>
           <label className="cashflow-control">
             <span>Period</span>
-            <select value={period} onChange={(event) => setPeriod(event.target.value)}>
+            <select
+              value={period}
+              onChange={(event) => {
+                setPeriod(event.target.value)
+                onSegmentSelect?.(null)
+              }}
+            >
               <option value="">Latest</option>
               {(data?.available_periods ?? []).map((item) => (
                 <option key={item.key} value={item.key}>

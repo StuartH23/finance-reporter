@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from routers.upload import _process_csv
+from routers.upload import _process_csv, _session_cookie_options
 
 
 def test_process_csv_empty_bytes():
@@ -42,3 +42,25 @@ def test_process_csv_malformed():
     """Malformed CSV should return None, not crash."""
     result = _process_csv(b"\x00\x01\x02\x03")
     assert result is None
+
+
+def test_session_cookie_defaults_secure_in_production(monkeypatch):
+    """Production sessions should default to secure HTTP-only cookies."""
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("SESSION_COOKIE_SECURE", raising=False)
+    monkeypatch.delenv("SESSION_COOKIE_SAMESITE", raising=False)
+
+    options = _session_cookie_options()
+
+    assert options == {"httponly": True, "samesite": "lax", "secure": True}
+
+
+def test_session_cookie_samesite_none_forces_secure(monkeypatch):
+    """SameSite=None requires Secure even if local env overrides it off."""
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
+    monkeypatch.setenv("SESSION_COOKIE_SAMESITE", "none")
+
+    options = _session_cookie_options()
+
+    assert options == {"httponly": True, "samesite": "none", "secure": True}

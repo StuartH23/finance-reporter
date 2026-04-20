@@ -372,12 +372,6 @@
   color: var(--text-muted);
 }
 
-.cashflow-control select {
-  min-width: 130px;
-  font-size: 0.74rem;
-  padding: 0.32rem 0.42rem;
-}
-
 .cashflow-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1151,12 +1145,12 @@ tbody tr:hover td {
   font-size: 0.73rem;
 }
 
-.insight-label {
-  color: var(--text-muted) !important;
-  font-size: 0.71rem !important;
+.insight-item .insight-label {
+  color: var(--text-muted);
+  font-size: 0.71rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  margin-top: 0.45rem !important;
+  margin-top: 0.45rem;
 }
 
 .resource-grid {
@@ -1242,6 +1236,12 @@ input:focus,
 textarea:focus {
   outline: 2px solid rgba(36, 128, 255, 0.26);
   border-color: #2d8af5;
+}
+
+.cashflow-control select {
+  min-width: 130px;
+  font-size: 0.74rem;
+  padding: 0.32rem 0.42rem;
 }
 
 .feature-checkboxes {

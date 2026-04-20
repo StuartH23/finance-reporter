@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { CashFlowResponse } from '../api/types'
 import { queryKeys } from '../api/queryKeys'
+import type { CashFlowResponse } from '../api/types'
 import CashFlowSankeyChart from '../components/CashFlowSankeyChart'
 
 describe('cash flow sankey chart', () => {

@@ -27,7 +27,8 @@ function ExperiencePreview({ onEnableDemo }: ExperiencePreviewProps) {
         <div>
           <h2>Preview The Experience</h2>
           <p className="budget-hint">
-            See how Finance Reporter looks with populated data, then decide whether to upload your own files.
+            See how Finance Reporter looks with populated data, then decide whether to upload your
+            own files.
           </p>
         </div>
         <button type="button" className="primary-button" onClick={onEnableDemo}>
