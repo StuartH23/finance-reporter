@@ -29,16 +29,18 @@ function AuthCallback() {
   }, [auth.completeSignIn, navigate])
 
   return (
-    <section className="card auth-callback-card">
-      <h2>Sign In</h2>
-      <p>{message}</p>
-      {auth.error && <p className="form-error">{auth.error}</p>}
-      {failed && (
-        <button type="button" className="primary-button" onClick={() => void auth.signIn('/')}>
-          Try Sign In Again
-        </button>
-      )}
-    </section>
+    <main className="auth-status-shell">
+      <section className="auth-status-panel" aria-live="polite">
+        <h1>Sign In</h1>
+        <p>{message}</p>
+        {auth.error && <p className="form-error">{auth.error}</p>}
+        {failed && (
+          <button type="button" className="primary-button" onClick={() => void auth.signIn('/')}>
+            Try Sign In Again
+          </button>
+        )}
+      </section>
+    </main>
   )
 }
 

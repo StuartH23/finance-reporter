@@ -8,22 +8,21 @@ import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvi
 import AuthCallback from './pages/AuthCallback'
 import Budget from './pages/Budget'
 import CashFlow from './pages/CashFlow'
+import AuthRequiredScreen from './components/AuthRequiredScreen'
 import Dashboard from './pages/Dashboard'
-import Goals from './pages/Goals'
 import Subscriptions from './pages/Subscriptions'
 import './App.css'
 
 type NavItem = {
   to: string
   label: string
-  icon: 'dashboard' | 'cashflow' | 'budget' | 'goals' | 'subscriptions'
+  icon: 'dashboard' | 'cashflow' | 'budget' | 'subscriptions'
 }
 
 const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/cash-flow', label: 'Cash Flow', icon: 'cashflow' },
   { to: '/budget', label: 'Budget', icon: 'budget' },
-  { to: '/goals', label: 'Goals', icon: 'goals' },
   { to: '/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
 ]
 
@@ -36,16 +35,6 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
         <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
         <path d="M3.5 10.5h17" />
         <path d="M8 14.5h2" />
-      </svg>
-    )
-  }
-
-  if (icon === 'goals') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="7.5" />
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 4.5v3" />
       </svg>
     )
   }
@@ -135,6 +124,12 @@ function AppShell() {
     queryClient.clear()
   }
 
+  const currentReturnPath =
+    `${location.pathname}${location.search}${location.hash}` || '/'
+  const signInReturnPath = currentReturnPath.startsWith('/auth/callback')
+    ? '/'
+    : currentReturnPath
+
   const authLabel =
     auth.claims?.email || auth.claims?.name || auth.claims?.given_name || 'Signed in'
   const isAuthCallback = location.pathname === '/auth/callback'
@@ -148,6 +143,20 @@ function AppShell() {
     setDemoModeEnabled(false)
     queryClient.clear()
   }, [auth.isSignedIn, demoModeEnabled, queryClient])
+
+  if (isAuthCallback) {
+    return <AuthCallback />
+  }
+
+  if (requiresSignIn) {
+    return (
+      <AuthRequiredScreen
+        error={auth.error}
+        onSignIn={() => void auth.signIn(signInReturnPath)}
+        onGuestDemo={enableGuestDemoMode}
+      />
+    )
+  }
 
   return (
     <div className={`app ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -210,7 +219,7 @@ function AppShell() {
                       setDemoModeEnabled(false)
                       queryClient.clear()
                     }
-                    void auth.signIn()
+                    void auth.signIn(signInReturnPath)
                   }}
                 >
                   {auth.isSignedIn ? 'Sign Out' : 'Sign In'}
@@ -245,47 +254,22 @@ function AppShell() {
         </header>
 
         <main className="workspace-main">
-          {requiresSignIn ? (
-            <div className="auth-screen">
-              <section className="card auth-required-card">
-                <h2>Sign In Required</h2>
-                <p>
-                  Sign in to upload statements and save finance data, or continue as a read-only
-                  guest with sample data.
-                </p>
-                <div className="auth-required-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => void auth.signIn()}
-                  >
-                    Sign In
-                  </button>
-                  <button type="button" className="ghost-button" onClick={enableGuestDemoMode}>
-                    Continue as Guest Demo
-                  </button>
-                </div>
-              </section>
-            </div>
-          ) : (
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Dashboard
-                    canEnableDemo={!auth.isConfigured || !auth.isSignedIn}
-                    demoModeEnabled={demoModeEnabled}
-                    onEnableDemoMode={enableGuestDemoMode}
-                  />
-                }
-              />
-              <Route path="/cash-flow" element={<CashFlow />} />
-              <Route path="/budget" element={<Budget />} />
-              <Route path="/goals" element={<Goals />} />
-              <Route path="/subscriptions" element={<Subscriptions />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-            </Routes>
-          )}
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Dashboard
+                  canEnableDemo={!auth.isConfigured || !auth.isSignedIn}
+                  demoModeEnabled={demoModeEnabled}
+                  onEnableDemoMode={enableGuestDemoMode}
+                />
+              }
+            />
+            <Route path="/cash-flow" element={<CashFlow />} />
+            <Route path="/budget" element={<Budget />} />
+            <Route path="/subscriptions" element={<Subscriptions />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+          </Routes>
         </main>
       </section>
     </div>
