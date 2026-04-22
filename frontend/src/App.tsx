@@ -2,13 +2,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
+import AuthRequiredScreen from './components/AuthRequiredScreen'
 import { resetDemoState } from './demo/demoApi'
 import { getDemoMode, setDemoMode } from './demo/mode'
 import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvider'
 import AuthCallback from './pages/AuthCallback'
 import Budget from './pages/Budget'
 import CashFlow from './pages/CashFlow'
-import AuthRequiredScreen from './components/AuthRequiredScreen'
 import Dashboard from './pages/Dashboard'
 import Subscriptions from './pages/Subscriptions'
 import './App.css'
@@ -124,11 +124,8 @@ function AppShell() {
     queryClient.clear()
   }
 
-  const currentReturnPath =
-    `${location.pathname}${location.search}${location.hash}` || '/'
-  const signInReturnPath = currentReturnPath.startsWith('/auth/callback')
-    ? '/'
-    : currentReturnPath
+  const currentReturnPath = `${location.pathname}${location.search}${location.hash}` || '/'
+  const signInReturnPath = currentReturnPath.startsWith('/auth/callback') ? '/' : currentReturnPath
 
   const authLabel =
     auth.claims?.email || auth.claims?.name || auth.claims?.given_name || 'Signed in'

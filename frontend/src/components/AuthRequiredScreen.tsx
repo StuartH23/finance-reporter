@@ -29,9 +29,9 @@ function AuthRequiredScreen({ error, onSignIn, onGuestDemo }: AuthRequiredScreen
           </div>
           <p className="auth-demo-note">Guest demo uses sample transactions only.</p>
         </div>
-        <div className="auth-entry-preview" aria-label="Finance snapshot">
+        <section className="auth-entry-preview" aria-label="Finance snapshot">
           <img src="/screenshots/preview-dashboard.svg" alt="Finance dashboard preview" />
-          <div className="auth-preview-metrics" aria-label="Sample finance snapshot">
+          <section className="auth-preview-metrics" aria-label="Sample finance snapshot">
             <div>
               <span>Monthly Net</span>
               <strong>$2,450</strong>
@@ -40,8 +40,8 @@ function AuthRequiredScreen({ error, onSignIn, onGuestDemo }: AuthRequiredScreen
               <span>Goal Room</span>
               <strong>$680</strong>
             </div>
-          </div>
-        </div>
+          </section>
+        </section>
       </section>
     </main>
   )
