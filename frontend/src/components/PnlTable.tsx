@@ -65,7 +65,7 @@ function PnlTable({ onActiveYearChange }: PnlTableProps) {
               value={activeYear ?? ''}
               onChange={(e) => setSelectedYear(Number.parseInt(e.target.value, 10))}
               style={{
-                background: 'var(--bg)',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 color: 'var(--text)',
                 borderRadius: 6,
@@ -85,7 +85,6 @@ function PnlTable({ onActiveYearChange }: PnlTableProps) {
           </div>
           {selectedYearly && (
             <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{selectedYearly.year}</div>
               <div className="metrics-row" style={{ marginBottom: 0 }}>
                 <div className="metric">
                   <div className="label">Income</div>

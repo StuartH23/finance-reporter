@@ -57,6 +57,29 @@ function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, '')
 }
 
+export function normalizeAuthReturnPath(value?: string | null) {
+  const fallback = '/'
+  const raw = value?.trim()
+  if (!raw) return fallback
+
+  let path = raw
+  try {
+    const url = new URL(raw, origin())
+    if (url.origin !== origin()) return fallback
+    path = `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return fallback
+  }
+
+  if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) {
+    return fallback
+  }
+  if (path.startsWith('/auth/callback')) {
+    return fallback
+  }
+  return path || fallback
+}
+
 export function getCognitoConfig(): CognitoConfig {
   return {
     domain: stripTrailingSlash(import.meta.env.VITE_COGNITO_DOMAIN ?? ''),
@@ -115,7 +138,7 @@ export async function beginCognitoSignIn(returnPath?: string) {
 
   store.setItem(PKCE_VERIFIER_KEY, verifier)
   store.setItem(AUTH_STATE_KEY, state)
-  store.setItem(RETURN_PATH_KEY, path || '/')
+  store.setItem(RETURN_PATH_KEY, normalizeAuthReturnPath(path))
 
   const url = new URL(`${config.domain}/oauth2/authorize`)
   url.searchParams.set('client_id', config.clientId)
@@ -218,7 +241,7 @@ async function completeCognitoSignInInternal(callbackUrl: string): Promise<Compl
   const tokens = await requestTokens(body)
   saveTokens(tokens)
 
-  const returnPath = store.getItem(RETURN_PATH_KEY) || '/'
+  const returnPath = normalizeAuthReturnPath(store.getItem(RETURN_PATH_KEY))
   store.removeItem(PKCE_VERIFIER_KEY)
   store.removeItem(AUTH_STATE_KEY)
   store.removeItem(RETURN_PATH_KEY)

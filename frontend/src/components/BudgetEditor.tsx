@@ -539,9 +539,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                   style={{
                     width: 100,
                     padding: '0.3rem 0.5rem',
-                    background: 'var(--bg)',
+                    background: 'var(--surface)',
                     border: '1px solid var(--border)',
-                    borderRadius: 4,
+                    borderRadius: 6,
                     color: 'var(--text)',
                     textAlign: 'right',
                     fontSize: '0.875rem',
@@ -562,9 +562,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                   style={{
                     width: 100,
                     padding: '0.3rem 0.5rem',
-                    background: 'var(--bg)',
+                    background: 'var(--surface)',
                     border: '1px solid var(--border)',
-                    borderRadius: 4,
+                    borderRadius: 6,
                     color: 'var(--text)',
                     textAlign: 'right',
                     fontSize: '0.875rem',
@@ -585,9 +585,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                   style={{
                     width: 100,
                     padding: '0.3rem 0.5rem',
-                    background: 'var(--bg)',
+                    background: 'var(--surface)',
                     border: '1px solid var(--border)',
-                    borderRadius: 4,
+                    borderRadius: 6,
                     color: 'var(--text)',
                     textAlign: 'right',
                     fontSize: '0.875rem',
@@ -632,7 +632,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
           onChange={(e) => onSelectedMonthKeyChange(e.target.value)}
           disabled={availableMonthKeys.length === 0}
           style={{
-            background: 'var(--bg)',
+            background: 'var(--surface)',
             border: '1px solid var(--border)',
             color: 'var(--text)',
             borderRadius: 6,
@@ -764,9 +764,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                       style={{
                         width: 100,
                         padding: '0.3rem 0.5rem',
-                        background: 'var(--bg)',
+                        background: 'var(--surface)',
                         border: '1px solid var(--border)',
-                        borderRadius: 4,
+                        borderRadius: 6,
                         color: 'var(--text)',
                         textAlign: 'right',
                         fontSize: '0.875rem',

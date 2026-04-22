@@ -54,7 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (returnPath?: string) => {
     setError(null)
-    await beginCognitoSignIn(returnPath)
+    try {
+      await beginCognitoSignIn(returnPath)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign-in could not start.'
+      setError(message)
+      setStatus(isCognitoConfigured() ? 'signed-out' : 'not-configured')
+    }
   }, [])
 
   const signOut = useCallback(() => {

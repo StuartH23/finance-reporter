@@ -1,0 +1,163 @@
+/*
+ * Cognito Hosted UI — Finance Reporter custom theme
+ *
+ * This styles the AWS-hosted sign-in page that users see after clicking
+ * "Sign In" in our app. Without this, the Cognito login form renders with
+ * AWS default branding (white card, blue button) which looks disconnected
+ * from our dark-themed app.
+ *
+ * ── How to apply ──
+ *
+ * Option A — CLI:
+ *   aws cognito-idp set-ui-customization \
+ *     --user-pool-id <POOL_ID> \
+ *     --client-id <APP_CLIENT_ID> \
+ *     --css "$(cat infra/cognito-hosted-ui.css)"
+ *
+ * Option B — Console:
+ *   Cognito > User Pool > App integration > Hosted UI customization
+ *   Paste this CSS into the CSS field.
+ *
+ * You can also upload a logo (PNG, max 100KB) in the same place so
+ * "Finance Reporter" branding appears above the form.
+ *
+ * ── What Cognito allows ──
+ *
+ * Cognito only exposes a fixed set of *-customizable class names.
+ * You cannot add custom HTML, JavaScript, or arbitrary selectors.
+ * Ref: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-ui-customization.html
+ */
+
+/* ── Page background ── */
+body {
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  background: #081729;
+  color: #e5efff;
+}
+
+.background-customizable {
+  background: #081729;
+}
+
+/* ── Sign-in card ── */
+.banner-customizable {
+  background: #0b1f3c;
+  padding: 1.25rem 0 0.75rem;
+}
+
+.modal-content {
+  background: #0b1f3c;
+  border: 1px solid #1b3e68;
+  border-radius: 10px;
+  box-shadow: 0 18px 46px rgba(5, 12, 22, 0.42);
+}
+
+.modal-content .card-customizable {
+  background: #0b1f3c;
+  border: none;
+}
+
+/* ── Submit button (matches our .primary-button) ── */
+.submitButton-customizable {
+  background: #2f8fff;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.62rem 1.2rem;
+  min-height: 42px;
+}
+
+.submitButton-customizable:hover {
+  background: #1a7be6;
+}
+
+/* ── Form inputs (matches our input styling) ── */
+.inputField-customizable {
+  background: #102949;
+  border: 1px solid #27507f;
+  border-radius: 8px;
+  color: #e5efff;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.88rem;
+  padding: 0.52rem 0.68rem;
+  min-height: 40px;
+}
+
+.inputField-customizable:focus {
+  border-color: #2f8fff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(47, 143, 255, 0.25);
+}
+
+/* ── Labels ── */
+.label-customizable {
+  color: #e5efff;
+  font-family: "Sora", "Manrope", sans-serif;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+/* ── Description / helper text ── */
+.textDescription-customizable {
+  color: #92a8c4;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.idpDescription-customizable {
+  color: #92a8c4;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.legalText-customizable {
+  color: #92a8c4;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+/* ── Links ── */
+.redirect-customizable {
+  color: #7cc8ff;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.redirect-customizable:hover {
+  color: #4db5ff;
+}
+
+/* ── Social / IdP buttons (e.g. Sign in with Google) ── */
+.socialButton-customizable {
+  background: #102949;
+  border: 1px solid #27507f;
+  border-radius: 8px;
+  color: #e5efff;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  font-weight: 600;
+  min-height: 42px;
+}
+
+.socialButton-customizable:hover {
+  background: #1b3e68;
+  border-color: #2f8fff;
+}
+
+/* ── Divider ── */
+.line-customizable {
+  border-color: #1b3e68;
+}
+
+/* ── Error messages ── */
+.errorMessage-customizable {
+  background: rgba(238, 154, 161, 0.12);
+  border: 1px solid rgba(238, 154, 161, 0.3);
+  border-radius: 8px;
+  color: #f4b0b5;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+/* ── Logo ── */
+.logo-customizable {
+  max-width: 160px;
+  max-height: 56px;
+}
