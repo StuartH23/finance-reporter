@@ -219,7 +219,7 @@
   display: grid;
   place-items: center;
   padding: clamp(1rem, 4vw, 2rem);
-  background: var(--bg);
+  background: #081729;
   color: var(--text);
 }
 
