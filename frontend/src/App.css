@@ -643,7 +643,7 @@
 .kpi-pill.positive {
   color: #8ed8b3;
   border-color: rgba(52, 171, 125, 0.5);
-  background: rgba(23, 103, 75, 0.45);
+  background: rgba(23, 103, 75, 0.35);
 }
 
 .kpi-pill.negative {
