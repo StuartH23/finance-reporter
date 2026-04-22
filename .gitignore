@@ -27,3 +27,8 @@ htmlcov/
 # Frontend dependencies and build output
 frontend/node_modules/
 frontend/dist/
+
+# Claude
+.claudeignore
+docker-build.sh
+docker-push.sh
