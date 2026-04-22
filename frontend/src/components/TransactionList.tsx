@@ -130,13 +130,10 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
+          className="ghost-button"
           style={{
             marginTop: '0.75rem',
             padding: '0.4rem 1rem',
-            background: 'var(--border)',
-            border: 'none',
-            borderRadius: 6,
-            color: 'var(--text)',
             fontSize: '0.8rem',
           }}
         >

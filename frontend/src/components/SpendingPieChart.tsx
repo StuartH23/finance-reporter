@@ -285,7 +285,7 @@ function SpendingPieChart({ showBreakdownTable = true, year }: SpendingPieChartP
                       <Cell
                         key={item.category}
                         fill={colorForCategory(item.category)}
-                        stroke="var(--bg)"
+                        stroke="var(--surface)"
                         strokeWidth={activeCategory === item.category ? 3 : 2}
                         fillOpacity={activeCategory && activeCategory !== item.category ? 0.42 : 1}
                       />
