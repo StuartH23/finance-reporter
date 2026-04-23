@@ -416,3 +416,17 @@ export interface SavedPaycheckPlanResponse {
   status: 'ok' | 'empty' | string
   plan: Record<string, unknown>
 }
+
+// Analyst chat
+export interface AnalystMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface AnalystChatRequest {
+  messages: AnalystMessage[]
+}
+
+export interface AnalystChatResponse {
+  content: string
+}

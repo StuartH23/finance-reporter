@@ -18,3 +18,4 @@ deprecated
 *.env.local
 frontend/.env*
 backend/.env*
+docker-build-push.sh

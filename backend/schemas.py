@@ -476,6 +476,22 @@ class NextBestActionFeedbackResponse(BaseModel):
     snooze_until: str | None = None
 
 
+# --- Analyst chat ---
+
+
+class AnalystMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class AnalystChatRequest(BaseModel):
+    messages: list[AnalystMessage]
+
+
+class AnalystChatResponse(BaseModel):
+    content: str
+
+
 # --- Health ---
 
 

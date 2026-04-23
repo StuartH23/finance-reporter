@@ -32,3 +32,4 @@ frontend/dist/
 .claudeignore
 docker-build.sh
 docker-push.sh
+docker-build-push.sh
