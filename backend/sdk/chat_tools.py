@@ -208,7 +208,10 @@ def list_subscriptions_tool(
         }
         for s in payload
     ]
-    total = round(sum(s["amount"] for s in summary), 2)
+    _to_monthly = {"weekly": 365 / 12 / 7, "monthly": 1.0, "annual": 1 / 12}
+    total = round(
+        sum(s["amount"] * _to_monthly.get(s["cadence"], 1.0) for s in summary), 2
+    )
     return {"subscriptions": summary, "count": len(summary), "monthly_estimate": total}
 
 
