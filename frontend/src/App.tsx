@@ -53,6 +53,16 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
     )
   }
 
+  if (icon === 'chat') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 6h16v10H7l-3 3V6z" />
+        <path d="M8 10h8" />
+        <path d="M8 13h5" />
+      </svg>
+    )
+  }
+
   if (icon === 'cashflow') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
