@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
+import AnalystWidget from './components/AnalystWidget'
 import AuthRequiredScreen from './components/AuthRequiredScreen'
 import { resetDemoState } from './demo/demoApi'
 import { getDemoMode, setDemoMode } from './demo/mode'
@@ -269,6 +270,7 @@ function AppShell() {
           </Routes>
         </main>
       </section>
+      <AnalystWidget />
     </div>
   )
 }

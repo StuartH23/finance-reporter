@@ -1,5 +1,7 @@
 import { getDemoResponse } from '../demo/demoApi'
 import type {
+  AnalystChatRequest,
+  AnalystChatResponse,
   BudgetListResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
@@ -267,4 +269,30 @@ export async function submitFeatureInterest(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
+}
+
+export class AnalystRateLimitError extends Error {
+  retryAfterSeconds: number
+  constructor(retryAfterSeconds: number) {
+    super('Rate limit reached — 5 questions per 30 min.')
+    this.name = 'AnalystRateLimitError'
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+export async function postAnalystChat(payload: AnalystChatRequest): Promise<AnalystChatResponse> {
+  const init = await withAuthHeader({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const res = await fetch(`${BASE}/analyst/chat`, init)
+  if (res.status === 429) {
+    const retryAfter = Number.parseInt(res.headers.get('Retry-After') ?? '1800', 10)
+    throw new AnalystRateLimitError(Number.isFinite(retryAfter) ? retryAfter : 1800)
+  }
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return (await res.json()) as AnalystChatResponse
 }

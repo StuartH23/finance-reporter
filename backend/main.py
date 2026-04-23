@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from auth import get_current_user
 from routers import (
     actions,
+    analyst,
     budget,
     cashflow,
     categories,
@@ -97,6 +98,7 @@ app.include_router(goals.router, prefix="/api", dependencies=protected_route_dep
 app.include_router(categories.router, prefix="/api")
 app.include_router(feature_interest.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(subscriptions.router, prefix="/api", dependencies=protected_route_dependencies)
+app.include_router(analyst.router, prefix="/api", dependencies=protected_route_dependencies)
 
 
 @app.get("/api/health", response_model=HealthResponse)
