@@ -10,6 +10,7 @@ import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvi
 import AuthCallback from './pages/AuthCallback'
 import Budget from './pages/Budget'
 import CashFlow from './pages/CashFlow'
+import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
 import Subscriptions from './pages/Subscriptions'
 import './App.css'
@@ -17,7 +18,7 @@ import './App.css'
 type NavItem = {
   to: string
   label: string
-  icon: 'dashboard' | 'cashflow' | 'budget' | 'subscriptions'
+  icon: 'dashboard' | 'cashflow' | 'budget' | 'subscriptions' | 'chat'
 }
 
 const navItems: NavItem[] = [
@@ -25,6 +26,7 @@ const navItems: NavItem[] = [
   { to: '/cash-flow', label: 'Cash Flow', icon: 'cashflow' },
   { to: '/budget', label: 'Budget', icon: 'budget' },
   { to: '/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
+  { to: '/chat', label: 'Ask AI', icon: 'chat' },
 ]
 
 const SIDEBAR_PREF_KEY = 'pnl-reporter.sidebar-collapsed'
@@ -57,6 +59,16 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
         <path d="M4 7h5v12H4z" />
         <path d="M10 4h5v15h-5z" />
         <path d="M16 10h4v9h-4z" />
+      </svg>
+    )
+  }
+
+  if (icon === 'chat') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 6h16v10H7l-3 3V6z" />
+        <path d="M8 10h8" />
+        <path d="M8 13h5" />
       </svg>
     )
   }
@@ -266,6 +278,7 @@ function AppShell() {
             <Route path="/cash-flow" element={<CashFlow />} />
             <Route path="/budget" element={<Budget />} />
             <Route path="/subscriptions" element={<Subscriptions />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
           </Routes>
         </main>
