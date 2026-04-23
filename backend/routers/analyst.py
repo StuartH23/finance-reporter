@@ -63,15 +63,113 @@ def _check_rate_limit(session_id: str) -> None:
     bucket.append(now)
 
 
+def _evenly_spaced_years(years: list[int], count: int) -> list[int]:
+    """Pick years spread across the available range when the cap is smaller."""
+    if count >= len(years):
+        return years
+    if count == 1:
+        return [years[len(years) // 2]]
+    return [
+        years[round(i * (len(years) - 1) / (count - 1))]
+        for i in range(count)
+    ]
+
+
+def _sample_invalid_fill(
+    valid: pd.DataFrame, invalid: pd.DataFrame, cap: int, random_state: int
+) -> pd.DataFrame:
+    """Return all valid rows plus enough invalid-date rows to reach the cap."""
+    if invalid.empty:
+        return valid
+    remainder = cap - len(valid)
+    sampled_invalid = invalid.sample(
+        n=min(remainder, len(invalid)), random_state=random_state
+    )
+    return pd.concat([valid, sampled_invalid], ignore_index=False)
+
+
+def _allocate_year_rows(counts: pd.Series, cap: int) -> pd.Series:
+    """Allocate a capped row budget while guaranteeing one row per year."""
+    allocation = pd.Series(1, index=counts.index, dtype="int64")
+    slack = counts - allocation
+    remaining = cap - int(allocation.sum())
+
+    if remaining <= 0 or int(slack.sum()) <= 0:
+        return allocation
+
+    scaled = slack * remaining / slack.sum()
+    extra = scaled.astype(int).clip(upper=slack)
+    allocation += extra
+    remaining -= int(extra.sum())
+
+    if remaining <= 0:
+        return allocation
+
+    fractional = (scaled - extra).sort_values(ascending=False)
+    for year in fractional.index:
+        if remaining == 0:
+            break
+        if allocation[year] < counts[year]:
+            allocation[year] += 1
+            remaining -= 1
+    return allocation
+
+
+def _sample_year_groups(
+    valid: pd.DataFrame, allocation: pd.Series, random_state: int
+) -> pd.DataFrame:
+    """Sample each year group according to its allocated row count."""
+    sampled = []
+    for year, year_count in allocation.items():
+        year_frame = valid[valid["year"] == year].drop(columns="year")
+        sampled.append(
+            year_frame.sample(n=int(year_count), random_state=random_state + int(year))
+        )
+    return pd.concat(sampled, ignore_index=False)
+
+
+def _sample_ledger_across_years(
+    df: pd.DataFrame, cap: int, random_state: int = 0
+) -> pd.DataFrame:
+    """Downsample by year so dense periods do not crowd out sparse years."""
+    if len(df) <= cap:
+        return df
+    if "date" not in df.columns:
+        return df.sample(n=cap, random_state=random_state)
+
+    valid = df[df["date"].notna()].copy()
+    invalid = df[df["date"].isna()].copy()
+    if valid.empty:
+        return df.sample(n=cap, random_state=random_state)
+    if len(valid) <= cap:
+        return _sample_invalid_fill(valid, invalid, cap, random_state)
+
+    valid["year"] = valid["date"].dt.year
+    counts = valid.groupby("year").size().sort_index()
+    years = counts.index.tolist()
+
+    if cap < len(years):
+        allocation = pd.Series(1, index=_evenly_spaced_years(years, cap), dtype="int64")
+        return _sample_year_groups(valid, allocation, random_state)
+
+    allocation = _allocate_year_rows(counts, cap)
+    return _sample_year_groups(valid, allocation, random_state)
+
+
 def _ledger_to_csv(df: pd.DataFrame) -> str:
-    """Serialize the ledger to CSV. If rows exceed the cap, sample uniformly
-    across the full date range so all years remain represented."""
+    """Serialize the ledger to CSV.
+
+    If rows exceed the cap, sample across calendar years so all available
+    periods remain represented instead of favoring dense recent years.
+    """
     if df.empty:
         return "(no ledger uploaded yet)"
     if "date" in df.columns:
         df = df.sort_values("date")
     if len(df) > MAX_LEDGER_ROWS:
-        df = df.sample(n=MAX_LEDGER_ROWS, random_state=0).sort_values("date")
+        df = _sample_ledger_across_years(df, MAX_LEDGER_ROWS, random_state=0)
+        if "date" in df.columns:
+            df = df.sort_values("date")
     return df.to_csv(index=False)
 
 
