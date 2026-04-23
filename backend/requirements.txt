@@ -6,4 +6,5 @@ python-dateutil>=2.9.0
 pdfplumber>=0.11.4
 httpx>=0.28.0
 PyJWT[crypto]>=2.10.1
+anthropic>=0.40.0
 pytest>=8.0.0
