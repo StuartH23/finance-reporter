@@ -19,12 +19,11 @@ router = APIRouter(tags=["analyst"])
 
 RATE_LIMIT_MAX = 5
 RATE_LIMIT_WINDOW_SECONDS = 30 * 60
-MAX_LEDGER_ROWS = 2000
-LEDGER_TRIM_DAYS = 365
+MAX_LEDGER_ROWS = 6000
 MAX_TOKENS = 1024
 MODEL_ID = "claude-haiku-4-5"
 
-SYSTEM_PROMPT = """You are a personal financial analyst. The user will upload a ledger CSV with columns: date, description, amount, category, source_file. Positive amounts are income; negative are expenses. Categories in {Credit Card Payments, Venmo Transfers, Personal Transfers, Investments} are transfers — exclude them from P&L unless explicitly asked.
+SYSTEM_PROMPT = """You are a personal financial analyst. The user may upload one or more statements (CSV or PDF) spanning multiple months or years. All transactions are combined into a single ledger CSV with columns: date, description, amount, category, source_file. Positive amounts are income; negative are expenses. Categories in {Credit Card Payments, Venmo Transfers, Personal Transfers, Investments} are transfers — exclude them from P&L unless explicitly asked.
 
 Your job:
 - Answer questions about spending, income, trends, and anomalies
@@ -35,11 +34,13 @@ Your job:
 - Recommend concrete next actions with dollar impact (e.g. "cancel X, save $Y/mo")
 
 Rules:
-- Compute precisely from the CSV; show your arithmetic when the user asks
+- Before writing any dollar figure, sum the relevant rows from the CSV first. Never estimate or eyeball a total.
+- Every dollar amount you state must be an exact sum from the data, rounded to the nearest cent (e.g. $3,842.17). This applies to category totals, annual totals, per-merchant totals, and savings estimates derived from the data.
+- Never use ~, ≈, +, "about", "around", or ranges (e.g. "$X–$Y") for any amount you can calculate. If you cannot calculate it exactly, say so explicitly rather than guessing.
 - Always cite the month or date range a number came from
 - If a question needs data you don't have, ask — don't invent
 - Prefer tables and short bullets over long prose
-- Round dollars to the nearest cent; percentages to 1 decimal
+- Percentages to 1 decimal place
 - When the user asks an open question ("how am I doing?"), lead with the headline number, then 3–5 supporting bullets, then one recommended action"""
 
 _rate_limits: dict[str, deque[float]] = {}
@@ -63,13 +64,14 @@ def _check_rate_limit(session_id: str) -> None:
 
 
 def _ledger_to_csv(df: pd.DataFrame) -> str:
-    """Serialize the ledger to CSV, trimming very large ledgers to recent data."""
+    """Serialize the ledger to CSV. If rows exceed the cap, sample uniformly
+    across the full date range so all years remain represented."""
     if df.empty:
         return "(no ledger uploaded yet)"
-    if len(df) > MAX_LEDGER_ROWS and "date" in df.columns:
-        most_recent = pd.to_datetime(df["date"]).max()
-        cutoff = most_recent - pd.Timedelta(days=LEDGER_TRIM_DAYS)
-        df = df[pd.to_datetime(df["date"]) >= cutoff]
+    if "date" in df.columns:
+        df = df.sort_values("date")
+    if len(df) > MAX_LEDGER_ROWS:
+        df = df.sample(n=MAX_LEDGER_ROWS, random_state=0).sort_values("date")
     return df.to_csv(index=False)
 
 
@@ -108,13 +110,19 @@ def analyst_chat(
             messages=[{"role": m.role, "content": m.content} for m in req.messages],
         )
     except anthropic.RateLimitError as exc:
-        raise HTTPException(status_code=503, detail="Upstream model rate limit.") from exc
+        raise HTTPException(
+            status_code=503, detail="Upstream model rate limit."
+        ) from exc
     except anthropic.APIStatusError as exc:
         raise HTTPException(
             status_code=502, detail=f"Upstream model error: {exc.message}"
         ) from exc
     except anthropic.APIConnectionError as exc:
-        raise HTTPException(status_code=502, detail="Could not reach model API.") from exc
+        raise HTTPException(
+            status_code=502, detail="Could not reach model API."
+        ) from exc
 
-    text = next((b.text for b in result.content if getattr(b, "type", None) == "text"), "")
+    text = next(
+        (b.text for b in result.content if getattr(b, "type", None) == "text"), ""
+    )
     return AnalystChatResponse(content=text)

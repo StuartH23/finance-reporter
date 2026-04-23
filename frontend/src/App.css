@@ -1840,17 +1840,20 @@ textarea:focus {
   right: 24px;
   bottom: 24px;
   z-index: 50;
-  width: 360px;
+  width: clamp(360px, 38vw, 560px);
   max-width: calc(100vw - 32px);
-  height: 500px;
+  height: clamp(500px, 65vh, 780px);
   max-height: calc(100vh - 48px);
+  min-width: 320px;
+  min-height: 400px;
+  resize: both;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 14px;
   box-shadow: var(--shadow-soft);
-  overflow: hidden;
   color: var(--text);
 }
 
