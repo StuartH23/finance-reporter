@@ -282,17 +282,6 @@ export async function submitFeatureInterest(
   })
 }
 
-export type ChatMessage = { role: 'user' | 'assistant'; content: string }
-export type ChatResponse = { reply: string; tool_calls: string[] }
-
-export async function sendChat(messages: ChatMessage[]): Promise<ChatResponse> {
-  return request<ChatResponse>('/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
-  })
-}
-
 export class AnalystRateLimitError extends Error {
   retryAfterSeconds: number
   constructor(retryAfterSeconds: number) {
