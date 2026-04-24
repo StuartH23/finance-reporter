@@ -128,10 +128,7 @@ def _evenly_spaced_years(years: list[int], count: int) -> list[int]:
         return years
     if count == 1:
         return [years[len(years) // 2]]
-    return [
-        years[round(i * (len(years) - 1) / (count - 1))]
-        for i in range(count)
-    ]
+    return [years[round(i * (len(years) - 1) / (count - 1))] for i in range(count)]
 
 
 def _sample_invalid_fill(
