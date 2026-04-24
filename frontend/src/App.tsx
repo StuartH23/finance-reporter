@@ -4,7 +4,8 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import AnalystWidget from './components/AnalystWidget'
 import AuthRequiredScreen from './components/AuthRequiredScreen'
-import { resetDemoState } from './demo/demoApi'
+import { getDemoTransactions, resetDemoState } from './demo/demoApi'
+import { clearDemoSession, seedDemoSession } from './api/client'
 import { getDemoMode, setDemoMode } from './demo/mode'
 import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvider'
 import AuthCallback from './pages/AuthCallback'
@@ -145,6 +146,7 @@ function AppShell() {
     setDemoMode(true)
     setDemoModeEnabled(true)
     queryClient.clear()
+    void seedDemoSession(getDemoTransactions())
   }
 
   const currentReturnPath = `${location.pathname}${location.search}${location.hash}` || '/'
@@ -162,6 +164,7 @@ function AppShell() {
     setDemoMode(false)
     setDemoModeEnabled(false)
     queryClient.clear()
+    void clearDemoSession()
   }, [auth.isSignedIn, demoModeEnabled, queryClient])
 
   if (isAuthCallback) {
@@ -238,6 +241,7 @@ function AppShell() {
                       setDemoMode(false)
                       setDemoModeEnabled(false)
                       queryClient.clear()
+                      void clearDemoSession()
                     }
                     void auth.signIn(signInReturnPath)
                   }}

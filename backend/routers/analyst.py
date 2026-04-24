@@ -10,8 +10,9 @@ from collections import deque
 
 import anthropic
 import pandas as pd
-from fastapi import APIRouter, Cookie, HTTPException, Response
+from fastapi import APIRouter, Cookie, Header, HTTPException, Response
 
+from auth import get_auth_settings
 from routers.upload import ensure_session_id, get_session_ledger
 from schemas import AnalystChatRequest, AnalystChatResponse
 
@@ -103,6 +104,28 @@ If the request cannot be completed with the available data:
 - No fluff, no generic advice"""
 
 _rate_limits: dict[str, deque[float]] = {}
+
+
+def _is_authenticated(authorization: str | None) -> bool:
+    """Return True if the request carries a valid auth token or auth is disabled."""
+    try:
+        settings = get_auth_settings()
+    except Exception:
+        return False
+    from auth import LOCAL_AUTH_MODES
+    if settings.mode in LOCAL_AUTH_MODES:
+        return True
+    if not authorization:
+        return False
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return False
+    try:
+        from auth import _decode_cognito_access_token
+        _decode_cognito_access_token(token.strip(), settings)
+        return True
+    except Exception:
+        return False
 
 
 def _check_rate_limit(session_id: str) -> None:
@@ -234,9 +257,15 @@ def analyst_chat(
     req: AnalystChatRequest,
     response: Response,
     session_id: str | None = Cookie(default=None),
+    authorization: str | None = Header(default=None),
 ):
     """Answer a financial question about the session's ledger."""
     sid = ensure_session_id(response, session_id)
+
+    ledger = get_session_ledger(sid)
+    if ledger.empty and not _is_authenticated(authorization):
+        raise HTTPException(status_code=401, detail="Authentication required or demo session must be initialized.")
+
     _check_rate_limit(sid)
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -246,7 +275,15 @@ def analyst_chat(
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages must not be empty.")
 
-    ledger_csv = _ledger_to_csv(get_session_ledger(sid))
+    if req.demo_ledger_csv:
+        import io
+
+        df = pd.read_csv(io.StringIO(req.demo_ledger_csv))
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        ledger_csv = _ledger_to_csv(df)
+    else:
+        ledger_csv = _ledger_to_csv(ledger)
     client = anthropic.Anthropic(api_key=api_key)
 
     try:

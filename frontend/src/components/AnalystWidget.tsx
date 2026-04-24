@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { AnalystRateLimitError, postAnalystChat } from '../api/client'
 import type { AnalystMessage } from '../api/types'
+import { getDemoMode } from '../demo/mode'
 
 const STORAGE_KEY = 'analyst-history'
 
@@ -159,8 +160,9 @@ export default function AnalystWidget() {
       <div className="analyst-messages" ref={listRef}>
         {messages.length === 0 && (
           <div className="analyst-message assistant">
-            Ask me about your spending, trends, subscriptions, or budget. Upload a statement on the
-            Dashboard first if you haven't.
+            {getDemoMode()
+              ? "I have access to the demo account's transactions. Ask me about spending, budget, subscriptions, or anything else shown on the dashboard."
+              : 'Ask me about your spending, trends, subscriptions, or budget. Upload a statement on the Dashboard first if you haven\'t.'}
           </div>
         )}
         {messages.map((m, i) => (

@@ -307,3 +307,27 @@ export async function postAnalystChat(payload: AnalystChatRequest): Promise<Anal
   }
   return (await res.json()) as AnalystChatResponse
 }
+
+export type DemoTransaction = {
+  date: string
+  description: string
+  amount: number
+  category: string
+  source_file: string
+}
+
+export async function seedDemoSession(transactions: DemoTransaction[]): Promise<void> {
+  await fetch(`${BASE}/demo/seed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transactions }),
+    credentials: 'include',
+  })
+}
+
+export async function clearDemoSession(): Promise<void> {
+  await fetch(`${BASE}/demo/clear`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+}

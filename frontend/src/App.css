@@ -754,6 +754,7 @@
   gap: 0.68rem;
   align-items: center;
   transition: gap 0.2s ease;
+  overflow: hidden;
 }
 
 .spending-profile-visual.with-labels {
@@ -849,7 +850,7 @@
   border-radius: 10px;
   color: var(--text);
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) minmax(86px, auto) 34px;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 0.44rem;
   font-size: 0.74rem;
@@ -913,15 +914,14 @@
 .spending-legend-name {
   min-width: 0;
   text-align: left;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .spending-legend-metric {
   justify-self: end;
   text-align: right;
-  min-width: 92px;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   white-space: nowrap;
@@ -930,7 +930,6 @@
 .spending-legend-percent {
   justify-self: end;
   text-align: right;
-  min-width: 34px;
   color: var(--accent-strong);
   font-weight: 700;
   white-space: nowrap;
@@ -1103,13 +1102,20 @@
   color: var(--red);
 }
 
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
 table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.81rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
 }
 

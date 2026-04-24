@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { sendChat, type ChatMessage } from '../api/client'
+import { getDemoMode } from '../demo/mode'
 
 const SUGGESTIONS = [
   'Where am I spending the most money?',
@@ -9,11 +10,25 @@ const SUGGESTIONS = [
 ]
 
 function Chat() {
+  const isDemo = getDemoMode()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
+
+  if (isDemo) {
+    return (
+      <div>
+        <h1 className="page-title">Ask your finances</h1>
+        <p className="page-subtitle">
+          The AI chat assistant requires a signed-in account. Use the{' '}
+          <strong>Financial Analyst</strong> widget (bottom-right) to ask questions about the demo
+          data, or sign in to use the full chat experience.
+        </p>
+      </div>
+    )
+  }
 
   const send = async (text: string) => {
     const trimmed = text.trim()

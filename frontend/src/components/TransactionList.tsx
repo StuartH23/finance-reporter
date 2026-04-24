@@ -101,31 +101,33 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
       <h2>
         {title} ({count.toLocaleString()})
       </h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th style={{ textAlign: 'right' }}>Amount</th>
-            <th>Category</th>
-            <th>Source</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleRows.map(({ transaction: t, key }) => (
-            <tr key={key}>
-              <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
-              <td>{t.description}</td>
-              <td className={`amount ${t.amount >= 0 ? 'positive' : 'negative'}`}>
-                {t.amount < 0 ? '-' : ''}
-                {fmt(t.amount)}
-              </td>
-              <td>{t.category}</td>
-              <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.source_file}</td>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th style={{ textAlign: 'right' }}>Amount</th>
+              <th>Category</th>
+              <th className="col-source">Source</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {visibleRows.map(({ transaction: t, key }) => (
+              <tr key={key}>
+                <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
+                <td>{t.description}</td>
+                <td className={`amount ${t.amount >= 0 ? 'positive' : 'negative'}`}>
+                  {t.amount < 0 ? '-' : ''}
+                  {fmt(t.amount)}
+                </td>
+                <td>{t.category}</td>
+                <td className="col-source" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.source_file}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {count > 50 && (
         <button
           type="button"
