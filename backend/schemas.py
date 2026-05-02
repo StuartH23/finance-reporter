@@ -486,6 +486,7 @@ class AnalystMessage(BaseModel):
 
 class AnalystChatRequest(BaseModel):
     messages: list[AnalystMessage]
+    demo_ledger_csv: str | None = None
 
 
 class AnalystChatResponse(BaseModel):

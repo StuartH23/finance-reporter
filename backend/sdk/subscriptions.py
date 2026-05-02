@@ -11,38 +11,19 @@ import pandas as pd
 
 from .categories import TRANSFER_CATEGORIES
 
-CADENCE_DAYS = {
-    "weekly": 7,
-    "monthly": 30,
-    "annual": 365,
-}
-
-CADENCE_TOLERANCE_DAYS = {
-    "weekly": 2,
-    "monthly": 5,
-    "annual": 21,
+# (period_days, tolerance_days) per cadence
+CADENCES: dict[str, tuple[int, int]] = {
+    "weekly": (7, 2),
+    "monthly": (30, 5),
+    "annual": (365, 21),
 }
 
 MIN_CONFIDENCE = 0.55
 
 _NOISE_TOKENS = {
-    "ACH",
-    "AUTOPAY",
-    "PAYMENT",
-    "PURCHASE",
-    "CARD",
-    "CHECKCARD",
-    "POS",
-    "DEBIT",
-    "CREDIT",
-    "WITHDRAWAL",
-    "ONLINE",
-    "TRANSFER",
-    "RECURRING",
-    "DBT",
-    "PYMT",
-    "WWW",
-    "COM",
+    "ACH", "AUTOPAY", "PAYMENT", "PURCHASE", "CARD", "CHECKCARD", "POS",
+    "DEBIT", "CREDIT", "WITHDRAWAL", "ONLINE", "TRANSFER", "RECURRING",
+    "DBT", "PYMT", "WWW", "COM",
 }
 
 
@@ -52,7 +33,6 @@ class RecurringStream:
     merchant: str
     cadence: str
     confidence: float
-    expected_amount: float
     current_amount: float
     baseline_amount: float
     amount_trend: str
@@ -63,8 +43,20 @@ class RecurringStream:
     amount_series: list[float]
     date_series: list[str]
     price_increase: bool
-    is_new_recurring: bool
     missed_expected_charge: bool
+
+    @property
+    def expected_amount(self) -> float:
+        if not self.amount_series:
+            return 0.0
+        s = sorted(self.amount_series)
+        mid = len(s) // 2
+        median = s[mid] if len(s) % 2 else (s[mid - 1] + s[mid]) / 2
+        return round(median, 2)
+
+    @property
+    def is_new_recurring(self) -> bool:
+        return self.charge_count < 3
 
 
 def normalize_merchant(description: str) -> str:
@@ -73,63 +65,70 @@ def normalize_merchant(description: str) -> str:
     text = re.sub(r"[^A-Z0-9 ]", " ", text)
     text = re.sub(r"\b\d+\b", " ", text)
     tokens = [t for t in text.split() if len(t) > 1 and t not in _NOISE_TOKENS]
-    if not tokens:
-        return "UNKNOWN MERCHANT"
-    return " ".join(tokens[:4])
+    # Remove consecutive duplicates (e.g. "NETFLIX NETFLIX CA" → "NETFLIX CA")
+    deduped: list[str] = []
+    for token in tokens:
+        if not deduped or token != deduped[-1]:
+            deduped.append(token)
+    return " ".join(deduped[:4]) if deduped else "UNKNOWN MERCHANT"
 
 
 def _confidence(
     count: int,
-    cadence_days: int,
+    period_days: int,
     tolerance_days: int,
     date_series: pd.Series,
     amount_series: pd.Series,
-) -> tuple[float, float]:
+) -> float:
     if count < 2:
-        return 0.0, 0.0
+        return 0.0
 
     diffs = date_series.diff().dropna().dt.days.astype(float)
     if diffs.empty:
-        return 0.0, 0.0
+        return 0.0
 
     matches = 0
     for gap in diffs:
-        multiplier = max(1, min(4, round(gap / cadence_days)))
-        expected = cadence_days * multiplier
-        if abs(gap - expected) <= tolerance_days * multiplier:
+        multiplier = max(1, min(4, round(gap / period_days)))
+        if abs(gap - period_days * multiplier) <= tolerance_days * multiplier:
             matches += 1
     cadence_fit = matches / len(diffs)
 
     abs_amount = amount_series.abs()
     mean_amount = float(abs_amount.mean()) if not abs_amount.empty else 0.0
-    if mean_amount <= 0:
-        amount_stability = 0.0
-    else:
-        cv = float(abs_amount.std(ddof=0)) / mean_amount
-        amount_stability = max(0.0, min(1.0, 1.0 - cv))
+    amount_stability = (
+        max(0.0, min(1.0, 1.0 - float(abs_amount.std(ddof=0)) / mean_amount))
+        if mean_amount > 0 else 0.0
+    )
 
     count_score = min(1.0, count / 6)
-    score = (0.5 * cadence_fit) + (0.3 * count_score) + (0.2 * amount_stability)
-    return round(score, 3), cadence_fit
+    return round((0.5 * cadence_fit) + (0.3 * count_score) + (0.2 * amount_stability), 3)
 
 
 def _pick_cadence(group: pd.DataFrame) -> tuple[str | None, float]:
+    diffs = group["date"].sort_values().diff().dropna().dt.days.astype(float)
+    median_gap = float(diffs.median()) if not diffs.empty else 0.0
+
     best_name: str | None = None
     best_score = 0.0
-    for cadence_name, cadence_days in CADENCE_DAYS.items():
-        score, _ = _confidence(
+    for cadence_name, (period_days, tolerance_days) in CADENCES.items():
+        score = _confidence(
             count=len(group),
-            cadence_days=cadence_days,
-            tolerance_days=CADENCE_TOLERANCE_DAYS[cadence_name],
+            period_days=period_days,
+            tolerance_days=tolerance_days,
             date_series=group["date"],
             amount_series=group["amount"],
         )
-        if score > best_score:
-            best_name = cadence_name
-            best_score = score
-    if best_score < MIN_CONFIDENCE:
-        return None, best_score
-    return best_name, best_score
+        # When scores tie, prefer the cadence whose primary period is closest
+        # to the actual median gap — prevents weekly (7*4=28d) from beating
+        # monthly (30d) on charges that are clearly billed once a month.
+        closer = (
+            best_name is not None
+            and abs(period_days - median_gap) < abs(CADENCES[best_name][0] - median_gap)
+        )
+        if score > best_score or (score == best_score and closer):
+            best_name, best_score = cadence_name, score
+    return (best_name, best_score) if best_score >= MIN_CONFIDENCE else (None, best_score)
 
 
 def _stream_id(merchant: str, cadence: str) -> str:
@@ -143,8 +142,7 @@ def _amount_trend(amounts: pd.Series, threshold: float) -> tuple[str, float, flo
     if len(abs_amounts) <= 1:
         return "flat", current, current, False
 
-    baseline_series = abs_amounts.iloc[:-1]
-    baseline = float(baseline_series.median())
+    baseline = float(abs_amounts.iloc[:-1].median())
     if baseline <= 0:
         return "flat", baseline, current, False
 
@@ -170,6 +168,12 @@ def detect_recurring_streams(
     if debits.empty:
         return []
 
+    # Use the ledger's newest date as the reference so historical uploads
+    # aren't penalised by wall-clock drift when computing activity flags.
+    reference_date = ledger["date"].dropna().max()
+    if pd.isna(reference_date):
+        reference_date = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize()
+
     debits["merchant"] = debits["description"].apply(normalize_merchant)
 
     streams: list[RecurringStream] = []
@@ -182,23 +186,24 @@ def detect_recurring_streams(
         if cadence is None:
             continue
 
-        cadence_days = CADENCE_DAYS[cadence]
-        tolerance = CADENCE_TOLERANCE_DAYS[cadence]
+        period_days, tolerance = CADENCES[cadence]
         last_date = ordered["date"].iloc[-1]
-        next_expected = last_date + timedelta(days=cadence_days)
-        today = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize()
-        missed_expected = today > (next_expected + timedelta(days=tolerance))
-        active = (today - last_date) <= timedelta(days=(cadence_days + tolerance + 14))
+        next_expected = last_date + timedelta(days=period_days)
+        active = (reference_date - last_date) <= timedelta(days=period_days + tolerance + 14)
+        missed_expected = (
+            active
+            and len(ordered) >= 3
+            and reference_date > (next_expected + timedelta(days=tolerance))
+        )
 
         trend, baseline, current, price_increase = _amount_trend(
             ordered["amount"], price_increase_threshold
         )
-        stream = RecurringStream(
+        streams.append(RecurringStream(
             stream_id=_stream_id(merchant, cadence),
             merchant=merchant,
             cadence=cadence,
             confidence=confidence,
-            expected_amount=round(float(ordered["amount"].abs().median()), 2),
             current_amount=round(current, 2),
             baseline_amount=round(baseline, 2),
             amount_trend=trend,
@@ -206,13 +211,11 @@ def detect_recurring_streams(
             next_expected_charge_date=next_expected.strftime("%Y-%m-%d"),
             last_charge_date=last_date.strftime("%Y-%m-%d"),
             charge_count=len(ordered),
-            amount_series=[round(float(v), 2) for v in ordered["amount"].abs().tolist()],
-            date_series=[d.strftime("%Y-%m-%d") for d in ordered["date"].tolist()],
+            amount_series=[round(float(v), 2) for v in ordered["amount"].abs()],
+            date_series=[d.strftime("%Y-%m-%d") for d in ordered["date"]],
             price_increase=price_increase,
-            is_new_recurring=len(ordered) == 2,
-            missed_expected_charge=missed_expected and active,
-        )
-        streams.append(stream)
+            missed_expected_charge=missed_expected,
+        ))
 
     streams.sort(key=lambda s: (not s.active, -s.confidence, s.merchant))
     return streams
@@ -225,42 +228,43 @@ def build_subscription_payload(
     price_increase_threshold: float = 0.10,
 ) -> list[dict]:
     preferences = preferences or {}
-    streams = detect_recurring_streams(
-        ledger, price_increase_threshold=price_increase_threshold
-    )
+    streams = detect_recurring_streams(ledger, price_increase_threshold=price_increase_threshold)
     result: list[dict] = []
     for stream in streams:
         pref = preferences.get(stream.stream_id, {})
         ignored = bool(pref.get("ignored", False))
         essential = bool(pref.get("essential", False))
-        result.append(
-            {
-                "stream_id": stream.stream_id,
-                "merchant": stream.merchant,
-                "cadence": stream.cadence,
-                "confidence": stream.confidence,
-                "active": stream.active,
-                "ignored": ignored,
-                "essential": essential,
-                "amount": stream.current_amount,
-                "baseline_amount": stream.baseline_amount,
-                "expected_amount": stream.expected_amount,
-                "next_expected_charge_date": stream.next_expected_charge_date,
-                "last_charge_date": stream.last_charge_date,
-                "trend": stream.amount_trend,
-                "price_increase": stream.price_increase,
-                "charge_count": stream.charge_count,
-                "charge_history": [
-                    {"date": d, "amount": a}
-                    for d, a in zip(stream.date_series, stream.amount_series, strict=True)
-                ],
-                "cancellation_candidate": (not essential) and stream.active,
-                "negotiation_opportunity": stream.price_increase,
-                "is_new_recurring": stream.is_new_recurring,
-                "missed_expected_charge": stream.missed_expected_charge,
-            }
-        )
+        result.append({
+            "stream_id": stream.stream_id,
+            "merchant": stream.merchant,
+            "cadence": stream.cadence,
+            "confidence": stream.confidence,
+            "active": stream.active,
+            "ignored": ignored,
+            "essential": essential,
+            "amount": stream.current_amount,
+            "baseline_amount": stream.baseline_amount,
+            "expected_amount": stream.expected_amount,
+            "next_expected_charge_date": stream.next_expected_charge_date,
+            "last_charge_date": stream.last_charge_date,
+            "trend": stream.amount_trend,
+            "price_increase": stream.price_increase,
+            "charge_count": stream.charge_count,
+            "charge_history": [
+                {"date": d, "amount": a}
+                for d, a in zip(stream.date_series, stream.amount_series, strict=True)
+            ],
+            "cancellation_candidate": not essential and stream.active,
+            "negotiation_opportunity": stream.price_increase,
+            "is_new_recurring": stream.is_new_recurring,
+            "missed_expected_charge": stream.missed_expected_charge,
+        })
     return result
+
+
+def _make_alert(sub: dict, alert_type: str, message: str) -> dict:
+    return {"stream_id": sub["stream_id"], "merchant": sub["merchant"],
+            "alert_type": alert_type, "message": message}
 
 
 def build_alerts(subscriptions: list[dict], include_missed: bool = True) -> list[dict]:
@@ -269,33 +273,18 @@ def build_alerts(subscriptions: list[dict], include_missed: bool = True) -> list
         if sub["ignored"]:
             continue
         if sub["price_increase"]:
-            alerts.append(
-                {
-                    "stream_id": sub["stream_id"],
-                    "merchant": sub["merchant"],
-                    "alert_type": "price_increased",
-                    "message": (
-                        f"{sub['merchant']} increased from ${sub['baseline_amount']:.2f} "
-                        f"to ${sub['amount']:.2f}."
-                    ),
-                }
-            )
+            alerts.append(_make_alert(
+                sub, "price_increased",
+                f"{sub['merchant']} increased from ${sub['baseline_amount']:.2f} to ${sub['amount']:.2f}.",
+            ))
         if sub["is_new_recurring"]:
-            alerts.append(
-                {
-                    "stream_id": sub["stream_id"],
-                    "merchant": sub["merchant"],
-                    "alert_type": "new_recurring_charge_detected",
-                    "message": f"New recurring charge detected for {sub['merchant']}.",
-                }
-            )
+            alerts.append(_make_alert(
+                sub, "new_recurring_charge_detected",
+                f"New recurring charge detected for {sub['merchant']}.",
+            ))
         if include_missed and sub["missed_expected_charge"]:
-            alerts.append(
-                {
-                    "stream_id": sub["stream_id"],
-                    "merchant": sub["merchant"],
-                    "alert_type": "missed_expected_charge",
-                    "message": f"Expected charge for {sub['merchant']} appears to be missed.",
-                }
-            )
+            alerts.append(_make_alert(
+                sub, "missed_expected_charge",
+                f"Expected charge for {sub['merchant']} appears to be missed.",
+            ))
     return alerts

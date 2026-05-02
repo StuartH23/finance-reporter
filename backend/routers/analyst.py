@@ -263,7 +263,7 @@ def analyst_chat(
     sid = ensure_session_id(response, session_id)
 
     ledger = get_session_ledger(sid)
-    if ledger.empty and not _is_authenticated(authorization):
+    if ledger.empty and not req.demo_ledger_csv and not _is_authenticated(authorization):
         raise HTTPException(status_code=401, detail="Authentication required or demo session must be initialized.")
 
     _check_rate_limit(sid)

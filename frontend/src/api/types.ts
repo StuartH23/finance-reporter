@@ -425,6 +425,7 @@ export interface AnalystMessage {
 
 export interface AnalystChatRequest {
   messages: AnalystMessage[]
+  demo_ledger_csv?: string
 }
 
 export interface AnalystChatResponse {

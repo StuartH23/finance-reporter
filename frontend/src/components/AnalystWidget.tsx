@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { AnalystRateLimitError, postAnalystChat } from '../api/client'
 import type { AnalystMessage } from '../api/types'
+import { getDemoLedgerCsv } from '../demo/demoApi'
 import { getDemoMode } from '../demo/mode'
 
 const STORAGE_KEY = 'analyst-history'
@@ -88,7 +89,10 @@ export default function AnalystWidget() {
     setMessages(nextMessages)
     setInput('')
     setErrorMsg(null)
-    mutation.mutate({ messages: nextMessages })
+    mutation.mutate({
+      messages: nextMessages,
+      ...(getDemoMode() && { demo_ledger_csv: getDemoLedgerCsv() }),
+    })
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
