@@ -384,10 +384,10 @@ function SpendingPieChart({ showBreakdownTable = true, year }: SpendingPieChartP
             <thead>
               <tr>
                 <th>Category</th>
-                <th style={{ textAlign: 'right' }}>Income</th>
-                <th style={{ textAlign: 'right' }}>Expenses</th>
-                <th style={{ textAlign: 'right' }}>Net</th>
-                <th style={{ textAlign: 'right' }}>Txns</th>
+                <th className="u-text-right">Income</th>
+                <th className="u-text-right">Expenses</th>
+                <th className="u-text-right">Net</th>
+                <th className="u-text-right">Txns</th>
               </tr>
             </thead>
             <tbody>

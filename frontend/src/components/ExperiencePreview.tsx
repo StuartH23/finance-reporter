@@ -4,18 +4,18 @@ interface ExperiencePreviewProps {
 
 const previewShots = [
   {
-    title: 'Dashboard Overview',
-    caption: 'KPI cards, monthly reports, and action feed in one screen.',
+    title: 'What Changed',
+    caption: 'Compare income, spending, and savings so the month has a clear status.',
     src: '/screenshots/preview-dashboard.svg',
   },
   {
-    title: 'Budget Planning',
-    caption: 'Set category limits and compare against recommended spending.',
+    title: 'Where Money Leaks',
+    caption: 'Spot budget pressure and unusual categories before they become habits.',
     src: '/screenshots/preview-budget.svg',
   },
   {
-    title: 'Subscription Center',
-    caption: 'Track recurring charges, detect increases, and act fast.',
+    title: 'What To Do Next',
+    caption: 'Review recurring charges, price increases, and the highest-impact next action.',
     src: '/screenshots/preview-subscriptions.svg',
   },
 ]
@@ -25,10 +25,10 @@ function ExperiencePreview({ onEnableDemo }: ExperiencePreviewProps) {
     <section className="card experience-preview">
       <div className="experience-header">
         <div>
-          <h2>Preview The Experience</h2>
+          <h2>Preview Maya's Money Checkup</h2>
           <p className="budget-hint">
-            See how Finance Reporter looks with populated data, then decide whether to upload your
-            own files.
+            Use sample data to see how the app explains what changed, what deserves attention, and
+            what action to take next.
           </p>
         </div>
         <button type="button" className="primary-button" onClick={onEnableDemo}>

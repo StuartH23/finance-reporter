@@ -72,19 +72,6 @@ function PrivacyNotice({
           have separate retention and logging behavior.
         </p>
       </div>
-      <style>{`
-        .privacy-consent {
-          display: flex;
-          gap: 0.55rem;
-          align-items: flex-start;
-          color: var(--text-muted);
-          font-size: 0.82rem;
-          margin: 0.4rem 0 0.8rem;
-        }
-        .privacy-consent input {
-          margin-top: 0.14rem;
-        }
-      `}</style>
     </div>
   )
 }

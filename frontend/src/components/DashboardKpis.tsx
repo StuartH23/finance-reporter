@@ -3,7 +3,7 @@ import { getCategoryBreakdown, getMonthlyPnl } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 
 function fmt(n: number) {
-  return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
 function toMonthDate(monthStr: string) {
@@ -39,61 +39,50 @@ function DashboardKpis() {
 
   if (!latest) return null
 
-  const investmentFromCategory =
-    categoryData?.categories
-      ?.filter((item) => item.category.toLowerCase().includes('invest'))
-      .reduce((sum, item) => sum + Math.max(0, item.expenses), 0) ?? 0
+  const topSpendingCategory = [...(categoryData?.spending_chart ?? [])].sort(
+    (a, b) => b.total - a.total,
+  )[0]
 
   const cards = [
     {
       key: 'earnings',
-      label: 'Total Earnings',
+      label: 'Income',
       value: latest.income,
       delta: pctChange(latest.income, previous?.income ?? latest.income),
-      icon: 'IN',
     },
     {
       key: 'spendings',
-      label: 'Total Spendings',
+      label: 'Spending',
       value: latest.expenses,
       delta: pctChange(latest.expenses, previous?.expenses ?? latest.expenses),
-      icon: 'SP',
     },
     {
       key: 'savings',
-      label: 'Total Savings',
+      label: 'Net Savings',
       value: Math.max(0, latest.net),
       delta: pctChange(Math.max(0, latest.net), Math.max(0, previous?.net ?? latest.net)),
-      icon: 'SV',
     },
     {
-      key: 'investment',
-      label: 'Total Investment',
-      value: investmentFromCategory,
+      key: 'largest-category',
+      label: topSpendingCategory?.category ?? 'Largest Category',
+      value: topSpendingCategory?.total ?? 0,
       delta: 0,
-      icon: 'IV',
     },
   ]
 
   return (
-    <section className="dashboard-kpis">
+    <section className="kpi-strip" aria-label="What changed">
       {cards.map((card) => {
         const positive = card.delta >= 0
         return (
-          <article key={card.key} className="kpi-card">
-            <div className="kpi-head">
-              <p>{card.label}</p>
-              <span className="kpi-icon">{card.icon}</span>
-            </div>
-            <p className="kpi-value">{fmt(card.value)}</p>
-            <div className="kpi-foot">
-              <span className={`kpi-pill ${positive ? 'positive' : 'negative'}`}>
-                {positive ? '+' : ''}
-                {Math.abs(card.delta).toFixed(1)}%
-              </span>
-              <span>from last month</span>
-            </div>
-          </article>
+          <div key={card.key} className="kpi-stat">
+            <span className="kpi-stat-label">{card.label}</span>
+            <span className="kpi-stat-value">{fmt(card.value)}</span>
+            <span className={`kpi-stat-delta ${positive ? 'pos' : 'neg'}`}>
+              {positive ? '+' : ''}
+              {Math.abs(card.delta).toFixed(1)}%<span> vs last month</span>
+            </span>
+          </div>
         )
       })}
     </section>

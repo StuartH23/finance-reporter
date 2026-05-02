@@ -32,7 +32,7 @@ function InsightsPanel() {
     return (
       <div className="card">
         <h2>Coach Insights</h2>
-        <div className="empty-state" style={{ padding: '1rem 0.5rem' }}>
+        <div className="empty-state empty-state-compact">
           Upload at least two full months of data to unlock actionable coaching insights.
         </div>
       </div>
@@ -69,9 +69,7 @@ function InsightsPanel() {
               <span className="insight-confidence">Confidence {pct(item.confidence)}</span>
             </div>
             {view === 'digest' ? (
-              <p className="budget-hint" style={{ marginBottom: 0 }}>
-                {item.digest}
-              </p>
+              <p className="budget-hint u-mb-0">{item.digest}</p>
             ) : (
               <>
                 <p>{item.observation}</p>

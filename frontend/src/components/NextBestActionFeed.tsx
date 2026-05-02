@@ -78,23 +78,21 @@ function NextBestActionFeed() {
       )}
 
       {actions.length > 0 && (
-        <div className="nba-grid">
+        <div className="nba-list">
           {actions.map((action) => (
-            <article className="nba-card" key={action.action_id}>
-              <div className="nba-header">
+            <div className="nba-row" key={action.action_id}>
+              <div className="nba-row-meta">
                 <span className="nba-type">{typeLabel(action.action_type)}</span>
                 <span className="nba-impact">{fmt(action.impact_monthly)}/mo</span>
               </div>
-              <h3>{action.title}</h3>
-              <p>{action.rationale}</p>
-              <p className="budget-hint">{action.impact_estimate}</p>
-              <div className="nba-actions">
+              <p className="nba-row-title">{action.title}</p>
+              <div className="nba-row-actions">
                 <button
                   type="button"
-                  className="primary-button"
+                  className="ghost-button"
                   onClick={() => submitFeedback(action.action_id, 'completed')}
                 >
-                  Complete
+                  Done
                 </button>
                 <button
                   type="button"
@@ -103,15 +101,8 @@ function NextBestActionFeed() {
                 >
                   Dismiss
                 </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => submitFeedback(action.action_id, 'snoozed')}
-                >
-                  Snooze
-                </button>
               </div>
-            </article>
+            </div>
           ))}
         </div>
       )}

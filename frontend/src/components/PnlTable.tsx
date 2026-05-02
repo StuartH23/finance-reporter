@@ -49,29 +49,19 @@ function PnlTable({ onActiveYearChange }: PnlTableProps) {
       {yearly.length > 0 && (
         <div className="card">
           <h2>Yearly P&L</h2>
-          <p className="budget-hint" style={{ marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
+          <p className="budget-hint pnl-note">
             P&amp;L excludes transfer categories (credit card payments, Venmo/personal transfers,
             investments).
           </p>
-          <div style={{ marginBottom: '1rem' }}>
-            <label
-              htmlFor="pnl-year-select"
-              style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}
-            >
+          <div className="control-row">
+            <label htmlFor="pnl-year-select" className="inline-field-label">
               Year
             </label>
             <select
               id="pnl-year-select"
               value={activeYear ?? ''}
               onChange={(e) => setSelectedYear(Number.parseInt(e.target.value, 10))}
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
-                borderRadius: 6,
-                padding: '0.35rem 0.55rem',
-                fontSize: '0.85rem',
-              }}
+              className="compact-select"
             >
               {availableYears
                 .slice()
@@ -84,8 +74,8 @@ function PnlTable({ onActiveYearChange }: PnlTableProps) {
             </select>
           </div>
           {selectedYearly && (
-            <div style={{ marginBottom: '0.5rem' }}>
-              <div className="metrics-row" style={{ marginBottom: 0 }}>
+            <div className="u-mb-sm">
+              <div className="metrics-row flush">
                 <div className="metric">
                   <div className="label">Income</div>
                   <div className="value positive">{fmt(selectedYearly.income)}</div>
@@ -120,9 +110,9 @@ function PnlTable({ onActiveYearChange }: PnlTableProps) {
             <thead>
               <tr>
                 <th>Month</th>
-                <th style={{ textAlign: 'right' }}>Income</th>
-                <th style={{ textAlign: 'right' }}>Expenses</th>
-                <th style={{ textAlign: 'right' }}>Net</th>
+                <th className="u-text-right">Income</th>
+                <th className="u-text-right">Expenses</th>
+                <th className="u-text-right">Net</th>
               </tr>
             </thead>
             <tbody>

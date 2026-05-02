@@ -107,7 +107,7 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
             <tr>
               <th>Date</th>
               <th>Description</th>
-              <th style={{ textAlign: 'right' }}>Amount</th>
+              <th className="u-text-right">Amount</th>
               <th>Category</th>
               <th className="col-source">Source</th>
             </tr>
@@ -115,14 +115,14 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
           <tbody>
             {visibleRows.map(({ transaction: t, key }) => (
               <tr key={key}>
-                <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
+                <td className="u-nowrap">{t.date}</td>
                 <td>{t.description}</td>
                 <td className={`amount ${t.amount >= 0 ? 'positive' : 'negative'}`}>
                   {t.amount < 0 ? '-' : ''}
                   {fmt(t.amount)}
                 </td>
                 <td>{t.category}</td>
-                <td className="col-source" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.source_file}</td>
+                <td className="col-source u-muted-source">{t.source_file}</td>
               </tr>
             ))}
           </tbody>
@@ -132,12 +132,7 @@ function TransactionList({ title = 'All Transactions', filters }: TransactionLis
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="ghost-button"
-          style={{
-            marginTop: '0.75rem',
-            padding: '0.4rem 1rem',
-            fontSize: '0.8rem',
-          }}
+          className="ghost-button transaction-toggle"
         >
           {expanded ? 'Show less' : `Show all ${count.toLocaleString()} transactions`}
         </button>

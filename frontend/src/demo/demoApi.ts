@@ -461,10 +461,11 @@ export function getDemoTransactions() {
 }
 
 export function getDemoLedgerCsv(): string {
-  const escape = (s: string) => `"${s.replaceAll('"', '""')}"`
+  const csvEscape = (s: string) => `"${s.replaceAll('"', '""')}"`
   const header = 'date,description,amount,category,source_file'
   const rows = demoState.transactions.map(
-    (tx) => `${tx.date},${escape(tx.description)},${tx.amount},${escape(tx.category)},${escape(tx.source_file)}`,
+    (tx) =>
+      `${tx.date},${csvEscape(tx.description)},${tx.amount},${csvEscape(tx.category)},${csvEscape(tx.source_file)}`,
   )
   return [header, ...rows].join('\n')
 }

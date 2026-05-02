@@ -292,12 +292,20 @@ export class AnalystRateLimitError extends Error {
 }
 
 export async function postAnalystChat(payload: AnalystChatRequest): Promise<AnalystChatResponse> {
-  const init = await withAuthHeader({
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  const res = await fetch(`${BASE}/analyst/chat`, init)
+  const isDemoChat = Boolean(payload.demo_ledger_csv)
+  const init = isDemoChat
+    ? {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include' as const,
+      }
+    : await withAuthHeader({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+  const res = await fetch(`${BASE}${isDemoChat ? '/demo/analyst/chat' : '/analyst/chat'}`, init)
   if (res.status === 429) {
     const retryAfter = Number.parseInt(res.headers.get('Retry-After') ?? '1800', 10)
     throw new AnalystRateLimitError(Number.isFinite(retryAfter) ? retryAfter : 1800)
