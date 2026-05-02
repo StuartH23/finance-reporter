@@ -1,0 +1,20 @@
+@layer tokens, reset, base, layout, primitives, components, pages, utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=Sora:wght@500;600;700&display=swap");
+@import "./tokens.css";
+@import "./reset.css";
+@import "./base.css";
+@import "./layout/app-shell.css";
+@import "./primitives/ui.css";
+@import "./components/dashboard.css";
+@import "./components/cashflow.css";
+@import "./components/spending.css";
+@import "./components/budget.css";
+@import "./components/insights.css";
+@import "./components/subscriptions.css";
+@import "./components/privacy.css";
+@import "./components/uploader.css";
+@import "./components/analyst.css";
+@import "./pages/auth.css";
+@import "./pages/chat.css";
+@import "./utilities.css";

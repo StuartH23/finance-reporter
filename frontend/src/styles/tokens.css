@@ -1,0 +1,65 @@
+@layer tokens {
+  :root {
+    /* Canvas layers — depth via luminance, no shadows */
+    --bg: #030912;
+    --surface: #070e1d;
+    --surface-muted: #0c1628;
+    --surface-raised: rgba(255, 255, 255, 0.03);
+
+    /* Borders — translucent white (Linear system) */
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+
+    /* Text — four roles */
+    --text: #edf2fa;
+    --text-secondary: #96afc9;
+    --text-muted: #4c5f77;
+    --text-inverse: #ffffff;
+
+    /* Accent */
+    --accent: #3b82f6;
+    --accent-strong: #60a5fa;
+    --accent-soft: rgba(59, 130, 246, 0.15);
+
+    /* Semantic */
+    --green: #22c55e;
+    --green-soft: rgba(34, 197, 94, 0.12);
+    --green-text-soft: #8ed8b3;
+    --red: #f87171;
+    --red-strong: #a03137;
+    --red-soft: rgba(239, 68, 68, 0.08);
+    --red-border: rgba(239, 68, 68, 0.22);
+    --red-text-soft: #fca5a5;
+    --yellow: #fbbf24;
+    --yellow-soft: rgba(233, 193, 105, 0.12);
+
+    /* Reusable UI colors */
+    --overlay: rgba(0, 0, 0, 0.78);
+    --modal-overlay: rgba(15, 35, 63, 0.55);
+    --hover-surface: rgba(255, 255, 255, 0.05);
+    --active-surface: rgba(255, 255, 255, 0.08);
+    --table-head-bg: #102847;
+    --field-bg: #101a2d;
+    --panel-blue: #0f2a49;
+    --panel-blue-border: #24517f;
+    --chart-shell-bg: #0b1830;
+    --mobile-nav-bg: #091629;
+    --mobile-nav-text: #566a84;
+    --focus-ring: rgba(36, 128, 255, 0.26);
+    --focus-border: #2d8af5;
+    --scrollbar-track: rgba(7, 14, 29, 0.92);
+    --scrollbar-thumb: rgba(96, 165, 250, 0.34);
+    --scrollbar-thumb-subtle: rgba(150, 175, 201, 0.3);
+    --scrollbar-thumb-hover: rgba(96, 165, 250, 0.62);
+
+    /* No shadows — Revolut/Linear approach */
+    --shadow-soft: none;
+    --shadow-card: none;
+
+    /* Radius scale */
+    --radius-sm: 4px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+  }
+}

@@ -1,0 +1,74 @@
+@layer components {
+  /* === Cash Flow === */
+
+  .cashflow-card {
+    padding: 0.82rem;
+  }
+
+  .cashflow-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .cashflow-head h2 {
+    margin-bottom: 0;
+  }
+
+  .cashflow-head span {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+  }
+
+  .cashflow-controls {
+    display: inline-flex;
+    gap: 0.52rem;
+    flex-wrap: wrap;
+  }
+
+  .cashflow-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    font-size: 0.69rem;
+    color: var(--text-muted);
+  }
+
+  .cashflow-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-top: 0.78rem;
+  }
+
+  .cashflow-summary p {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background:
+      linear-gradient(135deg, rgba(16, 41, 73, 0.5), rgba(11, 31, 60, 0.25)), var(--surface);
+    padding: 0.48rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.14rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .cashflow-summary p:hover {
+    border-color: var(--border-strong);
+  }
+
+  .cashflow-summary span {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .cashflow-summary strong {
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+}

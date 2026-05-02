@@ -1,0 +1,256 @@
+@layer components {
+  .upload-card {
+    scroll-margin-top: 0.9rem;
+  }
+
+  .upload-option-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .upload-option-header h2 {
+    margin-bottom: 0.34rem;
+  }
+
+  .upload-option-actions,
+  .upload-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.44rem;
+    flex-wrap: wrap;
+  }
+
+  .upload-options {
+    margin-top: 0.72rem;
+  }
+
+  .upload-inline-actions {
+    margin-top: 0.55rem;
+  }
+
+  .guest-demo-lock {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    padding: 0.78rem 0.85rem;
+    font-size: 0.84rem;
+  }
+
+  .drop-zone {
+    width: 100%;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .drop-zone:hover,
+  .drop-zone.active {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .upload-results {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+  }
+
+  .upload-results-list {
+    max-height: 8.75rem;
+    overflow-y: auto;
+    padding-right: 0.2rem;
+  }
+
+  .privacy-inline-note {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin-bottom: 0;
+  }
+
+  .upload-options > .privacy-inline-note {
+    margin-bottom: 0.6rem;
+  }
+
+  .upload-result {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .upload-result span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .upload-result span:last-child {
+    flex: 0 0 auto;
+  }
+
+  .upload-result.ok span:last-child {
+    color: var(--green);
+  }
+
+  .upload-result.error span:last-child {
+    color: var(--red);
+  }
+
+  .upload-summary {
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .upload-privacy-confirmation {
+    margin-top: 0.5rem;
+    color: var(--green);
+    font-size: 0.78rem;
+  }
+
+  .error-text {
+    color: var(--red);
+    margin-top: 0.5rem;
+  }
+
+  .privacy-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--modal-overlay);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1200;
+  }
+
+  .privacy-modal {
+    position: relative;
+    width: min(920px, 95vw);
+    max-height: 92vh;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .privacy-modal-content {
+    padding: 1rem 1.1rem 0.85rem;
+    background: var(--surface);
+    overflow-y: auto;
+  }
+
+  .privacy-modal-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.6rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .privacy-modal-close:hover {
+    background: var(--hover-surface);
+    color: var(--text);
+  }
+
+  .privacy-modal-content h2 {
+    margin-bottom: 0.75rem;
+    color: var(--text);
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .privacy-modal-content .privacy-notice-updated {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .privacy-modal-content .privacy-notice-intro {
+    color: var(--text);
+    margin-bottom: 0.85rem;
+    font-size: 0.86rem;
+  }
+
+  .privacy-modal-content .privacy-consent {
+    margin: 0 0 0.9rem;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+  }
+
+  .privacy-modal-content .privacy-notice-section + .privacy-notice-section {
+    margin-top: 0.85rem;
+  }
+
+  .privacy-modal-content .privacy-notice-section h3 {
+    color: var(--text);
+    margin-bottom: 0.28rem;
+    font-size: 0.88rem;
+  }
+
+  .privacy-modal-content .privacy-notice-section p {
+    color: var(--text-muted);
+    line-height: 1.48;
+    font-size: 0.86rem;
+    max-width: 84ch;
+  }
+
+  .privacy-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface-muted);
+  }
+
+  .danger-button {
+    border: 1px solid var(--red);
+    background: var(--red);
+    color: var(--text-inverse);
+    border-radius: 6px;
+    padding: 0.52rem 0.72rem;
+    font-size: 0.8rem;
+  }
+
+  .danger-button:hover {
+    background: var(--red-strong);
+    border-color: var(--red-strong);
+  }
+
+  @media (max-width: 720px) {
+    .upload-option-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .upload-option-actions {
+      justify-content: flex-start;
+    }
+
+    .upload-option-actions .primary-button,
+    .upload-option-actions .ghost-button {
+      flex: 1 1 150px;
+    }
+  }
+}

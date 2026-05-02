@@ -1,0 +1,41 @@
+@layer components {
+  .privacy-notice-updated {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    margin-bottom: 0.42rem;
+  }
+
+  .privacy-notice-intro {
+    color: var(--text);
+    font-size: 0.82rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .privacy-consent {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin: 0.4rem 0 0.8rem;
+  }
+
+  .privacy-consent input {
+    margin-top: 0.14rem;
+  }
+
+  .privacy-notice-section + .privacy-notice-section {
+    margin-top: 0.6rem;
+  }
+
+  .privacy-notice-section h3 {
+    color: var(--text);
+    font-size: 0.78rem;
+    margin-bottom: 0.18rem;
+  }
+
+  .privacy-notice-section p {
+    color: var(--text-muted);
+    font-size: 0.77rem;
+  }
+}

@@ -1,11 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Navigate,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
+import { clearDemoSession, seedDemoSession } from './api/client'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
-import AnalystWidget from './components/AnalystWidget'
 import AuthRequiredScreen from './components/AuthRequiredScreen'
 import { getDemoTransactions, resetDemoState } from './demo/demoApi'
-import { clearDemoSession, seedDemoSession } from './api/client'
 import { getDemoMode, setDemoMode } from './demo/mode'
 import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvider'
 import AuthCallback from './pages/AuthCallback'
@@ -14,7 +21,6 @@ import CashFlow from './pages/CashFlow'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
 import Subscriptions from './pages/Subscriptions'
-import './App.css'
 
 type NavItem = {
   to: string
@@ -31,6 +37,25 @@ const navItems: NavItem[] = [
 ]
 
 const SIDEBAR_PREF_KEY = 'pnl-reporter.sidebar-collapsed'
+
+function MobileNav() {
+  return (
+    <nav className="mobile-nav" aria-label="Mobile Navigation">
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.to === '/'}
+          className="mobile-nav-link"
+          aria-label={item.label}
+        >
+          <NavIcon icon={item.icon} />
+          <span>{item.label}</span>
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
 
 function NavIcon({ icon }: { icon: NavItem['icon'] }) {
   if (icon === 'budget') {
@@ -70,16 +95,6 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
         <path d="M4 7h5v12H4z" />
         <path d="M10 4h5v15h-5z" />
         <path d="M16 10h4v9h-4z" />
-      </svg>
-    )
-  }
-
-  if (icon === 'chat') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 6h16v10H7l-3 3V6z" />
-        <path d="M8 10h8" />
-        <path d="M8 13h5" />
       </svg>
     )
   }
@@ -183,6 +198,7 @@ function AppShell() {
 
   return (
     <div className={`app ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <MobileNav />
       <aside
         className={`icon-rail ${sidebarCollapsed ? 'collapsed' : ''}`}
         aria-label="Primary Navigation"
@@ -252,7 +268,7 @@ function AppShell() {
             )}
             <button
               type="button"
-              className="header-button secondary"
+              className="header-button secondary hide-mobile"
               onClick={() => dispatchDashboardEvent('app:view-reports')}
             >
               View Reports
@@ -293,11 +309,11 @@ function AppShell() {
             <Route path="/budget" element={<Budget />} />
             <Route path="/subscriptions" element={<Subscriptions />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/goals" element={<Navigate to="/budget" replace />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
           </Routes>
         </main>
       </section>
-      <AnalystWidget />
     </div>
   )
 }

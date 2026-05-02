@@ -1,0 +1,371 @@
+@layer components {
+  .spending-profile-body {
+    display: grid;
+    gap: 0.68rem;
+  }
+
+  .spending-profile-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 0.46rem;
+    margin: -0.26rem 0 0.72rem;
+  }
+
+  .spending-summary-chip {
+    min-width: 0;
+    border: 1px solid rgba(74, 118, 170, 0.52);
+    border-radius: 10px;
+    padding: 0.48rem 0.54rem;
+    background:
+      linear-gradient(135deg, rgba(31, 74, 123, 0.42), rgba(12, 35, 67, 0.18)), var(--surface-muted);
+  }
+
+  .spending-summary-chip.primary {
+    border-color: rgba(51, 183, 240, 0.62);
+    background:
+      radial-gradient(circle at 0% 0%, rgba(51, 183, 240, 0.24), transparent 58%),
+      linear-gradient(135deg, rgba(31, 74, 123, 0.5), rgba(12, 35, 67, 0.2)), var(--surface-muted);
+  }
+
+  .spending-summary-label {
+    display: block;
+    margin-bottom: 0.18rem;
+    color: var(--text-muted);
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .spending-summary-value {
+    display: block;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .spending-summary-detail {
+    display: block;
+    margin-top: 0.16rem;
+    color: var(--accent-strong);
+    font-size: 0.63rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .spending-profile-visual {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.86fr) minmax(200px, 1.14fr);
+    gap: 0.68rem;
+    align-items: center;
+    transition: gap 0.2s ease;
+    overflow: hidden;
+  }
+
+  .spending-profile-visual.with-labels {
+    grid-template-columns: minmax(280px, 1.12fr) minmax(220px, 0.88fr);
+  }
+
+  .spending-profile-visual.stacked {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 0.56rem;
+  }
+
+  .spending-profile-chart-shell {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    max-width: 264px;
+    justify-self: center;
+    transition: max-width 0.2s ease;
+  }
+
+  .spending-profile-visual.with-labels .spending-profile-chart-shell,
+  .spending-profile-visual.stacked .spending-profile-chart-shell {
+    max-width: none;
+  }
+
+  .spending-donut-center {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    justify-items: center;
+    gap: 0.14rem;
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .spending-donut-center-kicker {
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  .spending-donut-center-total {
+    font-size: 0.84rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .spending-donut-center-top {
+    font-size: 0.64rem;
+    color: var(--accent-strong);
+    font-weight: 700;
+  }
+
+  .spending-pie-label {
+    fill: var(--accent-strong);
+    font-weight: 700;
+    text-shadow: 0 0 5px rgba(11, 31, 60, 0.45);
+    pointer-events: none;
+  }
+
+  .spending-profile-body .recharts-sector:focus,
+  .spending-profile-body .recharts-sector:focus-visible {
+    outline: none;
+  }
+
+  .spending-profile-body .recharts-pie-label-line {
+    stroke: rgba(133, 196, 246, 0.58);
+    stroke-width: 1.1;
+  }
+
+  .spending-profile-legend {
+    min-width: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.26rem;
+    align-content: start;
+  }
+
+  .spending-legend-item {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    width: 100%;
+    border: 1px solid var(--border);
+    background:
+      linear-gradient(135deg, rgba(20, 48, 88, 0.68), rgba(12, 35, 67, 0.42)), var(--surface);
+    border-radius: 10px;
+    color: var(--text);
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.44rem;
+    font-size: 0.74rem;
+    padding: 0.42rem 0.52rem;
+    transition:
+      border-color 0.18s ease,
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .spending-legend-item > :not(.spending-legend-share) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .spending-legend-share {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 0;
+    opacity: 0.18;
+    pointer-events: none;
+  }
+
+  .spending-legend-item:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(5, 12, 22, 0.3);
+  }
+
+  .spending-legend-item:focus-visible {
+    border-color: var(--accent);
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .spending-legend-item.active {
+    border-color: var(--accent);
+    transform: translateX(1px);
+  }
+
+  .spending-legend-item.dominant {
+    border-color: rgba(51, 183, 240, 0.52);
+  }
+
+  .spending-legend-item.active .spending-legend-share,
+  .spending-legend-item.dominant .spending-legend-share {
+    opacity: 0.26;
+  }
+
+  .spending-legend-item.muted {
+    opacity: 0.5;
+  }
+
+  .spending-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px rgba(10, 16, 24, 0.22);
+  }
+
+  .spending-legend-name {
+    min-width: 0;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .spending-legend-metric {
+    justify-self: end;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .spending-legend-percent {
+    justify-self: end;
+    text-align: right;
+    color: var(--accent-strong);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .spending-profile-visual.stacked .spending-legend-item {
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "dot name percent"
+      ". value value";
+    align-items: start;
+  }
+
+  .spending-profile-visual.stacked .spending-legend-dot {
+    grid-area: dot;
+    margin-top: 0.26rem;
+  }
+
+  .spending-profile-visual.stacked .spending-legend-name {
+    grid-area: name;
+  }
+
+  .spending-profile-visual.stacked .spending-legend-metric {
+    grid-area: value;
+    font-size: 0.71rem;
+    color: var(--text-muted);
+  }
+
+  .spending-profile-visual.stacked .spending-legend-percent {
+    grid-area: percent;
+  }
+
+  .spending-other-breakdown {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.62rem;
+    background:
+      linear-gradient(135deg, rgba(31, 74, 123, 0.28), rgba(10, 28, 54, 0.08)), var(--surface);
+  }
+
+  .spending-other-breakdown.active {
+    border-color: var(--accent);
+  }
+
+  .spending-other-breakdown-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.42rem;
+  }
+
+  .spending-other-breakdown-title {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .spending-other-breakdown-total {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  .spending-other-breakdown-count {
+    flex: 0 0 auto;
+    color: var(--accent-strong);
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .spending-other-breakdown-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .spending-other-breakdown-item {
+    min-width: min(100%, 152px);
+    border: 1px solid rgba(74, 118, 170, 0.46);
+    border-radius: 999px;
+    padding: 0.3rem 0.44rem 0.3rem 0.52rem;
+    background: linear-gradient(135deg, rgba(20, 48, 88, 0.5), rgba(10, 27, 52, 0.6));
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.46rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .spending-other-breakdown-item:hover {
+    border-color: rgba(74, 118, 170, 0.72);
+  }
+
+  .spending-other-breakdown-name {
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.76rem;
+    overflow-wrap: anywhere;
+  }
+
+  .spending-other-breakdown-value {
+    color: var(--text);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .spending-other-breakdown-metrics {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.36rem;
+  }
+
+  .spending-other-breakdown-percent {
+    color: var(--accent-strong);
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}

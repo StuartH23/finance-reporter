@@ -1,0 +1,69 @@
+@layer components {
+  .insights-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .insights-header-row h2 {
+    margin-bottom: 0;
+  }
+
+  .insights-toggle {
+    display: inline-flex;
+    gap: 0.32rem;
+  }
+
+  .insights-list {
+    display: grid;
+    gap: 0.62rem;
+  }
+
+  .insight-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.72rem;
+    background:
+      linear-gradient(135deg, rgba(16, 41, 73, 0.6), rgba(11, 31, 60, 0.3)), var(--surface);
+    transition: border-color 0.15s ease;
+  }
+
+  .insight-item:hover {
+    border-color: var(--border-strong);
+  }
+
+  .insight-item p {
+    margin: 0.22rem 0;
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+
+  .insight-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.62rem;
+    align-items: baseline;
+    margin-bottom: 0.36rem;
+  }
+
+  .insight-title-row h3 {
+    font-size: 0.86rem;
+    margin: 0;
+  }
+
+  .insight-confidence {
+    color: var(--text-muted);
+    font-size: 0.73rem;
+  }
+
+  .insight-item .insight-label {
+    color: var(--text-muted);
+    font-size: 0.71rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 0.45rem;
+  }
+}

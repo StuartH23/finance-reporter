@@ -1,0 +1,75 @@
+@layer utilities {
+  .u-hidden-input {
+    display: none;
+  }
+
+  .u-text-right {
+    text-align: right;
+  }
+
+  .u-nowrap {
+    white-space: nowrap;
+  }
+
+  .u-muted-source {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .u-mb-0 {
+    margin-bottom: 0;
+  }
+
+  .u-mb-sm {
+    margin-bottom: 0.5rem;
+  }
+
+  .u-mb-md {
+    margin-bottom: 0.75rem;
+  }
+
+  .u-mb-lg {
+    margin-bottom: 1rem;
+  }
+
+  .u-mt-sm {
+    margin-top: 0.5rem;
+  }
+
+  .u-mt-md {
+    margin-top: 0.8rem;
+  }
+
+  .u-mt-lg {
+    margin-top: 1rem;
+  }
+
+  .u-inline-cluster {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+  }
+
+  .u-pill-cluster {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+  }
+
+  .u-pill-cluster.compact {
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .u-active-control {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .u-danger-text {
+    color: var(--red);
+    margin-top: 0.5rem;
+  }
+}
