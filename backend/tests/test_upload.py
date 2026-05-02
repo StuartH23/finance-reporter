@@ -5,6 +5,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from fastapi.testclient import TestClient
+
+from main import app
+from routers import upload as upload_router
 from routers.upload import _process_csv, _session_cookie_options
 
 
@@ -64,3 +68,33 @@ def test_session_cookie_samesite_none_forces_secure(monkeypatch):
     options = _session_cookie_options()
 
     assert options == {"httponly": True, "samesite": "none", "secure": True}
+
+
+def test_oversized_upload_does_not_replace_existing_ledger(monkeypatch):
+    client = TestClient(app)
+    initial = b"Date,Description,Amount\n2025-01-01,Existing,100.00\n"
+    upload = client.post(
+        "/api/upload",
+        files=[("files", ("initial.csv", initial, "text/csv"))],
+    )
+    assert upload.status_code == 200
+
+    monkeypatch.setattr(upload_router, "MAX_UPLOAD_BYTES", 10)
+    oversized = client.post(
+        "/api/upload",
+        files=[
+            (
+                "files",
+                (
+                    "large.csv",
+                    b"Date,Description,Amount\n2025-01-02,Large,200.00\n",
+                    "text/csv",
+                ),
+            )
+        ],
+    )
+
+    assert oversized.status_code == 413
+    ledger = client.get("/api/ledger").json()
+    assert ledger["count"] == 1
+    assert ledger["transactions"][0]["description"] == "Existing"

@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from auth import get_current_user
 from main import app
+from routers.upload import _session_last_seen, _session_owners, _sessions
 
 
 AUTH_ENV_VARS = (
@@ -95,6 +96,66 @@ def test_public_write_routes_require_auth_in_cognito_mode(monkeypatch):
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Missing bearer token."
+
+
+def test_analyst_chat_requires_auth_in_cognito_mode(monkeypatch):
+    _clear_auth_env(monkeypatch)
+    monkeypatch.setenv("AUTH_MODE", "cognito")
+    monkeypatch.setenv("COGNITO_REGION", "us-east-1")
+    monkeypatch.setenv("COGNITO_USER_POOL_ID", "us-east-1_example")
+    monkeypatch.setenv("COGNITO_APP_CLIENT_ID", "example-client")
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/analyst/chat",
+        json={"messages": [{"role": "user", "content": "How am I doing?"}]},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Missing bearer token."
+
+
+def test_demo_analyst_chat_stays_public_in_cognito_mode(monkeypatch):
+    _clear_auth_env(monkeypatch)
+    monkeypatch.setenv("AUTH_MODE", "cognito")
+    monkeypatch.setenv("COGNITO_REGION", "us-east-1")
+    monkeypatch.setenv("COGNITO_USER_POOL_ID", "us-east-1_example")
+    monkeypatch.setenv("COGNITO_APP_CLIENT_ID", "example-client")
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/demo/analyst/chat",
+        json={"messages": [{"role": "user", "content": "How am I doing?"}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"content": "Load the demo data first, then ask a question."}
+
+
+def test_session_cookie_cannot_cross_local_auth_users(monkeypatch):
+    _clear_auth_env(monkeypatch)
+    monkeypatch.setenv("AUTH_MODE", "local")
+    monkeypatch.setenv("DEV_USER_ID", "user-a")
+    client_a = TestClient(app)
+    upload = client_a.post(
+        "/api/upload",
+        files=[("files", ("a.csv", b"Date,Description,Amount\n2025-01-01,A,100\n", "text/csv"))],
+    )
+    assert upload.status_code == 200
+    stolen_session = upload.cookies["session_id"]
+
+    monkeypatch.setenv("DEV_USER_ID", "user-b")
+    client_b = TestClient(app)
+    client_b.cookies.set("session_id", stolen_session)
+    ledger = client_b.get("/api/ledger")
+
+    assert ledger.status_code == 200
+    assert ledger.json() == {"transactions": [], "count": 0}
+    assert _session_owners[stolen_session] == "user-a"
+
+    _sessions.pop(stolen_session, None)
+    _session_last_seen.pop(stolen_session, None)
+    _session_owners.pop(stolen_session, None)
 
 
 def test_auth_disabled_fails_closed_in_production(monkeypatch):

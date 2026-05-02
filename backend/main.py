@@ -121,7 +121,9 @@ app.include_router(
 app.include_router(
     chat.router, prefix="/api", dependencies=protected_route_dependencies
 )
-app.include_router(analyst.router, prefix="/api")
+app.include_router(
+    analyst.router, prefix="/api", dependencies=protected_route_dependencies
+)
 app.include_router(demo.router, prefix="/api")
 
 

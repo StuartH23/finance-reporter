@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import csv
+import os
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,7 +21,16 @@ ALLOWED_FEATURES = {
     "Goal Buckets",
 }
 
-INTEREST_LOG_PATH = Path(__file__).resolve().parent.parent / "data" / "feature_interest.csv"
+DEFAULT_INTEREST_LOG_PATH = Path(__file__).resolve().parent.parent / "data" / "feature_interest.csv"
+INTEREST_LOG_PATH = DEFAULT_INTEREST_LOG_PATH
+_interest_log_lock = threading.Lock()
+
+
+def _interest_log_path() -> Path:
+    configured = os.getenv("FEATURE_INTEREST_LOG_PATH")
+    if configured:
+        return Path(configured)
+    return INTEREST_LOG_PATH
 
 
 def _read_existing_rows(path: Path) -> list[dict[str, str]]:
@@ -52,9 +63,6 @@ def signup_feature_interest(data: FeatureInterestRequest):
     if "@" not in data.email or "." not in data.email:
         raise HTTPException(status_code=400, detail="Enter a valid email address.")
 
-    INTEREST_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    existing_rows = _read_existing_rows(INTEREST_LOG_PATH)
-
     row = {
         "submitted_at_utc": datetime.now(UTC).isoformat(),
         "email": data.email.strip().lower(),
@@ -63,14 +71,18 @@ def signup_feature_interest(data: FeatureInterestRequest):
         "notes": (data.notes or "").strip(),
     }
 
-    write_header = not INTEREST_LOG_PATH.exists()
-    with INTEREST_LOG_PATH.open("a", newline="", encoding="utf-8") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=list(row.keys()))
-        if write_header:
-            writer.writeheader()
-        writer.writerow(row)
+    path = _interest_log_path()
+    with _interest_log_lock:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        existing_rows = _read_existing_rows(path)
+        write_header = not path.exists()
+        with path.open("a", newline="", encoding="utf-8") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=list(row.keys()))
+            if write_header:
+                writer.writeheader()
+            writer.writerow(row)
+        all_rows = existing_rows + [row]
 
-    all_rows = existing_rows + [row]
     return {
         "status": "saved",
         "total_signups": len(all_rows),

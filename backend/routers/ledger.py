@@ -1,6 +1,6 @@
 """Ledger retrieval endpoints."""
 
-from fastapi import APIRouter, Cookie
+from fastapi import APIRouter, Cookie, Request
 
 from routers.upload import get_session_ledger
 from schemas import LedgerResponse, TransferResponse
@@ -10,9 +10,9 @@ router = APIRouter(tags=["ledger"])
 
 
 @router.get("/ledger", response_model=LedgerResponse)
-def get_ledger(session_id: str | None = Cookie(default=None)):
+def get_ledger(request: Request, session_id: str | None = Cookie(default=None)):
     """Return all transactions in the current session."""
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     if ledger.empty:
         return {"transactions": [], "count": 0}
 
@@ -30,9 +30,9 @@ def get_ledger(session_id: str | None = Cookie(default=None)):
 
 
 @router.get("/ledger/transfers", response_model=TransferResponse)
-def get_transfers(session_id: str | None = Cookie(default=None)):
+def get_transfers(request: Request, session_id: str | None = Cookie(default=None)):
     """Return transfer transactions excluded from P&L."""
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     transfers = ledger[ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
 
     if transfers.empty:

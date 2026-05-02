@@ -3,7 +3,7 @@
 from calendar import monthrange
 from datetime import date, datetime
 
-from fastapi import APIRouter, Cookie, Query
+from fastapi import APIRouter, Cookie, Query, Request
 
 from routers.upload import get_session_ledger
 from schemas import (
@@ -65,10 +65,10 @@ def update_budget(data: BudgetUpdate):
 
 
 @router.get("/budget/vs-actual", response_model=BudgetVsActualResponse)
-def get_budget_vs_actual(session_id: str | None = Cookie(default=None)):
+def get_budget_vs_actual(request: Request, session_id: str | None = Cookie(default=None)):
     """Compare budget against actual spending."""
     budget = load_budget()
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
     pnl, _ = _filter_to_complete_months(pnl)
 
@@ -98,10 +98,14 @@ def get_budget_vs_actual(session_id: str | None = Cookie(default=None)):
 
 
 @router.get("/budget/quick-check", response_model=QuickCheckResponse)
-def quick_check(month: str | None = Query(default=None), session_id: str | None = Cookie(default=None)):
+def quick_check(
+    request: Request,
+    month: str | None = Query(default=None),
+    session_id: str | None = Cookie(default=None),
+):
     """Quick monthly budget status for a target month (or current/most recent)."""
     budget = load_budget()
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     pnl_raw = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
     pnl, complete_month_keys = _filter_to_complete_months(pnl_raw)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Cookie, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException, Request
 
 from routers.upload import get_action_state, get_session_ledger, get_subscription_preferences
 from schemas import (
@@ -24,8 +24,8 @@ router = APIRouter(tags=["actions"])
 
 
 @router.get("/actions/feed", response_model=NextBestActionFeedResponse)
-def get_next_best_actions(session_id: str | None = Cookie(default=None)):
-    ledger = get_session_ledger(session_id)
+def get_next_best_actions(request: Request, session_id: str | None = Cookie(default=None)):
+    ledger = get_session_ledger(session_id, request)
     actionable_data_exists = not ledger.empty
     if ledger.empty:
         return {
@@ -36,10 +36,10 @@ def get_next_best_actions(session_id: str | None = Cookie(default=None)):
         }
 
     budget = load_budget()
-    preferences = get_subscription_preferences(session_id)
+    preferences = get_subscription_preferences(session_id, request)
     subscriptions = build_subscription_payload(ledger, preferences)
 
-    state = get_action_state(session_id)
+    state = get_action_state(session_id, request)
     if not state:
         state.update(default_personalization_state())
 
@@ -77,11 +77,12 @@ def get_next_best_actions(session_id: str | None = Cookie(default=None)):
 
 @router.post("/actions/{action_id}/feedback", response_model=NextBestActionFeedbackResponse)
 def submit_action_feedback(
+    request: Request,
     action_id: str,
     payload: NextBestActionFeedbackRequest,
     session_id: str | None = Cookie(default=None),
 ):
-    state = get_action_state(session_id)
+    state = get_action_state(session_id, request)
     if not state:
         raise HTTPException(status_code=400, detail="No active action feed for this session")
 

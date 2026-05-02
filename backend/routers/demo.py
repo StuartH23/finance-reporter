@@ -8,10 +8,12 @@ clear that data when the user exits demo mode or signs in.
 from __future__ import annotations
 
 import pandas as pd
-from fastapi import APIRouter, Cookie, Response
+from fastapi import APIRouter, Cookie, Request, Response
 from pydantic import BaseModel
 
-from routers.upload import _sessions, clear_session, ensure_session_id
+from routers.analyst import _check_rate_limit, build_analyst_response
+from routers.upload import _sessions, clear_session, ensure_session_id, get_session_ledger
+from schemas import AnalystChatRequest, AnalystChatResponse
 
 router = APIRouter(tags=["demo"])
 
@@ -40,11 +42,12 @@ class DemoClearResponse(BaseModel):
 @router.post("/demo/seed", response_model=DemoSeedResponse)
 def seed_demo_session(
     req: DemoSeedRequest,
+    request: Request,
     response: Response,
     session_id: str | None = Cookie(default=None),
 ):
     """Load demo transactions into the session so AI endpoints can use them."""
-    sid = ensure_session_id(response, session_id)
+    sid = ensure_session_id(response, session_id, request)
     _sessions[sid] = []
     if req.transactions:
         records = [t.model_dump() for t in req.transactions]
@@ -56,9 +59,27 @@ def seed_demo_session(
 
 @router.post("/demo/clear", response_model=DemoClearResponse)
 def clear_demo_session(
+    request: Request,
     session_id: str | None = Cookie(default=None),
 ):
     """Clear demo data from the session."""
     if session_id:
-        clear_session(session_id)
+        clear_session(session_id, request)
     return DemoClearResponse(status="ok")
+
+
+@router.post("/demo/analyst/chat", response_model=AnalystChatResponse)
+def demo_analyst_chat(
+    req: AnalystChatRequest,
+    request: Request,
+    response: Response,
+    session_id: str | None = Cookie(default=None),
+):
+    """Answer analyst questions for public demo data only."""
+    sid = ensure_session_id(response, session_id, request)
+    ledger = get_session_ledger(sid, request)
+    if ledger.empty and not req.demo_ledger_csv:
+        return AnalystChatResponse(content="Load the demo data first, then ask a question.")
+
+    _check_rate_limit(sid)
+    return build_analyst_response(req, ledger)

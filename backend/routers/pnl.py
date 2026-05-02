@@ -1,6 +1,6 @@
 """P&L summary endpoints."""
 
-from fastapi import APIRouter, Cookie, Query
+from fastapi import APIRouter, Cookie, Query, Request
 
 from routers.upload import get_session_ledger
 from schemas import CategoryBreakdownResponse, MonthlyPnlResponse, YearlyPnlResponse
@@ -10,9 +10,9 @@ router = APIRouter(tags=["pnl"])
 
 
 @router.get("/pnl/monthly", response_model=MonthlyPnlResponse)
-def monthly_pnl(session_id: str | None = Cookie(default=None)):
+def monthly_pnl(request: Request, session_id: str | None = Cookie(default=None)):
     """Return monthly P&L summary."""
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
 
     if pnl.empty:
@@ -28,9 +28,9 @@ def monthly_pnl(session_id: str | None = Cookie(default=None)):
 
 
 @router.get("/pnl/yearly", response_model=YearlyPnlResponse)
-def yearly_pnl(session_id: str | None = Cookie(default=None)):
+def yearly_pnl(request: Request, session_id: str | None = Cookie(default=None)):
     """Return yearly P&L summary."""
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
 
     if pnl.empty:
@@ -54,11 +54,12 @@ def yearly_pnl(session_id: str | None = Cookie(default=None)):
 
 @router.get("/pnl/categories", response_model=CategoryBreakdownResponse)
 def category_breakdown(
+    request: Request,
     year: int | None = Query(default=None, ge=1900, le=2100),
     session_id: str | None = Cookie(default=None),
 ):
     """Return spending breakdown by category."""
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     if ledger.empty:
         return {"categories": [], "spending_chart": []}
 

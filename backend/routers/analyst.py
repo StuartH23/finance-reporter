@@ -10,7 +10,7 @@ from collections import deque
 
 import anthropic
 import pandas as pd
-from fastapi import APIRouter, Cookie, Header, HTTPException, Response
+from fastapi import APIRouter, Cookie, Header, HTTPException, Request, Response
 
 from auth import get_auth_settings
 from routers.upload import ensure_session_id, get_session_ledger
@@ -252,22 +252,16 @@ def _ledger_to_csv(df: pd.DataFrame) -> str:
     return df.to_csv(index=False)
 
 
-@router.post("/analyst/chat", response_model=AnalystChatResponse)
-def analyst_chat(
-    req: AnalystChatRequest,
-    response: Response,
-    session_id: str | None = Cookie(default=None),
-    authorization: str | None = Header(default=None),
-):
-    """Answer a financial question about the session's ledger."""
-    sid = ensure_session_id(response, session_id)
+def _demo_ledger_csv_to_prompt_csv(demo_ledger_csv: str) -> str:
+    import io
 
-    ledger = get_session_ledger(sid)
-    if ledger.empty and not req.demo_ledger_csv and not _is_authenticated(authorization):
-        raise HTTPException(status_code=401, detail="Authentication required or demo session must be initialized.")
+    df = pd.read_csv(io.StringIO(demo_ledger_csv))
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    return _ledger_to_csv(df)
 
-    _check_rate_limit(sid)
 
+def _call_analyst_model(req: AnalystChatRequest, ledger_csv: str) -> AnalystChatResponse:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured.")
@@ -275,15 +269,6 @@ def analyst_chat(
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages must not be empty.")
 
-    if req.demo_ledger_csv:
-        import io
-
-        df = pd.read_csv(io.StringIO(req.demo_ledger_csv))
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        ledger_csv = _ledger_to_csv(df)
-    else:
-        ledger_csv = _ledger_to_csv(ledger)
     client = anthropic.Anthropic(api_key=api_key)
 
     try:
@@ -317,3 +302,33 @@ def analyst_chat(
         (b.text for b in result.content if getattr(b, "type", None) == "text"), ""
     )
     return AnalystChatResponse(content=text)
+
+
+def build_analyst_response(req: AnalystChatRequest, ledger: pd.DataFrame) -> AnalystChatResponse:
+    if req.demo_ledger_csv:
+        ledger_csv = _demo_ledger_csv_to_prompt_csv(req.demo_ledger_csv)
+    else:
+        ledger_csv = _ledger_to_csv(ledger)
+    return _call_analyst_model(req, ledger_csv)
+
+
+@router.post("/analyst/chat", response_model=AnalystChatResponse)
+def analyst_chat(
+    req: AnalystChatRequest,
+    request: Request,
+    response: Response,
+    session_id: str | None = Cookie(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Answer a financial question about the session's ledger."""
+    sid = ensure_session_id(response, session_id, request)
+
+    ledger = get_session_ledger(sid, request)
+    if ledger.empty and not req.demo_ledger_csv and not _is_authenticated(authorization):
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required or demo session must be initialized.",
+        )
+
+    _check_rate_limit(sid)
+    return build_analyst_response(req, ledger)

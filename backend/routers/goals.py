@@ -5,9 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import uuid
 
-from fastapi import APIRouter, Cookie, HTTPException, Response
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response
 
-from routers.upload import ensure_session_id, get_session_ledger
+from routers.upload import (
+    ensure_session_id,
+    get_session_ledger,
+    register_session_cleanup,
+    session_is_accessible,
+)
 from schemas import (
     GoalCreate,
     GoalListResponse,
@@ -32,6 +37,14 @@ router = APIRouter(tags=["goals"])
 
 _session_goals: dict[str, list[dict]] = {}
 _session_saved_plans: dict[str, dict] = {}
+
+
+def _clear_goal_session(session_id: str) -> None:
+    _session_goals.pop(session_id, None)
+    _session_saved_plans.pop(session_id, None)
+
+
+register_session_cleanup(_clear_goal_session)
 
 
 def _utc_now_iso() -> str:
@@ -96,11 +109,11 @@ def _validate_saved_split(data: PaycheckPlanSaveRequest) -> None:
 
 
 @router.get("/goals", response_model=GoalListResponse)
-def list_goals(session_id: str | None = Cookie(default=None)):
-    if not session_id or session_id not in _session_goals:
+def list_goals(request: Request, session_id: str | None = Cookie(default=None)):
+    if not session_is_accessible(session_id, request) or session_id not in _session_goals:
         return {"goals": [], "count": 0}
 
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     goals = _enriched_goals(session_id, ledger)
     goals.sort(key=lambda item: (item["priority"], item["name"].lower()))
     return {"goals": goals, "count": len(goals)}
@@ -109,10 +122,11 @@ def list_goals(session_id: str | None = Cookie(default=None)):
 @router.post("/goals", response_model=GoalUpsertResponse)
 def create_goal(
     data: GoalCreate,
+    request: Request,
     response: Response,
     session_id: str | None = Cookie(default=None),
 ):
-    sid = ensure_session_id(response, session_id)
+    sid = ensure_session_id(response, session_id, request)
     now = _utc_now_iso()
     row = {
         "id": str(uuid.uuid4()),
@@ -127,17 +141,18 @@ def create_goal(
     }
     _goal_store(sid).append(row)
 
-    goal = _progress_enriched_goal(row, get_session_ledger(sid))
+    goal = _progress_enriched_goal(row, get_session_ledger(sid, request))
     return {"status": "saved", "goal": goal}
 
 
 @router.put("/goals/{goal_id}", response_model=GoalUpsertResponse)
 def update_goal(
+    request: Request,
     goal_id: str,
     data: GoalUpdate,
     session_id: str | None = Cookie(default=None),
 ):
-    if not session_id or session_id not in _session_goals:
+    if not session_is_accessible(session_id, request) or session_id not in _session_goals:
         raise HTTPException(status_code=404, detail="Goal not found")
 
     now = _utc_now_iso()
@@ -158,15 +173,15 @@ def update_goal(
             "updated_at": now,
         }
         store[idx] = updated
-        goal = _progress_enriched_goal(updated, get_session_ledger(session_id))
+        goal = _progress_enriched_goal(updated, get_session_ledger(session_id, request))
         return {"status": "saved", "goal": goal}
 
     raise HTTPException(status_code=404, detail="Goal not found")
 
 
 @router.get("/goals/paycheck-plan/saved", response_model=SavedPaycheckPlanResponse)
-def get_saved_paycheck_plan(session_id: str | None = Cookie(default=None)):
-    if not session_id:
+def get_saved_paycheck_plan(request: Request, session_id: str | None = Cookie(default=None)):
+    if not session_is_accessible(session_id, request):
         return {"status": "empty", "plan": {}}
     saved = _session_saved_plans.get(session_id)
     if not saved:
@@ -177,11 +192,12 @@ def get_saved_paycheck_plan(session_id: str | None = Cookie(default=None)):
 @router.post("/goals/paycheck-plan", response_model=PaycheckPlanResponse)
 def recommend_paycheck_plan(
     data: PaycheckPlanRequest,
+    request: Request,
     response: Response,
     session_id: str | None = Cookie(default=None),
 ):
-    sid = ensure_session_id(response, session_id)
-    ledger = get_session_ledger(sid)
+    sid = ensure_session_id(response, session_id, request)
+    ledger = get_session_ledger(sid, request)
     goals = _enriched_goals(sid, ledger)
 
     selected = [goal for goal in goals if goal["status"] == "active"]
@@ -227,10 +243,11 @@ def recommend_paycheck_plan(
 @router.post("/goals/paycheck-plan/save", response_model=PaycheckPlanSaveResponse)
 def save_custom_paycheck_plan(
     data: PaycheckPlanSaveRequest,
+    request: Request,
     response: Response,
     session_id: str | None = Cookie(default=None),
 ):
-    sid = ensure_session_id(response, session_id)
+    sid = ensure_session_id(response, session_id, request)
     _validate_saved_split(data)
 
     row = {

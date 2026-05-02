@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import anthropic
-from fastapi import APIRouter, Cookie, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException, Request
 from pydantic import BaseModel
 
 from routers.upload import get_session_ledger, get_subscription_preferences
@@ -182,8 +182,13 @@ def _system_blocks() -> list[dict]:
     ]
 
 
-def _run_tool(name: str, args: dict, session_id: str | None) -> dict:
-    ledger = get_session_ledger(session_id)
+def _run_tool(
+    name: str,
+    args: dict,
+    session_id: str | None,
+    request: Request,
+) -> dict:
+    ledger = get_session_ledger(session_id, request)
     if name == "ledger_date_bounds":
         return ledger_date_bounds(ledger)
     if name == "top_merchants":
@@ -193,7 +198,7 @@ def _run_tool(name: str, args: dict, session_id: str | None) -> dict:
     if name == "month_over_month_delta":
         return month_over_month_delta(ledger, **args)
     if name == "list_subscriptions":
-        prefs = get_subscription_preferences(session_id)
+        prefs = get_subscription_preferences(session_id, request)
         return list_subscriptions_tool(ledger, preferences=prefs, **args)
     if name == "unusual_charges":
         return unusual_charges(ledger, **args)
@@ -211,8 +216,12 @@ def _to_anthropic_messages(history: list[ChatMessage]) -> list[dict]:
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest, session_id: str | None = Cookie(default=None)):
-    if not request.messages:
+def chat(
+    chat_request: ChatRequest,
+    request: Request,
+    session_id: str | None = Cookie(default=None),
+):
+    if not chat_request.messages:
         raise HTTPException(status_code=400, detail="messages is required")
 
     try:
@@ -220,7 +229,7 @@ def chat(request: ChatRequest, session_id: str | None = Cookie(default=None)):
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    messages = _to_anthropic_messages(request.messages)
+    messages = _to_anthropic_messages(chat_request.messages)
     tool_calls: list[str] = []
 
     for _ in range(MAX_TOOL_ITERATIONS):
@@ -248,7 +257,7 @@ def chat(request: ChatRequest, session_id: str | None = Cookie(default=None)):
                 continue
             tool_calls.append(block.name)
             try:
-                result = _run_tool(block.name, dict(block.input), session_id)
+                result = _run_tool(block.name, dict(block.input), session_id, request)
                 content = json.dumps(result, default=str)
                 is_error = False
             except Exception as exc:

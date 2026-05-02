@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Cookie, HTTPException, Query
+from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
 from routers.upload import get_session_ledger
 from schemas import CashFlowResponse
@@ -15,6 +15,7 @@ router = APIRouter(tags=["cashflow"])
 
 @router.get("/cashflow", response_model=CashFlowResponse)
 def cashflow(
+    request: Request,
     session_id: str | None = Cookie(default=None),
     granularity: Literal["month", "quarter"] = Query(default="month"),
     group_by: Literal["category", "merchant"] = Query(default="category"),
@@ -28,7 +29,7 @@ def cashflow(
             detail=f"Invalid period '{period}'. Expected {expected} for granularity={granularity}.",
         )
 
-    ledger = get_session_ledger(session_id)
+    ledger = get_session_ledger(session_id, request)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
 
     return build_cashflow_payload(
