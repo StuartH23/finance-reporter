@@ -68,7 +68,7 @@ function seedDashboardData(client: QueryClient) {
   })
   client.setQueryData(['actions', 'feed'], {
     feed_date: '2026-03-31',
-    count: 1,
+    count: 2,
     actionable_data_exists: true,
     actions: [
       {
@@ -79,6 +79,16 @@ function seedDashboardData(client: QueryClient) {
         impact_estimate: '$20/mo',
         impact_monthly: 20,
         score: 0.82,
+        state: 'suggested',
+      },
+      {
+        action_id: 'spending-cap',
+        action_type: 'spending_cap',
+        title: 'Set a restaurant spending cap',
+        rationale: 'Dining spend is trending above your usual range.',
+        impact_estimate: '$120/mo',
+        impact_monthly: 120,
+        score: 0.7,
         state: 'suggested',
       },
     ],
@@ -120,20 +130,33 @@ describe('Dashboard page', () => {
     expect(html).toContain('Try Demo Mode')
   })
 
-  it('renders command header, attention rail, action queue, and reports when data exists', () => {
+  it('renders the monthly health dashboard when data exists', () => {
     const client = queryClient()
     seedDashboardData(client)
 
     const html = renderDashboard({ client, demoModeEnabled: true })
 
     expect(html).toContain('Money Checkup')
-    expect(html).toContain('Professional Money Checkup')
-    expect(html).toContain('What Changed')
-    expect(html).toContain('Priority Review')
+    expect(html).toContain('March 2026')
+    expect(html).toContain('Demo')
+    expect(html).toContain('2 transactions')
+    expect(html).toContain('1 source')
+    expect(html).toContain('Upload')
+    expect(html).toContain('March 2026 ended +$1,700')
+    expect(html).toContain('Income')
+    expect(html).toContain('Spending')
+    expect(html).toContain('Net Savings')
+    expect(html).not.toContain('Largest Category')
+    expect(html).toContain('What deserves attention')
     expect(html).toContain('Review optional subscriptions')
-    expect(html).toContain('Action Queue')
-    expect(html).toContain('Statement Upload')
+    expect(html.match(/Review optional subscriptions/g)).toHaveLength(1)
+    expect(html).toContain('Set a restaurant spending cap')
+    expect(html).toContain('Other recommended actions')
+    expect(html).not.toContain('Priority Review')
+    expect(html).not.toContain('Dashboard View')
+    expect(html).not.toContain('Statement Upload')
     expect(html).toContain('Monthly P&amp;L')
-    expect(html).toContain('All Transactions')
+    expect(html).toContain('Transactions')
+    expect(html).not.toContain('All Transactions')
   })
 })

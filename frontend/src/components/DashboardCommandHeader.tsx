@@ -46,46 +46,21 @@ export default function DashboardCommandHeader({
         : 'No sources'
 
   const dispatchUpload = () => window.dispatchEvent(new CustomEvent('app:upload-statements'))
-  const dispatchReports = () => window.dispatchEvent(new CustomEvent('app:view-reports'))
 
   return (
     <section className="dashboard-command-header" aria-labelledby="money-checkup-title">
-      <div className="dashboard-command-copy">
-        <span className="dashboard-eyebrow">Professional Money Checkup</span>
+      <div className="dashboard-command-title">
         <h1 id="money-checkup-title">Money Checkup</h1>
-        <p>
-          See what changed, what deserves attention, and the next move that can stop money from
-          leaking.
-        </p>
       </div>
 
-      <div className="dashboard-command-panel">
-        <div className="dashboard-status-grid">
-          <div>
-            <span>Period</span>
-            <strong>{latestMonthLabel(monthlyData)}</strong>
-          </div>
-          <div>
-            <span>Transactions</span>
-            <strong>{transactionCount.toLocaleString()}</strong>
-          </div>
-          <div>
-            <span>Mode</span>
-            <strong>{demoModeEnabled ? 'Demo' : 'Live'}</strong>
-          </div>
-          <div>
-            <span>Data</span>
-            <strong>{sourceLabel}</strong>
-          </div>
-        </div>
-        <div className="dashboard-command-actions">
-          <button type="button" className="primary-button" onClick={dispatchUpload}>
-            Upload Statements
-          </button>
-          <button type="button" className="ghost-button" onClick={dispatchReports}>
-            View Reports
-          </button>
-        </div>
+      <div className="dashboard-status-row">
+        <span>{latestMonthLabel(monthlyData)}</span>
+        <span>{demoModeEnabled ? 'Demo' : 'Live'}</span>
+        <span>{transactionCount.toLocaleString()} transactions</span>
+        <span>{sourceLabel}</span>
+        <button type="button" className="ghost-button" onClick={dispatchUpload}>
+          Upload
+        </button>
       </div>
     </section>
   )

@@ -12,41 +12,72 @@ export default function DashboardActionQueue() {
   })
 
   const actions = data?.actions ?? []
+  const [topAction, ...secondaryActions] = actions
+  const route = topAction ? dashboardActionRoute(topAction) : null
 
   return (
-    <section className="card dashboard-action-queue" aria-labelledby="next-moves-title">
+    <section className="dashboard-action-queue" aria-labelledby="next-moves-title">
       <div className="dashboard-card-header">
         <div>
-          <div className="dashboard-section-kicker">What Can I Do Next</div>
-          <h2 id="next-moves-title">Action Queue</h2>
+          <div className="dashboard-section-kicker">Recommended Next Move</div>
+          <h2 id="next-moves-title">What deserves attention</h2>
         </div>
         <span>{actions.length ? `${actions.length} open` : 'Ready after review'}</span>
       </div>
 
-      {actions.length ? (
-        <div className="dashboard-action-list">
-          {actions.slice(0, 4).map((action, index) => {
-            const route = dashboardActionRoute(action)
-            return (
-              <article key={action.action_id} className="dashboard-action-row">
-                <span className="dashboard-action-rank">{index + 1}</span>
-                <div>
-                  <h3>{action.title}</h3>
-                  <p>{action.rationale}</p>
-                </div>
-                <strong>{formatMoney(action.impact_monthly)}/mo</strong>
-                {route && (
-                  <button type="button" className="ghost-button" onClick={() => navigate(route)}>
-                    {dashboardActionRouteLabel(action)}
-                  </button>
-                )}
-              </article>
-            )
-          })}
-        </div>
+      {topAction ? (
+        <>
+          <article className="dashboard-primary-action">
+            <div className="dashboard-primary-action-copy">
+              <span>Top Action</span>
+              <h3>{topAction.title}</h3>
+              <p>{topAction.rationale}</p>
+            </div>
+            <div className="dashboard-primary-action-evidence">
+              <div>
+                <span>Impact</span>
+                <strong>
+                  {topAction.impact_estimate || `${formatMoney(topAction.impact_monthly)}/mo`}
+                </strong>
+              </div>
+              <div>
+                <span>Confidence</span>
+                <strong>{Math.round(topAction.score * 100)}% match</strong>
+              </div>
+            </div>
+            {route && (
+              <button type="button" className="primary-button" onClick={() => navigate(route)}>
+                {dashboardActionRouteLabel(topAction)}
+              </button>
+            )}
+          </article>
+
+          {secondaryActions.length > 0 && (
+            <ul className="dashboard-secondary-action-list" aria-label="Other recommended actions">
+              {secondaryActions.slice(0, 3).map((action) => {
+                const secondaryRoute = dashboardActionRoute(action)
+                return (
+                  <li key={action.action_id} className="dashboard-secondary-action-row">
+                    <span>{action.title}</span>
+                    <strong>{formatMoney(action.impact_monthly)}/mo</strong>
+                    {secondaryRoute && (
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => navigate(secondaryRoute)}
+                      >
+                        Review
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </>
       ) : (
         <p className="empty-state empty-state-compact">
-          Once there is enough data, this queue will show the next financial review actions.
+          Once there is enough data, this area will show the next financial review action.
         </p>
       )}
     </section>

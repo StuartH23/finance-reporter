@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getCategoryBreakdown, getMonthlyPnl } from '../api/client'
+import { getMonthlyPnl } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 
 function fmt(n: number) {
@@ -22,11 +22,6 @@ function DashboardKpis() {
     queryFn: getMonthlyPnl,
   })
 
-  const { data: categoryData } = useQuery({
-    queryKey: queryKeys.pnl.categories,
-    queryFn: () => getCategoryBreakdown(),
-  })
-
   const sortedMonths = [...(monthlyData?.months ?? [])].sort((a, b) => {
     const da = toMonthDate(a.month_str)
     const db = toMonthDate(b.month_str)
@@ -38,10 +33,6 @@ function DashboardKpis() {
   const previous = sortedMonths[sortedMonths.length - 2]
 
   if (!latest) return null
-
-  const topSpendingCategory = [...(categoryData?.spending_chart ?? [])].sort(
-    (a, b) => b.total - a.total,
-  )[0]
 
   const cards = [
     {
@@ -61,12 +52,6 @@ function DashboardKpis() {
       label: 'Net Savings',
       value: Math.max(0, latest.net),
       delta: pctChange(Math.max(0, latest.net), Math.max(0, previous?.net ?? latest.net)),
-    },
-    {
-      key: 'largest-category',
-      label: topSpendingCategory?.category ?? 'Largest Category',
-      value: topSpendingCategory?.total ?? 0,
-      delta: 0,
     },
   ]
 
