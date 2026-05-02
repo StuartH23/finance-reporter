@@ -1,162 +1,199 @@
-import { useRef, useState } from 'react'
-import { sendChat, type ChatMessage } from '../api/client'
+import { useMutation } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { AnalystRateLimitError, postAnalystChat } from '../api/client'
+import type { AnalystMessage } from '../api/types'
+import { getDemoLedgerCsv } from '../demo/demoApi'
 import { getDemoMode } from '../demo/mode'
 
+const STORAGE_KEY = 'analyst-history'
+
 const SUGGESTIONS = [
-  'Where am I spending the most money?',
-  'What are my current subscriptions?',
-  'What changed in my spending last month?',
-  'Any unusual charges recently?',
+  'Did I spend more on food this month?',
+  'Which subscriptions should I review?',
+  'What changed since last month?',
+  'Can I afford a $200 purchase this week?',
 ]
 
-function Chat() {
-  const isDemo = getDemoMode()
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const scrollerRef = useRef<HTMLDivElement | null>(null)
-
-  if (isDemo) {
-    return (
-      <div>
-        <h1 className="page-title">Ask your finances</h1>
-        <p className="page-subtitle">
-          The AI chat assistant requires a signed-in account. Use the{' '}
-          <strong>Financial Analyst</strong> widget (bottom-right) to ask questions about the demo
-          data, or sign in to use the full chat experience.
-        </p>
-      </div>
+function loadStoredMessages(): AnalystMessage[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as AnalystMessage[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
     )
+  } catch {
+    return []
+  }
+}
+
+function Chat() {
+  const [messages, setMessages] = useState<AnalystMessage[]>(() => loadStoredMessages())
+  const [input, setInput] = useState('')
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const isDemo = getDemoMode()
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+    } catch {
+      // ignore
+    }
+  }, [messages])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message
+  useEffect(() => {
+    if (scrollerRef.current) {
+      scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight
+    }
+  }, [messages])
+
+  useEffect(() => {
+    if (rateLimitUntil == null) return
+    const msLeft = rateLimitUntil - Date.now()
+    if (msLeft <= 0) {
+      setRateLimitUntil(null)
+      return
+    }
+    const timer = window.setTimeout(() => setRateLimitUntil(null), msLeft)
+    return () => window.clearTimeout(timer)
+  }, [rateLimitUntil])
+
+  const mutation = useMutation({
+    mutationFn: postAnalystChat,
+    onSuccess: (data) => {
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.content }])
+      setErrorMsg(null)
+    },
+    onError: (err, variables) => {
+      setMessages((prev) => {
+        const last = prev[prev.length - 1]
+        const sentLast = variables.messages[variables.messages.length - 1]
+        if (last && sentLast && last.role === 'user' && last.content === sentLast.content) {
+          return prev.slice(0, -1)
+        }
+        return prev
+      })
+      if (err instanceof AnalystRateLimitError) {
+        setRateLimitUntil(Date.now() + err.retryAfterSeconds * 1000)
+        setErrorMsg(null)
+      } else {
+        setErrorMsg(err instanceof Error ? err.message : String(err))
+      }
+    },
+  })
+
+  const rateLimited = rateLimitUntil != null && rateLimitUntil > Date.now()
+
+  const submit = (text?: string) => {
+    const trimmed = (text ?? input).trim()
+    if (!trimmed || mutation.isPending || rateLimited) return
+    const nextMessages: AnalystMessage[] = [...messages, { role: 'user', content: trimmed }]
+    setMessages(nextMessages)
+    setInput('')
+    setErrorMsg(null)
+    mutation.mutate({
+      messages: nextMessages,
+      ...(isDemo && { demo_ledger_csv: getDemoLedgerCsv() }),
+    })
   }
 
-  const send = async (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed || loading) return
-    setError(null)
-    const next: ChatMessage[] = [...messages, { role: 'user', content: trimmed }]
-    setMessages(next)
-    setInput('')
-    setLoading(true)
-    try {
-      const response = await sendChat(next)
-      setMessages([...next, { role: 'assistant', content: response.reply }])
-      requestAnimationFrame(() => {
-        scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight })
-      })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Chat request failed')
-    } finally {
-      setLoading(false)
-    }
+  const clearHistory = () => {
+    setMessages([])
+    setErrorMsg(null)
   }
+
+  const retrySeconds = rateLimitUntil
+    ? Math.max(0, Math.ceil((rateLimitUntil - Date.now()) / 1000))
+    : 0
 
   return (
-    <div>
-      <h1 className="page-title">Ask your finances</h1>
-      <p className="page-subtitle">
-        Ask questions about your spending, subscriptions, and app features. Powered by Claude Haiku.
-      </p>
+    <div className="dashboard-page">
+      <div className="chat-page-header">
+        <div>
+          <h1 className="page-title">Ask AI</h1>
+          <p className="page-subtitle">
+            Ask questions about your spending, subscriptions, or budget.
+            {isDemo && ' Using demo account data.'}
+          </p>
+        </div>
+        {messages.length > 0 && (
+          <button type="button" className="ghost-button" onClick={clearHistory}>
+            Clear
+          </button>
+        )}
+      </div>
 
-      <div
-        ref={scrollerRef}
-        style={{
-          border: '1px solid var(--border, #e5e7eb)',
-          borderRadius: 12,
-          padding: 16,
-          minHeight: 320,
-          maxHeight: 500,
-          overflowY: 'auto',
-          background: 'var(--surface, #fafafa)',
-          marginBottom: 12,
-        }}
-      >
+      <div className="chat-messages" ref={scrollerRef}>
         {messages.length === 0 && (
-          <div style={{ color: 'var(--muted, #6b7280)' }}>
-            <p style={{ marginTop: 0 }}>Try one of these:</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <>
+            <div className="chat-message assistant">
+              {isDemo
+                ? "I have access to the demo account's transactions. Ask me about spending, budget, subscriptions, or anything else."
+                : "Ask me about your spending, trends, subscriptions, or budget. Upload a statement on the Dashboard first if you haven't."}
+            </div>
+            <div className="chat-suggestions">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   type="button"
-                  onClick={() => send(s)}
-                  disabled={loading}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 999,
-                    border: '1px solid var(--border, #d1d5db)',
-                    background: 'white',
-                    cursor: 'pointer',
-                  }}
+                  className="ghost-button"
+                  onClick={() => submit(s)}
+                  disabled={mutation.isPending}
                 >
                   {s}
                 </button>
               ))}
             </div>
-          </div>
+          </>
         )}
+
         {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              margin: '8px 0',
-              textAlign: m.role === 'user' ? 'right' : 'left',
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '8px 12px',
-                borderRadius: 12,
-                background: m.role === 'user' ? '#dbeafe' : 'white',
-                border: '1px solid var(--border, #e5e7eb)',
-                maxWidth: '80%',
-                whiteSpace: 'pre-wrap',
-              }}
-            >
-              {m.content}
-            </span>
+          // biome-ignore lint/suspicious/noArrayIndexKey: chat messages have no stable id
+          <div key={`${i}-${m.role}`} className={`chat-message ${m.role}`}>
+            {m.role === 'assistant' ? <ReactMarkdown>{m.content}</ReactMarkdown> : m.content}
           </div>
         ))}
-        {loading && (
-          <div style={{ color: 'var(--muted, #6b7280)', fontStyle: 'italic' }}>Thinking…</div>
-        )}
+
+        {mutation.isPending && <div className="chat-message assistant pending">Thinking…</div>}
       </div>
 
-      {error && (
-        <div style={{ color: '#b91c1c', marginBottom: 8 }} role="alert">
-          {error}
+      {rateLimited && (
+        <div className="chat-banner rate-limit">
+          Rate limit reached — try again in ~{retrySeconds}s.
         </div>
       )}
+      {errorMsg && !rateLimited && <div className="chat-banner error">Error: {errorMsg}</div>}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          void send(input)
-        }}
-        style={{ display: 'flex', gap: 8 }}
-      >
-        <input
-          type="text"
+      <div className="chat-input-row">
+        <textarea
+          className="chat-input"
+          placeholder={rateLimited ? 'Rate limited — please wait.' : 'Ask a question…'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about your spending…"
-          disabled={loading}
-          style={{
-            flex: 1,
-            padding: '10px 14px',
-            borderRadius: 10,
-            border: '1px solid var(--border, #d1d5db)',
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              submit()
+            }
           }}
+          rows={2}
+          disabled={mutation.isPending || rateLimited}
         />
         <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          className="header-button primary"
+          type="button"
+          className="primary-button"
+          onClick={() => submit()}
+          disabled={!input.trim() || mutation.isPending || rateLimited}
         >
           Send
         </button>
-      </form>
+      </div>
     </div>
   )
 }

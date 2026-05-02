@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getBudget, getBudgetVsActual, getLedger, getMonthlyPnl, updateBudget } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { BudgetItem } from '../api/types'
@@ -261,6 +261,34 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
     [items, recommendedBudgetByCategory],
   )
 
+  const hasAutoFilled = useRef(false)
+
+  useEffect(() => {
+    if (hasAutoFilled.current) return
+    if (items.length === 0) return
+    if (Object.keys(recommendedBudgetByCategory).length === 0) return
+    const allEmpty = items.every((item) => item.monthly_budget <= 0)
+    if (!allEmpty) return
+    hasAutoFilled.current = true
+
+    let updatedCount = 0
+    const updatedItems = items.map((item) => {
+      const suggestion = recommendedBudgetByCategory[item.category]
+      if (item.monthly_budget <= 0 && suggestion) {
+        updatedCount += 1
+        return { ...item, monthly_budget: suggestion }
+      }
+      return item
+    })
+    setItems(updatedItems)
+    setSaved(false)
+    if (updatedCount > 0) {
+      setSuggestionStatus(
+        `Pre-filled ${updatedCount} ${updatedCount === 1 ? 'category' : 'categories'} with spending history. Review and save when ready.`,
+      )
+    }
+  }, [items, recommendedBudgetByCategory])
+
   const incomeByMonthKey = useMemo(() => {
     const map: Record<string, number> = {}
     if (!monthlyPnlData?.months) return map
@@ -282,6 +310,18 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
   const selectedMonthPctUsed =
     currentBudgetTotal > 0 ? Math.round((selectedMonthSpent / currentBudgetTotal) * 1000) / 10 : 0
   const netAfterSpending = selectedMonthIncome - selectedMonthSpent
+
+  const budgetSummaryLine = useMemo(() => {
+    if (items.length === 0 || Object.keys(recommendedBudgetByCategory).length === 0) return null
+    if (
+      recommendedBudgetTotal > 0 &&
+      selectedMonthSpent > 0 &&
+      recommendedBudgetTotal < selectedMonthSpent
+    ) {
+      return `Following this budget would leave about ${fmt(selectedMonthSpent - recommendedBudgetTotal)} more per month.`
+    }
+    return 'This budget keeps your recent spending pattern visible before you adjust it.'
+  }, [items, recommendedBudgetByCategory, recommendedBudgetTotal, selectedMonthSpent])
 
   const saveMutation = useMutation({
     mutationFn: (budget: Record<string, number>) => updateBudget(budget),
@@ -461,28 +501,20 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
           month, while variable costs use a blended recommendation.
         </p>
       </div>
-      <div className="budget-guide" style={{ marginBottom: '0.9rem' }}>
+      <div className="budget-guide budget-guide-build">
         <p className="budget-guide-title">Build Mode</p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+        <div className="u-pill-cluster">
           <button
             type="button"
             onClick={() => setBudgetMode('diy')}
-            className="ghost-button"
-            style={{
-              borderColor: budgetMode === 'diy' ? 'var(--accent)' : 'var(--border)',
-              color: budgetMode === 'diy' ? 'var(--text)' : 'var(--text-muted)',
-            }}
+            className={`ghost-button ${budgetMode === 'diy' ? 'active' : ''}`}
           >
             DIY
           </button>
           <button
             type="button"
             onClick={() => setBudgetMode('guided')}
-            className="ghost-button"
-            style={{
-              borderColor: budgetMode === 'guided' ? 'var(--accent)' : 'var(--border)',
-              color: budgetMode === 'guided' ? 'var(--text)' : 'var(--text-muted)',
-            }}
+            className={`ghost-button ${budgetMode === 'guided' ? 'active' : ''}`}
           >
             Guided Split
           </button>
@@ -490,41 +522,30 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
 
         {budgetMode === 'guided' && (
           <>
-            <div
-              style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}
-            >
+            <div className="u-pill-cluster compact">
               <button
                 type="button"
-                className="ghost-button"
+                className={`ghost-button ${guidedPreset === '50-30-20' ? 'active' : ''}`}
                 onClick={() => setGuidedPreset('50-30-20')}
-                style={{
-                  borderColor: guidedPreset === '50-30-20' ? 'var(--accent)' : 'var(--border)',
-                }}
               >
                 50 / 30 / 20
               </button>
               <button
                 type="button"
-                className="ghost-button"
+                className={`ghost-button ${guidedPreset === '60-30-10' ? 'active' : ''}`}
                 onClick={() => setGuidedPreset('60-30-10')}
-                style={{
-                  borderColor: guidedPreset === '60-30-10' ? 'var(--accent)' : 'var(--border)',
-                }}
               >
                 60 / 30 / 10
               </button>
               <button
                 type="button"
-                className="ghost-button"
+                className={`ghost-button ${guidedPreset === 'custom' ? 'active' : ''}`}
                 onClick={() => setGuidedPreset('custom')}
-                style={{
-                  borderColor: guidedPreset === 'custom' ? 'var(--accent)' : 'var(--border)',
-                }}
               >
                 Custom
               </button>
             </div>
-            <div className="metrics-row" style={{ marginBottom: '0.75rem' }}>
+            <div className="metrics-row u-mb-md">
               <div className="metric">
                 <div className="label">Needs %</div>
                 <input
@@ -536,16 +557,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                     setGuidedPreset('custom')
                     setGuidedNeedsPct(parseNonNegativeInt(e.target.value))
                   }}
-                  style={{
-                    width: 100,
-                    padding: '0.3rem 0.5rem',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    color: 'var(--text)',
-                    textAlign: 'right',
-                    fontSize: '0.875rem',
-                  }}
+                  className="numeric-input"
                 />
               </div>
               <div className="metric">
@@ -559,16 +571,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                     setGuidedPreset('custom')
                     setGuidedWantsPct(parseNonNegativeInt(e.target.value))
                   }}
-                  style={{
-                    width: 100,
-                    padding: '0.3rem 0.5rem',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    color: 'var(--text)',
-                    textAlign: 'right',
-                    fontSize: '0.875rem',
-                  }}
+                  className="numeric-input"
                 />
               </div>
               <div className="metric">
@@ -582,16 +585,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                     setGuidedPreset('custom')
                     setGuidedSavingsPct(parseNonNegativeInt(e.target.value))
                   }}
-                  style={{
-                    width: 100,
-                    padding: '0.3rem 0.5rem',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    color: 'var(--text)',
-                    textAlign: 'right',
-                    fontSize: '0.875rem',
-                  }}
+                  className="numeric-input"
                 />
               </div>
               <div className="metric">
@@ -601,13 +595,8 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={applyGuidedSplit}
-                style={{ borderColor: 'var(--accent)', color: 'var(--text)' }}
-              >
+            <div className="u-inline-cluster">
+              <button type="button" className="ghost-button active" onClick={applyGuidedSplit}>
                 Apply Split To Categories
               </button>
               <span className="budget-hint">
@@ -618,12 +607,8 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
           </>
         )}
       </div>
-      <div style={{ marginBottom: '1rem' }}>
-        <label
-          htmlFor="budget-month-select"
-          className="budget-guide-title"
-          style={{ marginRight: '0.5rem' }}
-        >
+      <div className="control-row">
+        <label htmlFor="budget-month-select" className="budget-guide-title inline-field-label">
           Budget From Month
         </label>
         <select
@@ -631,14 +616,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
           value={selectedMonthKey ?? ''}
           onChange={(e) => onSelectedMonthKeyChange(e.target.value)}
           disabled={availableMonthKeys.length === 0}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            color: 'var(--text)',
-            borderRadius: 6,
-            padding: '0.35rem 0.55rem',
-            fontSize: '0.85rem',
-          }}
+          className="compact-select"
         >
           {availableMonthKeys.map((monthKey) => (
             <option key={monthKey} value={monthKey}>
@@ -648,7 +626,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
         </select>
       </div>
       {budgetMode === 'guided' && (
-        <div className="budget-guide" style={{ marginBottom: '1rem' }}>
+        <div className="budget-guide u-mb-lg">
           <p className="budget-guide-title">Next Steps Checklist</p>
           <p className="budget-guide-step">
             1. Review your last 1-3 months of spending by category.
@@ -659,7 +637,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
           <p className="budget-guide-step">
             3. Automate savings and debt payments to stay consistent.
           </p>
-          <p className="budget-guide-step" style={{ marginTop: '0.45rem' }}>
+          <p className="budget-guide-step u-mt-checklist">
             Alternative methods: envelope budgeting, zero-based budgeting, and reverse budgeting.
           </p>
         </div>
@@ -729,51 +707,36 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
               type="button"
               onClick={applySuggestionsToEmpty}
               disabled={Object.keys(recommendedBudgetByCategory).length === 0}
-              style={{
-                padding: '0.4rem 0.9rem',
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                color: 'var(--text)',
-                fontSize: '0.8rem',
-              }}
+              className="secondary-action-button"
             >
               Fill Empty With Examples
             </button>
             {suggestionStatus && <span className="budget-hint">{suggestionStatus}</span>}
           </div>
+          {budgetSummaryLine && <p className="budget-summary-line">{budgetSummaryLine}</p>}
           <table>
             <thead>
               <tr>
                 <th>Category</th>
-                <th style={{ textAlign: 'right' }}>Monthly Budget</th>
-                <th style={{ textAlign: 'right' }}>Recommended From Uploads</th>
+                <th className="u-text-right">Monthly Budget</th>
+                <th className="u-text-right">Recommended From Uploads</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, idx) => (
                 <tr key={item.category}>
                   <td>{item.category}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className="u-text-right">
                     <input
                       type="number"
                       min="0"
                       step="1"
                       value={item.monthly_budget}
                       onChange={(e) => handleChange(idx, e.target.value)}
-                      style={{
-                        width: 100,
-                        padding: '0.3rem 0.5rem',
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 6,
-                        color: 'var(--text)',
-                        textAlign: 'right',
-                        fontSize: '0.875rem',
-                      }}
+                      className="numeric-input"
                     />
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className="u-text-right">
                     {recommendedBudgetByCategory[item.category] ? (
                       <>
                         <div className="suggested-cell">
@@ -788,7 +751,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                             Use
                           </button>
                         </div>
-                        <div className="budget-hint" style={{ textAlign: 'right' }}>
+                        <div className="budget-hint u-text-right">
                           {selectedMonthSpentByCategory[item.category] &&
                           averageSpentByCategory[item.category]
                             ? `Blended: ${monthLabelFromKey(selectedMonthKey ?? '')} ${fmt(selectedMonthSpentByCategory[item.category])} + avg/month ${fmt(averageSpentByCategory[item.category])}`
@@ -798,7 +761,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                         </div>
                       </>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>--</span>
+                      <span className="muted-placeholder">--</span>
                     )}
                   </td>
                 </tr>
@@ -813,23 +776,12 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
             type="button"
             onClick={handleSave}
             disabled={saveMutation.isPending}
-            style={{
-              marginTop: '1rem',
-              padding: '0.5rem 1.5rem',
-              background: 'var(--accent)',
-              border: 'none',
-              borderRadius: 6,
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-            }}
+            className="primary-button save-budget-button"
           >
             {saveMutation.isPending ? 'Saving...' : saved ? 'Saved!' : 'Save Budget'}
           </button>
           {saveMutation.error && (
-            <p style={{ color: 'var(--red)', marginTop: '0.5rem' }}>
-              Failed to save budget. Please try again.
-            </p>
+            <p className="u-danger-text">Failed to save budget. Please try again.</p>
           )}
         </>
       )}

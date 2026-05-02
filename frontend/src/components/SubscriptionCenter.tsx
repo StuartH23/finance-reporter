@@ -1,11 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import {
-  getSubscriptionAlerts,
-  getSubscriptions,
-  remindCancel,
-  updateSubscriptionPreferences,
-} from '../api/client'
+import { getSubscriptions, remindCancel, updateSubscriptionPreferences } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { SubscriptionItem } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
@@ -18,37 +13,59 @@ function pct(n: number) {
   return `${Math.round(n * 100)}%`
 }
 
-const CADENCE_MULTIPLIER: Record<string, number> = { weekly: 52, monthly: 12, annual: 1 }
+const CADENCE_MONTHLY_FACTOR: Record<string, number> = {
+  weekly: 52 / 12,
+  monthly: 1,
+  annual: 1 / 12,
+}
+
+const CADENCE_ANNUAL_FACTOR: Record<string, number> = {
+  weekly: 52,
+  monthly: 12,
+  annual: 1,
+}
+
+const CADENCE_UNIT: Record<string, string> = {
+  weekly: '/wk',
+  monthly: '/mo',
+  annual: '/yr',
+}
+
+function monthlyAmount(item: SubscriptionItem): number {
+  return item.amount * (CADENCE_MONTHLY_FACTOR[item.cadence] ?? 1)
+}
 
 function annualCost(item: SubscriptionItem): number {
-  return item.amount * (CADENCE_MULTIPLIER[item.cadence] ?? 12)
+  return item.amount * (CADENCE_ANNUAL_FACTOR[item.cadence] ?? 12)
+}
+
+function cadenceUnit(item: SubscriptionItem): string {
+  return CADENCE_UNIT[item.cadence] ?? '/mo'
 }
 
 function totalSpent(item: SubscriptionItem): number {
   return item.charge_history.reduce((sum, h) => sum + h.amount, 0)
 }
 
-// Score 0–4: higher = more likely worth cancelling
+// Score 0–4: higher = more likely worth cancelling.
 function cancelPriority(item: SubscriptionItem): number {
-  if (!item.active) return 0
-  if (item.price_increase && !item.essential) return 4
-  if (item.is_new_recurring && !item.essential) return 3
-  if (!item.essential && item.charge_count > 3) return 2
-  if (!item.essential) return 1
-  return 0
+  if (!item.active || item.essential) return 0
+  if (item.price_increase) return 4
+  if (item.is_new_recurring) return 3
+  if (item.charge_count > 3) return 2
+  return 1
 }
 
 function indicatorColor(item: SubscriptionItem): string {
   if (!item.active) return 'var(--text-muted)'
-  if (item.essential) return '#22c55e'
-  if (item.price_increase && !item.essential) return '#ef4444'
-  if (!item.essential) return '#f59e0b'
-  return 'var(--accent)'
+  if (item.essential) return 'var(--green)'
+  if (item.price_increase) return 'var(--red)'
+  return 'var(--yellow)'
 }
 
 function cancelReason(item: SubscriptionItem): string | null {
   if (!item.active || item.essential) return null
-  if (item.price_increase) {
+  if (item.price_increase && item.baseline_amount > 0) {
     const increase = item.amount - item.baseline_amount
     const increasePct = Math.round((increase / item.baseline_amount) * 100)
     return `Price increased ${increasePct}% (${fmt(item.baseline_amount)} → ${fmt(item.amount)}). That's ${fmt(increase * 12)} extra per year.`
@@ -68,7 +85,7 @@ function Sparkline({ history }: { history: SubscriptionItem['charge_history'] })
   const min = Math.min(...points)
   const max = Math.max(...points)
   const range = max - min
-  if (range === 0) return null  // flat — activity timeline is enough
+  if (range === 0) return null
   const coords = points.map((v, i) => {
     const x = (i / (points.length - 1)) * 100
     const y = 100 - ((v - min) / range) * 100
@@ -103,9 +120,9 @@ function ActivityTimeline({ history }: { history: SubscriptionItem['charge_histo
   return (
     <svg viewBox="0 0 100 36" className="sub-timeline" aria-label="Charge activity timeline">
       <line x1="2" y1="10" x2="98" y2="10" stroke="var(--border)" strokeWidth="1.5" />
-      {history.map((h, i) => {
+      {history.map((h) => {
         const x = 2 + ((new Date(h.date).getTime() - minT) / span) * 96
-        return <circle key={`${h.date}-${i}`} cx={x} cy="10" r="3.5" fill="var(--accent)" />
+        return <circle key={`${h.date}-${h.amount}`} cx={x} cy="10" r="3.5" fill="var(--accent)" />
       })}
       {monthTicks.map(({ x, label }) => (
         <text key={label} x={x} y="30" fontSize="9" fill="var(--text-muted)" textAnchor="middle">
@@ -116,42 +133,167 @@ function ActivityTimeline({ history }: { history: SubscriptionItem['charge_histo
   )
 }
 
+interface RowActions {
+  onIgnore: () => void
+  onToggleEssential: () => void
+  onSetReminder: () => void
+  showSetReminder: boolean
+  isEssential: boolean
+}
+
+interface SubscriptionRowProps {
+  item: SubscriptionItem
+  variant: 'review' | 'essential' | 'other' | 'ignored'
+  expanded: boolean
+  onToggleDetail: () => void
+  actions: RowActions
+  reminderMessage?: string
+}
+
+function SubscriptionRow({
+  item,
+  variant,
+  expanded,
+  onToggleDetail,
+  actions,
+  reminderMessage,
+}: SubscriptionRowProps) {
+  const reason = cancelReason(item)
+  const showReason = variant === 'review' && reason
+
+  return (
+    <div className={`sub-row sub-row-${variant} ${expanded ? 'expanded' : ''}`}>
+      <button
+        type="button"
+        className="sub-row-summary"
+        onClick={onToggleDetail}
+        aria-expanded={expanded}
+      >
+        <span className="sub-row-indicator" style={{ background: indicatorColor(item) }} />
+        <span className="sub-row-merchant">
+          <span className="sub-row-name">{item.merchant}</span>
+          <span className="sub-row-cadence">{item.cadence}</span>
+        </span>
+        <span className="sub-row-amounts">
+          <span className="sub-row-amount">
+            {fmt(item.amount)}
+            {cadenceUnit(item)}
+          </span>
+          <span className="sub-row-annual">{fmt(annualCost(item))}/yr</span>
+        </span>
+      </button>
+
+      {showReason && <div className="sub-row-reason">{reason}</div>}
+
+      {variant !== 'ignored' && (
+        <div className="sub-row-actions">
+          <button type="button" className="ghost-button" onClick={actions.onIgnore}>
+            Ignore
+          </button>
+          <button type="button" className="ghost-button" onClick={actions.onToggleEssential}>
+            {actions.isEssential ? 'Mark Optional' : 'Mark Essential'}
+          </button>
+          {actions.showSetReminder && (
+            <button type="button" className="ghost-button accent" onClick={actions.onSetReminder}>
+              Set Reminder
+            </button>
+          )}
+        </div>
+      )}
+
+      {reminderMessage && <p className="budget-hint sub-row-reminder">{reminderMessage}</p>}
+
+      {expanded && (
+        <div className="sub-row-detail">
+          <div className="sub-stats">
+            <div className="sub-stat">
+              <span className="sub-stat-value">{fmt(monthlyAmount(item))}</span>
+              <span className="sub-stat-label">per month</span>
+            </div>
+            <div className="sub-stat">
+              <span className="sub-stat-value">{fmt(annualCost(item))}</span>
+              <span className="sub-stat-label">per year</span>
+            </div>
+            <div className="sub-stat">
+              <span className="sub-stat-value">{fmt(totalSpent(item))}</span>
+              <span className="sub-stat-label">total paid</span>
+            </div>
+            <div className="sub-stat">
+              <span className="sub-stat-value">{item.charge_count}</span>
+              <span className="sub-stat-label">charges</span>
+            </div>
+          </div>
+          <div className="sub-detail-meta">
+            <span>Last charged {item.last_charge_date}</span>
+          </div>
+          <ActivityTimeline history={item.charge_history} />
+          <Sparkline history={item.charge_history} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SubscriptionCenter() {
   const queryClient = useQueryClient()
   const { guardGuestFeature } = useGuestFeature()
-  const [status, setStatus] = useState<'all' | 'active' | 'ignored'>('all')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [filterIncreased, setFilterIncreased] = useState(false)
   const [filterOptional, setFilterOptional] = useState(false)
   const [threshold, setThreshold] = useState(0.1)
-  const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null)
-  const [reminderMessage, setReminderMessage] = useState('')
+  const [showIgnored, setShowIgnored] = useState(false)
+  const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null)
+  const [reminderMessages, setReminderMessages] = useState<Record<string, string>>({})
 
   const listQuery = useQuery({
-    queryKey: [...queryKeys.subscriptions.list, status, filterIncreased, filterOptional, threshold],
-    queryFn: () => getSubscriptions({ status, filterIncreased, filterOptional, threshold }),
-  })
-  const alertsQuery = useQuery({
-    queryKey: [...queryKeys.subscriptions.alerts, threshold],
-    queryFn: () => getSubscriptionAlerts({ threshold, includeMissed: false }),
+    queryKey: [...queryKeys.subscriptions.list, 'all', filterIncreased, filterOptional, threshold],
+    queryFn: () => getSubscriptions({ status: 'all', filterIncreased, filterOptional, threshold }),
   })
 
-  const list = useMemo(() => {
-    const raw = listQuery.data?.subscriptions ?? []
-    return [...raw].sort((a, b) => {
+  const all = useMemo(() => listQuery.data?.subscriptions ?? [], [listQuery.data])
+
+  const sections = useMemo(() => {
+    const review: SubscriptionItem[] = []
+    const otherActive: SubscriptionItem[] = []
+    const essential: SubscriptionItem[] = []
+    const ignored: SubscriptionItem[] = []
+
+    for (const item of all) {
+      if (item.ignored) {
+        ignored.push(item)
+      } else if (item.essential) {
+        essential.push(item)
+      } else if (item.active && cancelPriority(item) > 0) {
+        review.push(item)
+      } else if (item.active) {
+        otherActive.push(item)
+      } else {
+        otherActive.push(item)
+      }
+    }
+
+    review.sort((a, b) => {
       const pd = cancelPriority(b) - cancelPriority(a)
       if (pd !== 0) return pd
       return annualCost(b) - annualCost(a)
     })
-  }, [listQuery.data])
+    essential.sort((a, b) => annualCost(b) - annualCost(a))
+    otherActive.sort((a, b) => annualCost(b) - annualCost(a))
 
-  const selected = useMemo(
-    () => list.find((s) => s.stream_id === selectedStreamId) ?? list[0] ?? null,
-    [list, selectedStreamId],
-  )
+    const monthlyAtRisk = review.reduce((sum, s) => sum + monthlyAmount(s), 0)
+    const essentialMonthly = essential.reduce((sum, s) => sum + monthlyAmount(s), 0)
+
+    return { review, otherActive, essential, ignored, monthlyAtRisk, essentialMonthly }
+  }, [all])
 
   const prefMutation = useMutation({
-    mutationFn: ({ streamId, update }: { streamId: string; update: { essential?: boolean; ignored?: boolean } }) =>
-      updateSubscriptionPreferences(streamId, update),
+    mutationFn: ({
+      streamId,
+      update,
+    }: {
+      streamId: string
+      update: { essential?: boolean; ignored?: boolean }
+    }) => updateSubscriptionPreferences(streamId, update),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.list })
       queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.alerts })
@@ -160,171 +302,202 @@ function SubscriptionCenter() {
 
   const remindMutation = useMutation({
     mutationFn: (streamId: string) => remindCancel(streamId),
-    onSuccess: (data) => setReminderMessage(data.message),
+    onSuccess: (data, streamId) =>
+      setReminderMessages((prev) => ({ ...prev, [streamId]: data.message })),
   })
 
-  const updatePreference = (streamId: string, update: { essential?: boolean; ignored?: boolean }) => {
-    if (guardGuestFeature({
-      title: 'Sign in to save subscription choices',
-      message: 'Guest Demo lets you review sample subscription alerts. Sign in to ignore subscriptions, mark essentials, and save reminders.',
-    })) return
+  const updatePreference = (
+    streamId: string,
+    update: { essential?: boolean; ignored?: boolean },
+  ) => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save subscription choices',
+        message:
+          'Guest Demo lets you review sample subscription alerts. Sign in to ignore subscriptions, mark essentials, and save reminders.',
+      })
+    )
+      return
     prefMutation.mutate({ streamId, update })
   }
 
-  const setCancelReminder = (streamId: string) => {
-    if (guardGuestFeature({
-      title: 'Sign in to save reminders',
-      message: 'Guest Demo can show subscription insights, but reminders are locked. Sign in to save cancel reminders.',
-    })) return
+  const setReminder = (streamId: string) => {
+    if (
+      guardGuestFeature({
+        title: 'Sign in to save reminders',
+        message:
+          'Guest Demo can show subscription insights, but reminders are locked. Sign in to save cancel reminders.',
+      })
+    )
+      return
     remindMutation.mutate(streamId)
   }
 
-  const reason = selected ? cancelReason(selected) : null
+  const buildActions = (item: SubscriptionItem, allowReminder: boolean): RowActions => ({
+    onIgnore: () => updatePreference(item.stream_id, { ignored: true }),
+    onToggleEssential: () => updatePreference(item.stream_id, { essential: !item.essential }),
+    onSetReminder: () => setReminder(item.stream_id),
+    showSetReminder: allowReminder,
+    isEssential: item.essential,
+  })
+
+  const toggleDetail = (streamId: string) => {
+    setExpandedDetailId((prev) => (prev === streamId ? null : streamId))
+  }
+
+  const reviewCountLabel = `${sections.review.length} ${sections.review.length === 1 ? 'subscription' : 'subscriptions'}`
+  const essentialCountLabel = `${sections.essential.length} ${sections.essential.length === 1 ? 'subscription' : 'subscriptions'}`
+  const otherCountLabel = `${sections.otherActive.length} ${sections.otherActive.length === 1 ? 'subscription' : 'subscriptions'}`
+  const ignoredCountLabel = `${sections.ignored.length} ${sections.ignored.length === 1 ? 'subscription' : 'subscriptions'}`
 
   return (
     <div className="card">
-      <h2>Subscription Center</h2>
-
-      <div className="sub-filters">
-        <label>
-          Status
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="ignored">Ignored</option>
-          </select>
-        </label>
-        <label>
-          <input type="checkbox" checked={filterIncreased} onChange={(e) => setFilterIncreased(e.target.checked)} />
-          Increased only
-        </label>
-        <label>
-          <input type="checkbox" checked={filterOptional} onChange={(e) => setFilterOptional(e.target.checked)} />
-          Optional only
-        </label>
-        <label>
-          Price increase threshold
-          <input
-            type="number" min={1} max={50} step={1}
-            value={Math.round(threshold * 100)}
-            onChange={(e) => setThreshold(Math.max(0.01, Number(e.target.value) / 100))}
-          />
-          <span>{pct(threshold)}</span>
-        </label>
+      <div className="sub-page-header">
+        <h2>Subscription Center</h2>
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          aria-expanded={showAdvanced}
+        >
+          Advanced {showAdvanced ? '▴' : '▾'}
+        </button>
       </div>
 
-      {alertsQuery.data && alertsQuery.data.count > 0 && (
-        <div className="sub-alerts">
-          <strong>{alertsQuery.data.count} {alertsQuery.data.count === 1 ? 'alert' : 'alerts'}</strong>
-          {alertsQuery.data.alerts.slice(0, 4).map((a) => (
-            <div key={`${a.stream_id}-${a.alert_type}`}>{a.message}</div>
-          ))}
+      {showAdvanced && (
+        <div className="sub-filters">
+          <label>
+            <input
+              type="checkbox"
+              checked={filterIncreased}
+              onChange={(e) => setFilterIncreased(e.target.checked)}
+            />
+            Increased only
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={filterOptional}
+              onChange={(e) => setFilterOptional(e.target.checked)}
+            />
+            Optional only
+          </label>
+          <label>
+            Price increase threshold
+            <input
+              type="number"
+              min={1}
+              max={50}
+              step={1}
+              value={Math.round(threshold * 100)}
+              onChange={(e) => setThreshold(Math.max(0.01, Number(e.target.value) / 100))}
+            />
+            <span>{pct(threshold)}</span>
+          </label>
         </div>
       )}
 
       {listQuery.isLoading && <p>Loading subscriptions...</p>}
-      {!listQuery.isLoading && !list.length && (
+      {!listQuery.isLoading && all.length === 0 && (
         <p className="empty-state">No subscriptions detected yet.</p>
       )}
 
-      {list.length > 0 && (
-        <div className="sub-grid">
-          <div className="sub-list">
-            {list.map((item) => (
-              <button
+      {sections.review.length > 0 && (
+        <section className="sub-section sub-section-review">
+          <header className="sub-section-header">
+            <h3>
+              Needs Review · {reviewCountLabel} · {fmt(sections.monthlyAtRisk)}/mo at risk
+            </h3>
+          </header>
+          <div className="sub-section-body">
+            {sections.review.map((item) => (
+              <SubscriptionRow
                 key={item.stream_id}
-                type="button"
-                className={`sub-list-item ${selected?.stream_id === item.stream_id ? 'selected' : ''}`}
-                onClick={() => { setSelectedStreamId(item.stream_id); setReminderMessage('') }}
-              >
-                <span
-                  className="sub-list-indicator"
-                  style={{ background: indicatorColor(item) }}
-                />
-                <span className="sub-list-merchant">
-                  <span>{item.merchant}</span>
-                  <span className="sub-list-cadence">{item.cadence}</span>
-                </span>
-                <span className="sub-list-amounts">
-                  <span>{fmt(item.amount)}/mo</span>
-                  <span className="sub-list-annual">{fmt(annualCost(item))}/yr</span>
-                </span>
-              </button>
+                item={item}
+                variant="review"
+                expanded={expandedDetailId === item.stream_id}
+                onToggleDetail={() => toggleDetail(item.stream_id)}
+                actions={buildActions(item, true)}
+                reminderMessage={reminderMessages[item.stream_id]}
+              />
             ))}
           </div>
+        </section>
+      )}
 
-          {selected && (
-            <div className="sub-detail">
-              <div className="sub-detail-header">
-                <h3>{selected.merchant}</h3>
-                {!selected.active && <span className="sub-badge sub-badge-inactive">Inactive</span>}
-                {selected.essential && <span className="sub-badge sub-badge-essential">Essential</span>}
-                {selected.cancellation_candidate && !selected.essential && (
-                  <span className="sub-badge sub-badge-review">Review</span>
-                )}
-              </div>
+      {sections.otherActive.length > 0 && (
+        <section className="sub-section sub-section-other">
+          <header className="sub-section-header">
+            <h3>Other Active · {otherCountLabel}</h3>
+          </header>
+          <div className="sub-section-body">
+            {sections.otherActive.map((item) => (
+              <SubscriptionRow
+                key={item.stream_id}
+                item={item}
+                variant="other"
+                expanded={expandedDetailId === item.stream_id}
+                onToggleDetail={() => toggleDetail(item.stream_id)}
+                actions={buildActions(item, false)}
+                reminderMessage={reminderMessages[item.stream_id]}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-              <div className="sub-stats">
-                <div className="sub-stat">
-                  <span className="sub-stat-value">{fmt(selected.amount)}</span>
-                  <span className="sub-stat-label">per {selected.cadence === 'annual' ? 'year' : selected.cadence === 'weekly' ? 'week' : 'month'}</span>
-                </div>
-                <div className="sub-stat">
-                  <span className="sub-stat-value">{fmt(annualCost(selected))}</span>
-                  <span className="sub-stat-label">per year</span>
-                </div>
-                <div className="sub-stat">
-                  <span className="sub-stat-value">{fmt(totalSpent(selected))}</span>
-                  <span className="sub-stat-label">total paid</span>
-                </div>
-                <div className="sub-stat">
-                  <span className="sub-stat-value">{selected.charge_count}</span>
-                  <span className="sub-stat-label">charges</span>
-                </div>
-              </div>
+      {sections.essential.length > 0 && (
+        <section className="sub-section sub-section-essential">
+          <header className="sub-section-header">
+            <h3>
+              Essential · {essentialCountLabel} · {fmt(sections.essentialMonthly)}/mo
+            </h3>
+          </header>
+          <div className="sub-section-body">
+            {sections.essential.map((item) => (
+              <SubscriptionRow
+                key={item.stream_id}
+                item={item}
+                variant="essential"
+                expanded={expandedDetailId === item.stream_id}
+                onToggleDetail={() => toggleDetail(item.stream_id)}
+                actions={buildActions(item, false)}
+                reminderMessage={reminderMessages[item.stream_id]}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-              {reason && (
-                <div className="sub-reason">
-                  {reason}
-                </div>
-              )}
-
-              <div className="sub-detail-meta">
-                <span>Last charged {selected.last_charge_date}</span>
-              </div>
-
-              <ActivityTimeline history={selected.charge_history} />
-              <Sparkline history={selected.charge_history} />
-
-              <div className="sub-actions">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => updatePreference(selected.stream_id, { ignored: true })}
-                >
-                  Ignore
-                </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => updatePreference(selected.stream_id, { essential: !selected.essential })}
-                >
-                  {selected.essential ? 'Mark Optional' : 'Mark Essential'}
-                </button>
-                {selected.cancellation_candidate && (
-                  <button
-                    type="button"
-                    className="primary-button sub-cancel-btn"
-                    onClick={() => setCancelReminder(selected.stream_id)}
-                  >
-                    Cancel This
-                  </button>
-                )}
-              </div>
-              {reminderMessage && <p className="budget-hint">{reminderMessage}</p>}
+      {sections.ignored.length > 0 && (
+        <section className="sub-section sub-section-ignored">
+          <header className="sub-section-header">
+            <h3>Ignored · {ignoredCountLabel}</h3>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => setShowIgnored((v) => !v)}
+              aria-expanded={showIgnored}
+            >
+              {showIgnored ? 'Hide' : 'Show'}
+            </button>
+          </header>
+          {showIgnored && (
+            <div className="sub-section-body">
+              {sections.ignored.map((item) => (
+                <SubscriptionRow
+                  key={item.stream_id}
+                  item={item}
+                  variant="ignored"
+                  expanded={expandedDetailId === item.stream_id}
+                  onToggleDetail={() => toggleDetail(item.stream_id)}
+                  actions={buildActions(item, false)}
+                  reminderMessage={reminderMessages[item.stream_id]}
+                />
+              ))}
             </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   )

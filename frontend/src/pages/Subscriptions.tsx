@@ -2,7 +2,7 @@ import SubscriptionCenter from '../components/SubscriptionCenter'
 
 function Subscriptions() {
   return (
-    <div>
+    <div className="dashboard-page">
       <h1 className="page-title">Subscriptions</h1>
       <p className="page-subtitle">
         Detect recurring charges, review price changes, and manage optional vs essential services.

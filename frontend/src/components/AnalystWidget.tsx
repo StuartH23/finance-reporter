@@ -166,7 +166,7 @@ export default function AnalystWidget() {
           <div className="analyst-message assistant">
             {getDemoMode()
               ? "I have access to the demo account's transactions. Ask me about spending, budget, subscriptions, or anything else shown on the dashboard."
-              : 'Ask me about your spending, trends, subscriptions, or budget. Upload a statement on the Dashboard first if you haven\'t.'}
+              : "Ask me about your spending, trends, subscriptions, or budget. Upload a statement on the Dashboard first if you haven't."}
           </div>
         )}
         {messages.map((m, i) => (

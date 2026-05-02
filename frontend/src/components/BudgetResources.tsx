@@ -119,7 +119,7 @@ function BudgetResources() {
     <div className="card">
       <h2>Budgeting Tips and Ideas</h2>
 
-      <div className="resource-grid" style={{ marginBottom: '1rem' }}>
+      <div className="resource-grid u-mb-lg">
         {tipLinks.map((item) => (
           <a
             key={item.href}
@@ -134,9 +134,7 @@ function BudgetResources() {
         ))}
       </div>
 
-      <div className="budget-guide-title" style={{ marginBottom: '0.5rem' }}>
-        Want these features? Join the signup list.
-      </div>
+      <div className="budget-guide-title u-mb-sm">Want these features? Join the signup list.</div>
       <p className="signup-helper">
         Add your email and choose the ideas you care about most. We will use this to prioritize what
         to build next.

@@ -10,7 +10,7 @@ function Budget() {
   const [activeTab, setActiveTab] = useState<BudgetTab>('category')
 
   return (
-    <div>
+    <div className="dashboard-page">
       <h1 className="page-title">Budget</h1>
       <p className="page-subtitle">
         Build monthly targets from real spending history, or set up goal-driven paycheck planning —

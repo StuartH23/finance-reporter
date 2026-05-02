@@ -253,10 +253,10 @@ function GoalBudgetPlanner() {
     <div>
       <div className="card">
         <h2>Goal Creation Wizard</h2>
-        <p className="budget-hint" style={{ marginBottom: '0.8rem' }}>
+        <p className="budget-hint u-mb-goal">
           Create and prioritize goals. Progress updates from synced transactions.
         </p>
-        <div className="feature-form-grid" style={{ marginBottom: '0.8rem' }}>
+        <div className="feature-form-grid goal-form-grid">
           <label className="field-label">
             Goal Name
             <input
@@ -344,11 +344,11 @@ function GoalBudgetPlanner() {
               <tr>
                 <th>Name</th>
                 <th>Category</th>
-                <th style={{ textAlign: 'right' }}>Progress</th>
-                <th style={{ textAlign: 'right' }}>Remaining</th>
-                <th style={{ textAlign: 'right' }}>Priority</th>
+                <th className="u-text-right">Progress</th>
+                <th className="u-text-right">Remaining</th>
+                <th className="u-text-right">Priority</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th className="u-text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -356,13 +356,13 @@ function GoalBudgetPlanner() {
                 <tr key={goal.id}>
                   <td>{goal.name}</td>
                   <td>{goal.category}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className="u-text-right">
                     {goalProgressPct(goal).toFixed(1)}% ({fmtMoney(goal.contributed_amount)})
                   </td>
-                  <td style={{ textAlign: 'right' }}>{fmtMoney(goal.remaining_amount)}</td>
-                  <td style={{ textAlign: 'right' }}>{goal.priority}</td>
+                  <td className="u-text-right">{fmtMoney(goal.remaining_amount)}</td>
+                  <td className="u-text-right">{goal.priority}</td>
                   <td>{goal.status}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className="u-text-right">
                     <button
                       type="button"
                       className="ghost-button"
@@ -388,7 +388,7 @@ function GoalBudgetPlanner() {
 
       <div className="card">
         <h2>Paycheck Plan</h2>
-        <div className="feature-form-grid" style={{ marginBottom: '0.8rem' }}>
+        <div className="feature-form-grid goal-form-grid">
           <label className="field-label">
             Paycheck Amount
             <input
@@ -411,16 +411,7 @@ function GoalBudgetPlanner() {
           </label>
           <label className="field-label">
             Min Emergency Contribution
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                margin: '0.2rem 0 0.3rem',
-                fontWeight: 400,
-                color: 'var(--text-muted)',
-              }}
-            >
+            <div className="goal-checkbox-row">
               <input
                 type="checkbox"
                 checked={enforceEmergencyMinimum}
@@ -461,14 +452,11 @@ function GoalBudgetPlanner() {
           </label>
         </div>
 
-        <p className="budget-guide-title" style={{ marginBottom: '0.35rem' }}>
-          Fixed Obligations
-        </p>
+        <p className="budget-guide-title goal-section-title">Fixed Obligations</p>
         {obligations.map((item, idx) => (
-          <div key={item.rowId} style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.4rem' }}>
+          <div key={item.rowId} className="obligation-row">
             <input
-              className="text-input"
-              style={{ flex: 1 }}
+              className="text-input obligation-name-input"
               value={item.name}
               onChange={(e) => {
                 const next = [...obligations]
@@ -478,8 +466,7 @@ function GoalBudgetPlanner() {
               placeholder="Rent"
             />
             <input
-              className="text-input"
-              style={{ width: 140 }}
+              className="text-input obligation-amount-input"
               type="number"
               min="0"
               value={toInputAmount(item.amount)}
@@ -507,7 +494,7 @@ function GoalBudgetPlanner() {
           Add Obligation
         </button>
 
-        <div style={{ marginTop: '0.8rem' }}>
+        <div className="u-mt-md">
           <button
             type="button"
             className="primary-button"
@@ -519,7 +506,7 @@ function GoalBudgetPlanner() {
         </div>
 
         {recommendedPlan && draftPlan && (
-          <div style={{ marginTop: '1rem' }}>
+          <div className="u-mt-lg">
             <div className="metrics-row">
               <div className="metric">
                 <div className="label">Needs</div>
@@ -539,7 +526,7 @@ function GoalBudgetPlanner() {
               </div>
             </div>
 
-            <div className="budget-guide" style={{ marginBottom: '0.8rem' }}>
+            <div className="budget-guide u-mb-goal">
               <p className="budget-guide-title">What Changed</p>
               {recommendedPlan.what_changed.map((line) => (
                 <p key={line} className="budget-guide-step">
@@ -549,14 +536,14 @@ function GoalBudgetPlanner() {
             </div>
 
             {recommendedPlan.warnings.length > 0 && (
-              <div className="sub-alerts" style={{ marginBottom: '0.8rem' }}>
+              <div className="sub-alerts u-mb-goal">
                 {recommendedPlan.warnings.map((line) => (
                   <p key={line}>{line}</p>
                 ))}
               </div>
             )}
 
-            <div className="feature-form-grid" style={{ marginBottom: '0.75rem' }}>
+            <div className="feature-form-grid u-mb-md">
               <label className="field-label">
                 Needs Override
                 <input
@@ -607,7 +594,7 @@ function GoalBudgetPlanner() {
               If you change the goals bucket, goal rows are auto-rebalanced on save.
             </p>
 
-            <div className="feature-actions" style={{ marginTop: '0.65rem' }}>
+            <div className="feature-actions goal-action-row">
               <button
                 type="button"
                 className="primary-button"
