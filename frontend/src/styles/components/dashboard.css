@@ -481,6 +481,13 @@
     background: transparent;
   }
 
+  .dashboard-upload-flow > .upload-card-loading {
+    min-height: 7rem;
+    display: grid;
+    place-items: center;
+    color: var(--text-secondary);
+  }
+
   .experience-preview {
     margin-bottom: 0.72rem;
   }

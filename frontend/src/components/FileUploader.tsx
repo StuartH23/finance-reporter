@@ -5,7 +5,11 @@ import type { UploadResponse } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
 import PrivacyNotice from './PrivacyNotice'
 
-function FileUploader() {
+interface FileUploaderProps {
+  openRequest?: number
+}
+
+function FileUploader({ openRequest = 0 }: FileUploaderProps) {
   const queryClient = useQueryClient()
   const { isGuestDemo, showGuestFeature } = useGuestFeature()
   const [isExpanded, setIsExpanded] = useState(false)
@@ -27,6 +31,7 @@ function FileUploader() {
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null)
   const [pendingBrowse, setPendingBrowse] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const handledOpenRequestRef = useRef(0)
 
   const uploadMutation = useMutation({
     mutationFn: (files: FileList | File[]) => uploadFiles(files),
@@ -121,15 +126,13 @@ function FileUploader() {
   }
 
   useEffect(() => {
-    const onUploadStatements = () => {
-      document
-        .getElementById('upload-statements')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      beginBrowseFlow()
-    }
-    window.addEventListener('app:upload-statements', onUploadStatements)
-    return () => window.removeEventListener('app:upload-statements', onUploadStatements)
-  }, [beginBrowseFlow])
+    if (openRequest <= handledOpenRequestRef.current) return
+    handledOpenRequestRef.current = openRequest
+    document
+      .getElementById('upload-statements')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    beginBrowseFlow()
+  }, [beginBrowseFlow, openRequest])
 
   const results: UploadResponse | undefined = uploadMutation.data
   const errorMessage = uploadMutation.error?.message

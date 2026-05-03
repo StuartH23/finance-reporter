@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getMonthlyPnl, getNextBestActionFeed } from '../api/client'
+import { getNextBestActionFeed } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
-import type { MonthlyPnl, NextBestAction } from '../api/types'
+import type { MonthlyPnl, MonthlyPnlResponse, NextBestAction } from '../api/types'
 import { dashboardActionRoute, dashboardActionRouteLabel, formatMoney } from './dashboardActions'
 
 function toMonthDate(monthStr: string) {
@@ -41,24 +41,24 @@ function healthTone(latest?: MonthlyPnl, topAction?: NextBestAction | null) {
   return 'On track'
 }
 
-export default function MonthlyHealthSummary() {
+export default function MonthlyHealthSummary({
+  monthlyData,
+}: {
+  monthlyData?: MonthlyPnlResponse
+}) {
   const navigate = useNavigate()
-  const pnlQuery = useQuery({
-    queryKey: queryKeys.pnl.monthly,
-    queryFn: getMonthlyPnl,
-  })
   const feedQuery = useQuery({
     queryKey: queryKeys.actions.feed,
     queryFn: getNextBestActionFeed,
   })
 
-  const months = sortedMonths(pnlQuery.data?.months ?? [])
+  const months = sortedMonths(monthlyData?.months ?? [])
   const latest = months.at(-1)
   const previous = months.at(-2)
   const topAction = feedQuery.data?.actions[0] ?? null
   const route = topAction ? dashboardActionRoute(topAction) : null
 
-  if (!latest && !topAction && !pnlQuery.isLoading && !feedQuery.isLoading) return null
+  if (!latest && !topAction && !feedQuery.isLoading) return null
 
   return (
     <section className="monthly-health-summary" aria-labelledby="monthly-health-title">

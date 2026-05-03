@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { AuthProvider } from '../auth/AuthProvider'
 import { GuestFeatureProvider } from '../guest/GuestFeatureProvider'
 import Dashboard from '../pages/Dashboard'
+import { normalizeDashboardReport } from '../pages/dashboardReportState'
 
 function queryClient() {
   return new QueryClient({ defaultOptions: { queries: { enabled: false } } })
@@ -14,13 +15,15 @@ function renderDashboard({
   client = queryClient(),
   canEnableDemo = false,
   demoModeEnabled = false,
+  initialEntry = '/',
 }: {
   client?: QueryClient
   canEnableDemo?: boolean
   demoModeEnabled?: boolean
+  initialEntry?: string
 } = {}) {
   return renderToStaticMarkup(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <AuthProvider>
         <QueryClientProvider client={client}>
           <GuestFeatureProvider>
@@ -158,5 +161,25 @@ describe('Dashboard page', () => {
     expect(html).toContain('Monthly P&amp;L')
     expect(html).toContain('Transactions')
     expect(html).not.toContain('All Transactions')
+  })
+
+  it('defaults invalid report search params to pnl', () => {
+    expect(normalizeDashboardReport('bad-value')).toBe('pnl')
+    expect(normalizeDashboardReport(null)).toBe('pnl')
+    expect(normalizeDashboardReport('transactions')).toBe('transactions')
+  })
+
+  it('honors the transactions report search param', () => {
+    const client = queryClient()
+    seedDashboardData(client)
+
+    const html = renderDashboard({
+      client,
+      demoModeEnabled: true,
+      initialEntry: '/?report=transactions',
+    })
+
+    expect(html).toContain('Transactions')
+    expect(html).not.toContain('Monthly P&amp;L')
   })
 })

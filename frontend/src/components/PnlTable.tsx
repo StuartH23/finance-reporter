@@ -1,24 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { getMonthlyPnl, getYearlyPnl } from '../api/client'
+import { getYearlyPnl } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
+import type { MonthlyPnlResponse } from '../api/types'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 interface PnlTableProps {
+  monthlyData?: MonthlyPnlResponse
   onActiveYearChange?: (year: number | null) => void
 }
 
-function PnlTable({ onActiveYearChange }: PnlTableProps) {
+function PnlTable({ monthlyData, onActiveYearChange }: PnlTableProps) {
   const { data: yearlyData } = useQuery({
     queryKey: queryKeys.pnl.yearly,
     queryFn: getYearlyPnl,
-  })
-  const { data: monthlyData } = useQuery({
-    queryKey: queryKeys.pnl.monthly,
-    queryFn: getMonthlyPnl,
   })
 
   const yearly = yearlyData?.years ?? []

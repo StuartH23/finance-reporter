@@ -7,9 +7,12 @@ function AuthCallback() {
   const navigate = useNavigate()
   const [message, setMessage] = useState('Completing sign in...')
   const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setFailed(false)
+    setMessage(attempt > 0 ? 'Retrying sign in...' : 'Completing sign in...')
 
     auth
       .completeSignIn()
@@ -26,7 +29,7 @@ function AuthCallback() {
     return () => {
       cancelled = true
     }
-  }, [auth.completeSignIn, navigate])
+  }, [attempt, auth.completeSignIn, navigate])
 
   return (
     <main className="auth-status-shell">
@@ -35,9 +38,25 @@ function AuthCallback() {
         <p>{message}</p>
         {auth.error && <p className="form-error">{auth.error}</p>}
         {failed && (
-          <button type="button" className="primary-button" onClick={() => void auth.signIn('/')}>
-            Try Sign In Again
-          </button>
+          <div className="control-row">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => navigate('/', { replace: true })}
+            >
+              Back to Dashboard
+            </button>
+            <button type="button" className="ghost-button" onClick={() => void auth.signIn('/')}>
+              Start Over
+            </button>
+          </div>
         )}
       </section>
     </main>

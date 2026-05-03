@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getLedger, getMonthlyPnl } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import DashboardActionQueue from '../components/DashboardActionQueue'
 import DashboardCommandHeader from '../components/DashboardCommandHeader'
 import DashboardKpis from '../components/DashboardKpis'
 import ExperiencePreview from '../components/ExperiencePreview'
-import FileUploader from '../components/FileUploader'
 import MonthlyHealthSummary from '../components/MonthlyHealthSummary'
 import PnlTable from '../components/PnlTable'
 import TransactionList from '../components/TransactionList'
+import { type DashboardReport, normalizeDashboardReport } from './dashboardReportState'
+
+const FileUploader = lazy(() => import('../components/FileUploader'))
 
 interface DashboardProps {
   canEnableDemo: boolean
@@ -17,10 +20,22 @@ interface DashboardProps {
   onEnableDemoMode: () => void
 }
 
+function UploadFallback() {
+  return (
+    <div className="card upload-card upload-card-loading" role="status" aria-live="polite">
+      <p>Loading upload tools...</p>
+    </div>
+  )
+}
+
 function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: DashboardProps) {
   const [, setActivePnlYear] = useState<number | null>(null)
   const [uploadVisible, setUploadVisible] = useState(false)
-  const [activeReport, setActiveReport] = useState<'pnl' | 'transactions'>('pnl')
+  const [uploadOpenRequest, setUploadOpenRequest] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeReport, setActiveReport] = useState<DashboardReport>(() =>
+    normalizeDashboardReport(searchParams.get('report')),
+  )
 
   const { data: ledgerData, isLoading: ledgerLoading } = useQuery({
     queryKey: queryKeys.ledger,
@@ -35,6 +50,16 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
   const hasTransactions = (ledgerData?.count ?? 0) > 0
 
   useEffect(() => {
+    const normalized = normalizeDashboardReport(searchParams.get('report'))
+    setActiveReport(normalized)
+    if (searchParams.get('report') !== normalized) {
+      const next = new URLSearchParams(searchParams)
+      next.set('report', normalized)
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
     const onViewReports = () => {
       document
         .getElementById('reports-section')
@@ -42,6 +67,7 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
     }
     const onUploadStatements = () => {
       setUploadVisible(true)
+      setUploadOpenRequest((request) => request + 1)
     }
     window.addEventListener('app:view-reports', onViewReports)
     window.addEventListener('app:upload-statements', onUploadStatements)
@@ -50,6 +76,12 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
       window.removeEventListener('app:upload-statements', onUploadStatements)
     }
   }, [])
+
+  const selectReport = (report: DashboardReport) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('report', report)
+    setSearchParams(next)
+  }
 
   const showFirstSession = canEnableDemo && !demoModeEnabled && !ledgerLoading && !hasTransactions
 
@@ -66,13 +98,15 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
           />
 
           <main className="dashboard-monthly-layout">
-            <MonthlyHealthSummary />
-            <DashboardKpis />
+            <MonthlyHealthSummary monthlyData={monthlyData} />
+            <DashboardKpis monthlyData={monthlyData} />
             <DashboardActionQueue />
 
             {uploadVisible && (
               <div className="dashboard-upload-flow">
-                <FileUploader />
+                <Suspense fallback={<UploadFallback />}>
+                  <FileUploader openRequest={uploadOpenRequest} />
+                </Suspense>
               </div>
             )}
 
@@ -96,7 +130,7 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
                     role="tab"
                     aria-selected={activeReport === 'pnl'}
                     className={activeReport === 'pnl' ? 'active' : ''}
-                    onClick={() => setActiveReport('pnl')}
+                    onClick={() => selectReport('pnl')}
                   >
                     P&amp;L
                   </button>
@@ -105,7 +139,7 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
                     role="tab"
                     aria-selected={activeReport === 'transactions'}
                     className={activeReport === 'transactions' ? 'active' : ''}
-                    onClick={() => setActiveReport('transactions')}
+                    onClick={() => selectReport('transactions')}
                   >
                     Transactions
                   </button>
@@ -113,7 +147,7 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
               </div>
               <div className="dashboard-reports-main">
                 {activeReport === 'pnl' ? (
-                  <PnlTable onActiveYearChange={setActivePnlYear} />
+                  <PnlTable monthlyData={monthlyData} onActiveYearChange={setActivePnlYear} />
                 ) : (
                   <TransactionList />
                 )}

@@ -1,6 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { getMonthlyPnl } from '../api/client'
-import { queryKeys } from '../api/queryKeys'
+import type { MonthlyPnlResponse } from '../api/types'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -16,12 +14,7 @@ function pctChange(current: number, previous: number) {
   return ((current - previous) / Math.abs(previous)) * 100
 }
 
-function DashboardKpis() {
-  const { data: monthlyData } = useQuery({
-    queryKey: queryKeys.pnl.monthly,
-    queryFn: getMonthlyPnl,
-  })
-
+function DashboardKpis({ monthlyData }: { monthlyData?: MonthlyPnlResponse }) {
   const sortedMonths = [...(monthlyData?.months ?? [])].sort((a, b) => {
     const da = toMonthDate(a.month_str)
     const db = toMonthDate(b.month_str)

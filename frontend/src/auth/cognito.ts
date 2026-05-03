@@ -2,6 +2,7 @@ const TOKEN_STORAGE_KEY = 'finance-reporter.auth.tokens'
 const PKCE_VERIFIER_KEY = 'finance-reporter.auth.pkce.verifier'
 const AUTH_STATE_KEY = 'finance-reporter.auth.state'
 const RETURN_PATH_KEY = 'finance-reporter.auth.return_path'
+const TOKEN_TIMEOUT_MS = 10_000
 
 type TokenResponse = {
   access_token: string
@@ -187,11 +188,24 @@ export function clearTokens() {
 
 async function requestTokens(body: URLSearchParams) {
   const config = getCognitoConfig()
-  const response = await fetch(`${config.domain}/oauth2/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  })
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS)
+  let response: Response
+  try {
+    response = await fetch(`${config.domain}/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Cognito token exchange timed out. Retry from the dashboard.')
+    }
+    throw new Error('Cognito token exchange failed. Check your network connection and retry.')
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 
   if (!response.ok) {
     let detail = response.statusText
@@ -255,7 +269,13 @@ export function completeCognitoSignIn(callbackUrl = window.location.href) {
   }
 
   callbackExchangeKey = callbackUrl
-  callbackExchangePromise = completeCognitoSignInInternal(callbackUrl)
+  const promise = completeCognitoSignInInternal(callbackUrl)
+  callbackExchangePromise = promise.finally(() => {
+    if (callbackExchangePromise === promise || callbackExchangeKey === callbackUrl) {
+      callbackExchangeKey = ''
+      callbackExchangePromise = null
+    }
+  })
   return callbackExchangePromise
 }
 

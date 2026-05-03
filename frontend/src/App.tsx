@@ -1,42 +1,33 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import {
-  BrowserRouter,
-  Navigate,
-  NavLink,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-} from 'react-router-dom'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { clearDemoSession, seedDemoSession } from './api/client'
+import { type AppNavItem, getNavItems } from './appNavigation'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import AuthRequiredScreen from './components/AuthRequiredScreen'
 import { getDemoTransactions, resetDemoState } from './demo/demoApi'
 import { getDemoMode, setDemoMode } from './demo/mode'
 import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvider'
 import AuthCallback from './pages/AuthCallback'
-import Budget from './pages/Budget'
-import CashFlow from './pages/CashFlow'
-import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
-import Subscriptions from './pages/Subscriptions'
 
-type NavItem = {
-  to: string
-  label: string
-  icon: 'dashboard' | 'cashflow' | 'budget' | 'subscriptions' | 'chat'
-}
+const Budget = lazy(() => import('./pages/Budget'))
+const CashFlow = lazy(() => import('./pages/CashFlow'))
+const Chat = lazy(() => import('./pages/Chat'))
+const Goals = lazy(() => import('./pages/Goals'))
+const Subscriptions = lazy(() => import('./pages/Subscriptions'))
 
-const navItems: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/cash-flow', label: 'Cash Flow', icon: 'cashflow' },
-  { to: '/budget', label: 'Budget', icon: 'budget' },
-  { to: '/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
-  { to: '/chat', label: 'Ask AI', icon: 'chat' },
-]
+const navItems = getNavItems()
 
 const SIDEBAR_PREF_KEY = 'pnl-reporter.sidebar-collapsed'
+
+function RouteFallback() {
+  return (
+    <section className="card route-loading" aria-label="Loading page">
+      <p>Loading page...</p>
+    </section>
+  )
+}
 
 function MobileNav() {
   return (
@@ -57,7 +48,7 @@ function MobileNav() {
   )
 }
 
-function NavIcon({ icon }: { icon: NavItem['icon'] }) {
+function NavIcon({ icon }: { icon: AppNavItem['icon'] }) {
   if (icon === 'budget') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -75,6 +66,16 @@ function NavIcon({ icon }: { icon: NavItem['icon'] }) {
         <path d="M5 12h14" />
         <path d="M5 15.5h9" />
         <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+      </svg>
+    )
+  }
+
+  if (icon === 'goals') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="7.5" />
+        <circle cx="12" cy="12" r="3.5" />
+        <path d="M16.5 7.5 20 4" />
       </svg>
     )
   }
@@ -294,24 +295,25 @@ function AppShell() {
         </header>
 
         <main className="workspace-main">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Dashboard
-                  canEnableDemo={!auth.isConfigured || !auth.isSignedIn}
-                  demoModeEnabled={demoModeEnabled}
-                  onEnableDemoMode={enableGuestDemoMode}
-                />
-              }
-            />
-            <Route path="/cash-flow" element={<CashFlow />} />
-            <Route path="/budget" element={<Budget />} />
-            <Route path="/subscriptions" element={<Subscriptions />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/goals" element={<Navigate to="/budget" replace />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-          </Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Dashboard
+                    canEnableDemo={!auth.isConfigured || !auth.isSignedIn}
+                    demoModeEnabled={demoModeEnabled}
+                    onEnableDemoMode={enableGuestDemoMode}
+                  />
+                }
+              />
+              <Route path="/cash-flow" element={<CashFlow />} />
+              <Route path="/budget" element={<Budget />} />
+              <Route path="/subscriptions" element={<Subscriptions />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/goals" element={<Goals />} />
+            </Routes>
+          </Suspense>
         </main>
       </section>
     </div>
