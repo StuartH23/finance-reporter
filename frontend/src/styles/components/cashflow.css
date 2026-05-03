@@ -29,6 +29,52 @@
     flex-wrap: wrap;
   }
 
+  .cashflow-period-panel,
+  .transaction-filters,
+  .transaction-list-header,
+  .transaction-export-actions {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .cashflow-period-panel {
+    margin: 0.85rem 0 1rem;
+  }
+
+  .transaction-list-header {
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .transaction-list-header h2 {
+    margin-bottom: 0;
+  }
+
+  .transaction-filters {
+    margin-bottom: 0.8rem;
+  }
+
+  .transaction-filters input,
+  .transaction-filters select,
+  .transaction-category-input {
+    min-height: 2.2rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 0.42rem 0.55rem;
+  }
+
+  .transaction-filters input {
+    min-width: min(18rem, 100%);
+  }
+
+  .transaction-category-input {
+    width: min(14rem, 100%);
+  }
+
   .cashflow-control {
     display: flex;
     flex-direction: column;
@@ -42,6 +88,49 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.6rem;
     margin-top: 0.78rem;
+  }
+
+  .cashflow-waterfall {
+    display: grid;
+    gap: 0.72rem;
+  }
+
+  .cashflow-waterfall-row {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(8rem, 1fr) 7rem;
+    gap: 0.7rem;
+    align-items: center;
+  }
+
+  .cashflow-waterfall-row span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .cashflow-waterfall-row strong {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cashflow-waterfall-track {
+    height: 1rem;
+    border-radius: 999px;
+    background: rgba(139, 156, 178, 0.18);
+    overflow: hidden;
+  }
+
+  .cashflow-waterfall-bar {
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .cashflow-waterfall-bar.positive {
+    background: #2db978;
+  }
+
+  .cashflow-waterfall-bar.negative {
+    background: #e97a5f;
   }
 
   .cashflow-summary p {
@@ -194,6 +283,15 @@
   @media (max-width: 640px) {
     .cashflow-kpi-strip {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cashflow-waterfall-row {
+      grid-template-columns: 1fr;
+      gap: 0.35rem;
+    }
+
+    .cashflow-waterfall-row strong {
+      text-align: left;
     }
   }
 }

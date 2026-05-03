@@ -73,6 +73,57 @@ export async function getLedger(): Promise<LedgerResponse> {
   return request<LedgerResponse>('/ledger')
 }
 
+export interface LedgerTransactionOptions {
+  granularity?: 'year' | 'month' | 'quarter'
+  period?: string
+  category?: string
+  type?: 'income' | 'spending' | 'transfer'
+  sourceFile?: string
+  search?: string
+  sort?: 'date' | 'description' | 'amount' | 'category' | 'source_file'
+  direction?: 'asc' | 'desc'
+}
+
+function ledgerTransactionParams(options?: LedgerTransactionOptions) {
+  const params = new URLSearchParams()
+  if (options?.granularity) params.set('granularity', options.granularity)
+  if (options?.period) params.set('period', options.period)
+  if (options?.category) params.set('category', options.category)
+  if (options?.type) params.set('type', options.type)
+  if (options?.sourceFile) params.set('source_file', options.sourceFile)
+  if (options?.search) params.set('search', options.search)
+  if (options?.sort) params.set('sort', options.sort)
+  if (options?.direction) params.set('direction', options.direction)
+  return params
+}
+
+export async function getLedgerTransactions(
+  options?: LedgerTransactionOptions,
+): Promise<LedgerResponse> {
+  const qs = ledgerTransactionParams(options).toString()
+  return request<LedgerResponse>(`/ledger/transactions${qs ? `?${qs}` : ''}`)
+}
+
+export function ledgerTransactionsExportUrl(
+  options?: LedgerTransactionOptions & { format?: 'csv' | 'xlsx' },
+): string {
+  const params = ledgerTransactionParams(options)
+  params.set('format', options?.format ?? 'csv')
+  const qs = params.toString()
+  return `${BASE}/ledger/transactions/export${qs ? `?${qs}` : ''}`
+}
+
+export async function updateTransactionCategory(
+  transactionId: string,
+  category: string,
+): Promise<{ id: string; category: string; category_edited: boolean }> {
+  return request(`/ledger/transactions/${encodeURIComponent(transactionId)}/category`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category }),
+  })
+}
+
 export async function getTransfers(): Promise<TransferResponse> {
   return request<TransferResponse>('/ledger/transfers')
 }
@@ -156,7 +207,7 @@ export async function getCategoryBreakdown(options?: {
 }
 
 export async function getCashFlow(options?: {
-  granularity?: 'month' | 'quarter'
+  granularity?: 'year' | 'month' | 'quarter'
   groupBy?: 'category' | 'merchant'
   period?: string
 }): Promise<CashFlowResponse> {

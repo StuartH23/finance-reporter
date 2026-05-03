@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 
 from main import app
 
@@ -204,3 +205,96 @@ def test_next_best_action_feed_and_feedback_flow():
     assert refreshed.status_code == 200
     refreshed_ids = {a["action_id"] for a in refreshed.json()["actions"]}
     assert first_id not in refreshed_ids
+
+
+def test_ledger_transactions_scope_ids_and_single_duplicate_category_edit():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-03-01,Coffee,-5.00\n"
+        b"2026-03-01,Coffee,-5.00\n"
+        b"2026-04-01,Coffee,-6.00\n"
+    )
+    upload_resp = client.post("/api/upload", files=[("files", ("dupes.csv", csv, "text/csv"))])
+    assert upload_resp.status_code == 200
+
+    scoped = client.get("/api/ledger/transactions?granularity=month&period=2026-03")
+    assert scoped.status_code == 200
+    rows = scoped.json()["transactions"]
+    assert len(rows) == 2
+    assert rows[0]["id"] != rows[1]["id"]
+
+    edited = client.patch(
+        f"/api/ledger/transactions/{rows[0]['id']}/category",
+        json={"category": "Coffee Shops"},
+    )
+    assert edited.status_code == 200
+
+    refreshed = client.get("/api/ledger/transactions?granularity=month&period=2026-03").json()
+    categories_by_id = {row["id"]: row["category"] for row in refreshed["transactions"]}
+    assert categories_by_id[rows[0]["id"]] == "Coffee Shops"
+    assert categories_by_id[rows[1]["id"]] != "Coffee Shops"
+
+    cashflow = client.get("/api/cashflow?granularity=month&period=2026-03").json()
+    group_labels = {group["label"] for group in cashflow["groups"]}
+    assert "Coffee Shops" in group_labels
+
+
+def test_category_overrides_are_session_isolated():
+    client_a = TestClient(app)
+    client_b = TestClient(app)
+    csv = b"Date,Description,Amount\n2026-03-01,Coffee,-5.00\n"
+    client_a.post("/api/upload", files=[("files", ("a.csv", csv, "text/csv"))])
+    client_b.post("/api/upload", files=[("files", ("b.csv", csv, "text/csv"))])
+
+    row_a = client_a.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0]
+    row_b = client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0]
+
+    client_a.patch(
+        f"/api/ledger/transactions/{row_a['id']}/category",
+        json={"category": "Coffee Shops"},
+    )
+
+    assert client_a.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
+        "category"
+    ] == "Coffee Shops"
+    assert client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
+        "id"
+    ] == row_b["id"]
+    assert client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
+        "category"
+    ] != "Coffee Shops"
+
+
+def test_ledger_transactions_export_matches_filtered_rows_csv_and_xlsx():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-03-01,Payroll,1000.00\n"
+        b"2026-03-02,Coffee,-5.00\n"
+        b"2026-04-02,Coffee,-6.00\n"
+    )
+    client.post("/api/upload", files=[("files", ("export.csv", csv, "text/csv"))])
+
+    api_rows = client.get(
+        "/api/ledger/transactions?granularity=month&period=2026-03&type=spending"
+    ).json()["transactions"]
+    assert len(api_rows) == 1
+
+    csv_export = client.get(
+        "/api/ledger/transactions/export?granularity=month&period=2026-03&type=spending"
+    )
+    assert csv_export.status_code == 200
+    assert "Coffee" in csv_export.text
+    assert "Payroll" not in csv_export.text
+
+    xlsx_export = client.get(
+        "/api/ledger/transactions/export?granularity=month&period=2026-03&type=spending&format=xlsx"
+    )
+    assert xlsx_export.status_code == 200
+    workbook = load_workbook(__import__("io").BytesIO(xlsx_export.content))
+    sheet = workbook["Transactions"]
+    values = list(sheet.values)
+    assert values[0] == ("id", "date", "description", "amount", "category", "source_file")
+    assert len(values) == 2
+    assert values[1][2] == "Coffee"

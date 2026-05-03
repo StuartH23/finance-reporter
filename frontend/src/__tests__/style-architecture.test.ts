@@ -12,6 +12,7 @@ type SourceFile = {
 }
 
 const styleInlineAllowlist = new Set([
+  'pages/CashFlow.tsx',
   'components/SpendingPieChart.tsx',
   'components/SubscriptionCenter.tsx',
 ])

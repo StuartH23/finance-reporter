@@ -13,6 +13,7 @@ from .goals import build_paycheck_plan, compute_goal_progress, what_changed_line
 from .insights import build_insights
 from .merchant_directory import lookup_cancel_info
 from .ledger import build_ledger, clean_amount, summarize
+from .ledger_scope import scoped_ledger
 from .next_actions import (
     apply_action_feedback,
     default_personalization_state,
@@ -58,6 +59,7 @@ __all__ = [
     "pick_daily_actions",
     "resolve_semantic_type",
     "save_budget",
+    "scoped_ledger",
     "selected_period_key",
     "summarize",
     "what_changed_lines",

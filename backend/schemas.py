@@ -26,16 +26,28 @@ class UploadResponse(BaseModel):
 
 
 class Transaction(BaseModel):
+    id: str
     date: str
     description: str
     amount: float
     category: str
     source_file: str
+    category_edited: bool = False
 
 
 class LedgerResponse(BaseModel):
     transactions: list[Transaction]
     count: int
+
+
+class CategoryUpdateRequest(BaseModel):
+    category: str
+
+
+class CategoryUpdateResponse(BaseModel):
+    id: str
+    category: str
+    category_edited: bool
 
 
 class TransferSummaryItem(BaseModel):
@@ -226,7 +238,7 @@ class CashFlowGroup(BaseModel):
 
 
 class CashFlowResponse(BaseModel):
-    granularity: Literal["month", "quarter"]
+    granularity: Literal["year", "month", "quarter"]
     group_by: Literal["category", "merchant"]
     period_key: str | None
     period_label: str | None

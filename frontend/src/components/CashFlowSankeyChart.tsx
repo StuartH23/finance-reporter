@@ -147,6 +147,7 @@ function CashFlowSankeyChart({
             >
               <option value="month">Month</option>
               <option value="quarter">Quarter</option>
+              <option value="year">Year</option>
             </select>
           </label>
           <label className="cashflow-control">

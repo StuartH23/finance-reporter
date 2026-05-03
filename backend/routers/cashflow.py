@@ -22,13 +22,13 @@ router = APIRouter(tags=["cashflow"])
 def cashflow(
     request: Request,
     session_id: str | None = Cookie(default=None),
-    granularity: Literal["month", "quarter"] = Query(default="month"),
+    granularity: Literal["year", "month", "quarter"] = Query(default="month"),
     group_by: Literal["category", "merchant"] = Query(default="category"),
     period: str | None = Query(default=None),
 ):
     """Return period/grouping-aware flow data for Sankey visualizations."""
     if period and not period_key_is_valid(period, granularity):
-        expected = "YYYY-MM" if granularity == "month" else "YYYY-Q#"
+        expected = {"year": "YYYY", "month": "YYYY-MM", "quarter": "YYYY-Q#"}[granularity]
         raise HTTPException(
             status_code=422,
             detail=f"Invalid period '{period}'. Expected {expected} for granularity={granularity}.",
@@ -52,7 +52,9 @@ def cashflow(
     )
     if not transfer_rows.empty and selected_period:
         transfer_rows = transfer_rows.copy()
-        if granularity == "month":
+        if granularity == "year":
+            transfer_periods = transfer_rows["date"].dt.year.astype(str)
+        elif granularity == "month":
             transfer_periods = transfer_rows["date"].dt.strftime("%Y-%m")
         else:
             transfer_periods = (

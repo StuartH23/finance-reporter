@@ -14,11 +14,13 @@ export interface UploadResponse {
 
 // Ledger
 export interface Transaction {
+  id: string
   date: string
   description: string
   amount: number
   category: string
   source_file: string
+  category_edited?: boolean
 }
 
 export interface LedgerResponse {
@@ -119,10 +121,7 @@ export interface CancelInfoResponse {
   notes?: string | null
 }
 
-export type SubscriptionReviewVerdict =
-  | 'likely_authorized'
-  | 'review_needed'
-  | 'price_concern'
+export type SubscriptionReviewVerdict = 'likely_authorized' | 'review_needed' | 'price_concern'
 
 export interface SubscriptionReviewResponse {
   stream_id: string
@@ -179,7 +178,7 @@ export interface CategoryBreakdownResponse {
 }
 
 // Cash flow
-export type CashFlowGranularity = 'month' | 'quarter'
+export type CashFlowGranularity = 'year' | 'month' | 'quarter'
 export type CashFlowGroupBy = 'category' | 'merchant'
 export type CashFlowNodeType = 'income' | 'expense' | 'savings' | 'shortfall'
 

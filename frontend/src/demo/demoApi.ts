@@ -3,6 +3,7 @@ import type {
   BudgetListResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
+  CancelInfoResponse,
   CashFlowResponse,
   CategoryBreakdownResponse,
   FeatureInterestResponse,
@@ -17,14 +18,13 @@ import type {
   NextBestActionFeedResponse,
   PaycheckPlanResponse,
   PaycheckPlanSaveResponse,
-  CancelInfoResponse,
   SavedPaycheckPlanResponse,
   SubscriptionAlertsResponse,
   SubscriptionItem,
   SubscriptionListResponse,
-  SubscriptionSummary,
   SubscriptionPreferenceResponse,
   SubscriptionReviewResponse,
+  SubscriptionSummary,
   TransferResponse,
   UploadResponse,
   YearlyPnlResponse,
@@ -190,7 +190,10 @@ function createInitialLedgerTransactions() {
 }
 
 function createInitialState() {
-  const transactions = createInitialLedgerTransactions()
+  const transactions = createInitialLedgerTransactions().map((transaction, index) => ({
+    id: `demo-${index + 1}`,
+    ...transaction,
+  }))
 
   const monthly: MonthlyPnlResponse = {
     months: [
@@ -1124,7 +1127,9 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
       reason: sub.price_increase
         ? `${sub.merchant} is above its previous baseline, so it is worth confirming the change.`
         : `${sub.merchant} has only a short recurring history, so it is worth reviewing once.`,
-      evidence: sub.charge_history.slice(-3).map((charge) => `${charge.date}: $${charge.amount.toFixed(2)}`),
+      evidence: sub.charge_history
+        .slice(-3)
+        .map((charge) => `${charge.date}: $${charge.amount.toFixed(2)}`),
       cached: false,
     }
     return response as T

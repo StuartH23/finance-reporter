@@ -30,12 +30,15 @@ _session_owners: dict[str, str] = {}
 _session_last_seen: dict[str, float] = {}
 _session_subscription_preferences: dict[str, dict[str, dict[str, bool]]] = {}
 _session_action_state: dict[str, dict] = {}
+_session_category_overrides: dict[str, dict[str, str]] = {}
 _session_cleanup_callbacks: list[Callable[[str], None]] = []
 
-EMPTY_LEDGER = pd.DataFrame(columns=["date", "description", "amount", "category", "source_file"])
+EMPTY_LEDGER = pd.DataFrame(
+    columns=["transaction_id", "date", "description", "amount", "category", "source_file"]
+)
 PRODUCTION_ENVS = {"prod", "production"}
 PUBLIC_SESSION_OWNER = "public"
-MAX_UPLOAD_FILES = int(os.getenv("MAX_UPLOAD_FILES", "5"))
+MAX_UPLOAD_FILES = int(os.getenv("MAX_UPLOAD_FILES", "25"))
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
 MAX_UPLOAD_TOTAL_BYTES = int(
     os.getenv("MAX_UPLOAD_TOTAL_BYTES", str(MAX_UPLOAD_BYTES * MAX_UPLOAD_FILES))
@@ -85,6 +88,7 @@ def _drop_session(session_id: str) -> None:
     _session_last_seen.pop(session_id, None)
     _session_subscription_preferences.pop(session_id, None)
     _session_action_state.pop(session_id, None)
+    _session_category_overrides.pop(session_id, None)
     for callback in _session_cleanup_callbacks:
         callback(session_id)
 
@@ -132,7 +136,17 @@ def get_session_ledger(
     frames = _sessions[session_id]
     if not frames:
         return EMPTY_LEDGER.copy()
-    return pd.concat(frames, ignore_index=True)
+    ledger = pd.concat(frames, ignore_index=True)
+    overrides = _session_category_overrides.get(session_id, {})
+    if overrides and "transaction_id" in ledger.columns:
+        ledger = ledger.copy()
+        override_categories = ledger["transaction_id"].map(overrides)
+        ledger["category_edited"] = override_categories.notna()
+        ledger["category"] = override_categories.fillna(ledger["category"])
+    else:
+        ledger = ledger.copy()
+        ledger["category_edited"] = False
+    return ledger
 
 
 def clear_session(session_id: str, request: Request | None = None) -> None:
@@ -146,6 +160,19 @@ def clear_session(session_id: str, request: Request | None = None) -> None:
         _session_subscription_preferences[session_id].clear()
     if session_id in _session_action_state:
         _session_action_state[session_id].clear()
+    if session_id in _session_category_overrides:
+        _session_category_overrides[session_id].clear()
+
+
+def get_category_overrides(session_id: str | None, request: Request | None = None) -> dict[str, str]:
+    """Return session-scoped one-row category overrides."""
+    _prune_expired_sessions()
+    if not session_id:
+        return {}
+    if not _session_belongs_to_owner(session_id, _session_owner(request)):
+        return {}
+    _touch_session(session_id)
+    return _session_category_overrides.setdefault(session_id, {})
 
 
 def get_subscription_preferences(
@@ -281,6 +308,13 @@ async def upload_files(
         results.append({"file": filename, "status": "ok", "transactions": len(ledger_df)})
 
     clear_session(sid, request)
+    next_transaction_index = 1
+    for staged in staged_ledgers:
+        count = len(staged)
+        staged["transaction_id"] = [
+            f"{sid}:{index}" for index in range(next_transaction_index, next_transaction_index + count)
+        ]
+        next_transaction_index += count
     _sessions[sid].extend(staged_ledgers)
 
     combined = get_session_ledger(sid, request)

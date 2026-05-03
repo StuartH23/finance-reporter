@@ -66,7 +66,14 @@ def test_unknown_session_returns_empty():
     """A session ID that doesn't exist should return an empty DataFrame."""
     result = get_session_ledger("nonexistent-session")
     assert result.empty
-    assert list(result.columns) == ["date", "description", "amount", "category", "source_file"]
+    assert list(result.columns) == [
+        "transaction_id",
+        "date",
+        "description",
+        "amount",
+        "category",
+        "source_file",
+    ]
 
 
 def test_none_session_returns_empty():

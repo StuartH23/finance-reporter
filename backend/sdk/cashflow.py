@@ -9,9 +9,10 @@ import pandas as pd
 
 from .semantics import resolve_semantic_type
 
-Granularity = Literal["month", "quarter"]
+Granularity = Literal["year", "month", "quarter"]
 GroupBy = Literal["category", "merchant"]
 
+_YEAR_PATTERN = re.compile(r"^\d{4}$")
 _MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 _QUARTER_PATTERN = re.compile(r"^\d{4}-Q[1-4]$")
 
@@ -31,12 +32,16 @@ def normalize_merchant(value: str) -> str:
 
 def period_key_is_valid(period: str, granularity: Granularity) -> bool:
     """Validate period key format based on granularity."""
+    if granularity == "year":
+        return _YEAR_PATTERN.match(period) is not None
     if granularity == "month":
         return _MONTH_PATTERN.match(period) is not None
     return _QUARTER_PATTERN.match(period) is not None
 
 
 def _period_key_series(dates: pd.Series, granularity: Granularity) -> pd.Series:
+    if granularity == "year":
+        return dates.dt.year.astype(str)
     if granularity == "month":
         return dates.dt.strftime("%Y-%m")
     return dates.dt.year.astype(str) + "-Q" + dates.dt.quarter.astype(str)
@@ -65,6 +70,8 @@ def period_key_label(period_key: str | None, granularity: Granularity) -> str | 
         if pd.isna(parsed):
             return period_key
         return parsed.strftime("%B %Y")
+    if granularity == "year":
+        return period_key
 
     year_str, quarter_str = period_key.split("-Q")
     return f"Q{quarter_str} {year_str}"
@@ -73,6 +80,8 @@ def period_key_label(period_key: str | None, granularity: Granularity) -> str | 
 def _sort_period_keys(period_keys: list[str], granularity: Granularity) -> list[str]:
     if granularity == "month":
         return sorted(period_keys, reverse=True)
+    if granularity == "year":
+        return sorted(period_keys, key=int, reverse=True)
 
     def quarter_sort_key(value: str) -> tuple[int, int]:
         year_str, quarter_str = value.split("-Q")

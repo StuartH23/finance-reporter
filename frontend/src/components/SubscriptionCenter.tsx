@@ -132,7 +132,9 @@ function stateClass(item: SubscriptionItem): string {
 
 function priceChangeLabel(item: SubscriptionItem): string | null {
   if (!item.price_increase || item.baseline_amount <= 0) return null
-  const increasePct = Math.round(((item.amount - item.baseline_amount) / item.baseline_amount) * 100)
+  const increasePct = Math.round(
+    ((item.amount - item.baseline_amount) / item.baseline_amount) * 100,
+  )
   return `+${increasePct}%`
 }
 
@@ -168,7 +170,7 @@ function latestMonthHeroLabel(summary: SubscriptionSummary): string {
 
 function SubscriptionHero({ summary }: { summary: SubscriptionSummary }) {
   return (
-    <div className="sub-hero" aria-label="Subscription summary">
+    <section className="sub-hero" aria-label="Subscription summary">
       <div className="sub-hero-item">
         <span className="sub-hero-value">{fmt(summary.monthly_run_rate)}</span>
         <span className="sub-hero-label">monthly run-rate</span>
@@ -185,7 +187,7 @@ function SubscriptionHero({ summary }: { summary: SubscriptionSummary }) {
         <span className="sub-hero-value">{fmt(summary.latest_month_total)}</span>
         <span className="sub-hero-label">{latestMonthHeroLabel(summary)}</span>
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -220,9 +222,10 @@ function SubscriptionRow({
           <span className="sub-row-indicator" style={{ background: indicatorColor(item) }} />
           <span
             className={`sub-category-icon ${categoryIcon(item.dominant_category)}`}
-            aria-label={categoryIconLabel(item.dominant_category)}
             title={item.dominant_category ?? 'Uncategorized'}
-          />
+          >
+            <span className="sr-only">{categoryIconLabel(item.dominant_category)}</span>
+          </span>
           <span className="sub-row-merchant">
             <span className="sub-row-name">{item.merchant}</span>
             <span className="sub-row-meta">{rowMetaLabel(item)}</span>
@@ -241,11 +244,7 @@ function SubscriptionRow({
             </button>
           )}
           {variant !== 'ignored' && actions.showCancelHelp && (
-            <button
-              type="button"
-              className="ghost-button accent"
-              onClick={actions.onCancelHelp}
-            >
+            <button type="button" className="ghost-button accent" onClick={actions.onCancelHelp}>
               How to Cancel
             </button>
           )}
@@ -292,7 +291,9 @@ export function ReviewSection({ item }: { item: SubscriptionItem }) {
       <div className="sub-review-copy">
         <span className="sub-review-title">AI review</span>
         <span className="sub-review-meta">
-          {item.price_increase ? 'Checks the price change signal.' : 'Checks this new recurring charge.'}
+          {item.price_increase
+            ? 'Checks the price change signal.'
+            : 'Checks this new recurring charge.'}
         </span>
       </div>
       <button
@@ -362,22 +363,23 @@ export function CancelPanel({
   const searchUrl = buildSearchUrl(item.merchant)
 
   return (
-    <div className="cancel-panel-backdrop" role="presentation" onClick={onClose}>
+    <button
+      type="button"
+      className="cancel-panel-backdrop"
+      aria-label="Close cancellation panel"
+      onClick={onClose}
+    >
       <div
         className="cancel-panel"
         role="dialog"
         aria-modal="true"
         aria-label={`How to cancel ${headerName}`}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
       >
         <header className="cancel-panel-header">
           <h3>Cancel {headerName}</h3>
-          <button
-            type="button"
-            className="cancel-panel-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
+          <button type="button" className="cancel-panel-close" onClick={onClose} aria-label="Close">
             ×
           </button>
         </header>
@@ -387,9 +389,7 @@ export function CancelPanel({
           {cadenceUnit(item)} · last charged {shortDate(item.last_charge_date)}
         </p>
 
-        {infoQuery.isLoading && (
-          <p className="cancel-panel-note">Looking up cancellation info…</p>
-        )}
+        {infoQuery.isLoading && <p className="cancel-panel-note">Looking up cancellation info…</p>}
 
         {infoQuery.isError && (
           <div className="cancel-panel-body">
@@ -407,7 +407,7 @@ export function CancelPanel({
           </div>
         )}
 
-        {info && info.found && (
+        {info?.found && (
           <div className="cancel-panel-body">
             {info.cancel_url ? (
               <a
@@ -465,7 +465,7 @@ export function CancelPanel({
           </button>
         </footer>
       </div>
-    </div>
+    </button>
   )
 }
 

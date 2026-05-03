@@ -132,6 +132,86 @@ function KpiStrip({ data, previous }: { data?: CashFlowResponse; previous?: Cash
   )
 }
 
+function PeriodControls({
+  data,
+  granularity,
+  period,
+  onGranularityChange,
+  onPeriodChange,
+}: {
+  data?: CashFlowResponse
+  granularity: CashFlowGranularity
+  period: string
+  onGranularityChange: (granularity: CashFlowGranularity) => void
+  onPeriodChange: (period: string) => void
+}) {
+  return (
+    <section className="cashflow-period-panel" aria-label="Cash flow period controls">
+      <label className="cashflow-control">
+        <span>Scope</span>
+        <select
+          value={granularity}
+          onChange={(event) => onGranularityChange(event.target.value as CashFlowGranularity)}
+        >
+          <option value="month">Month</option>
+          <option value="quarter">Quarter</option>
+          <option value="year">Year</option>
+        </select>
+      </label>
+      <label className="cashflow-control">
+        <span>Period</span>
+        <select value={period} onChange={(event) => onPeriodChange(event.target.value)}>
+          <option value="">Latest</option>
+          {(data?.available_periods ?? []).map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </section>
+  )
+}
+
+function CashFlowWaterfall({ data }: { data?: CashFlowResponse }) {
+  const income = data?.totals.income ?? 0
+  const expenses = data?.totals.expenses ?? 0
+  const net = data?.totals.net ?? 0
+  const max = Math.max(income, expenses, Math.abs(net), 1)
+  const bars = [
+    { label: 'Income', value: income, tone: 'positive' },
+    { label: 'Spending', value: expenses, tone: 'negative' },
+    {
+      label: net >= 0 ? 'Net saved' : 'Shortfall',
+      value: Math.abs(net),
+      tone: net >= 0 ? 'positive' : 'negative',
+    },
+  ]
+
+  return (
+    <section className="card cashflow-waterfall-card">
+      <div className="insights-header-row">
+        <h2>Cash Flow Waterfall</h2>
+        <span className="budget-hint">{data?.period_label ?? 'Latest period'}</span>
+      </div>
+      <div className="cashflow-waterfall">
+        {bars.map((bar) => (
+          <div className="cashflow-waterfall-row" key={bar.label}>
+            <span>{bar.label}</span>
+            <div className="cashflow-waterfall-track">
+              <div
+                className={`cashflow-waterfall-bar ${bar.tone}`}
+                style={{ width: `${Math.max(4, (bar.value / max) * 100)}%` }}
+              />
+            </div>
+            <strong>{formatCurrency(bar.value)}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function WhereCashWentTable({
   data,
   previous,
@@ -370,13 +450,34 @@ function CashFlow() {
 
   return (
     <div className="dashboard-page">
-      <h1 className="page-title">Cash Flow</h1>
+      <h1 className="page-title">{cashFlowData?.period_label ?? 'Latest Period'} Cash Flow</h1>
       {verdict && <p className="page-subtitle">{verdict}</p>}
+      <PeriodControls
+        data={cashFlowData}
+        granularity={granularity}
+        period={period}
+        onGranularityChange={(next) => {
+          setGranularity(next)
+          setPeriod('')
+          setSelection(null)
+        }}
+        onPeriodChange={(next) => {
+          setPeriod(next)
+          setSelection(null)
+        }}
+      />
 
       <KpiStrip data={cashFlowData} previous={previousCashFlowData} />
 
       <div className="dashboard-layout">
         <div className="dashboard-main-column">
+          <CashFlowWaterfall data={cashFlowData} />
+          <WhereCashWentTable
+            data={cashFlowData}
+            previous={previousCashFlowData}
+            selection={selection}
+            onSelect={setSelection}
+          />
           <CashFlowSankeyChart
             data={cashFlowData}
             granularity={granularity}
@@ -397,12 +498,6 @@ function CashFlow() {
             }}
             onSegmentSelect={setSelection}
           />
-          <WhereCashWentTable
-            data={cashFlowData}
-            previous={previousCashFlowData}
-            selection={selection}
-            onSelect={setSelection}
-          />
           <SelectedSegmentPanel
             group={selectedGroup}
             previousGroup={previousSelectedGroup}
@@ -411,17 +506,11 @@ function CashFlow() {
             onClear={() => setSelection(null)}
           />
           <TransactionList
-            title={selection ? 'Filtered Transactions' : 'Transactions'}
-            filters={
-              selection
-                ? {
-                    granularity: selection.granularity,
-                    periodKey: selection.periodKey,
-                    category: selection.groupBy === 'category' ? selection.key : null,
-                    merchant: selection.groupBy === 'merchant' ? selection.key : null,
-                  }
-                : undefined
-            }
+            title={`${cashFlowData?.period_label ?? 'Latest Period'} Transactions`}
+            granularity={cashFlowData?.granularity ?? granularity}
+            period={cashFlowData?.period_key ?? period}
+            periodLabel={cashFlowData?.period_label}
+            category={selection?.groupBy === 'category' ? selection.key : null}
           />
         </div>
         <aside className="dashboard-side-column">

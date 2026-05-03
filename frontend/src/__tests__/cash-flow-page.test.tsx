@@ -49,6 +49,7 @@ const previousCashFlow: CashFlowResponse = {
 const ledger: LedgerResponse = {
   transactions: [
     {
+      id: 'tx-1',
       date: '2026-03-01',
       description: 'Payroll',
       amount: 5000,
@@ -56,6 +57,7 @@ const ledger: LedgerResponse = {
       source_file: 'demo.csv',
     },
     {
+      id: 'tx-2',
       date: '2026-03-03',
       description: 'Rent',
       amount: -1800,

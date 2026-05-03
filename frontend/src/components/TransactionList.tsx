@@ -1,133 +1,210 @@
-import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { getLedger } from '../api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import {
+  getLedgerTransactions,
+  type LedgerTransactionOptions,
+  ledgerTransactionsExportUrl,
+  updateTransactionCategory,
+} from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { CashFlowGranularity, Transaction } from '../api/types'
-import { normalizeMerchantLabel } from '../utils/merchant'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function matchesPeriod(date: string, periodKey: string, granularity: CashFlowGranularity) {
-  if (granularity === 'month') return date.startsWith(periodKey)
-
-  const match = periodKey.match(/^(\d{4})-Q([1-4])$/)
-  if (!match) return true
-  const [, yearStr, quarterStr] = match
-  if (!date.startsWith(`${yearStr}-`)) return false
-  const month = Number.parseInt(date.slice(5, 7), 10)
-  const quarter = Math.floor((month - 1) / 3) + 1
-  return quarter === Number.parseInt(quarterStr, 10)
-}
-
-function transactionKey(transaction: Transaction) {
-  return [
-    transaction.date,
-    transaction.description,
-    transaction.amount,
-    transaction.category,
-    transaction.source_file,
-  ].join('|')
-}
-
-function keyedTransactions(transactions: Transaction[]) {
-  const occurrences = new Map<string, number>()
-  return transactions.map((transaction) => {
-    const baseKey = transactionKey(transaction)
-    const occurrence = (occurrences.get(baseKey) ?? 0) + 1
-    occurrences.set(baseKey, occurrence)
-    return { transaction, key: `${baseKey}|${occurrence}` }
-  })
-}
-
-interface TransactionFilters {
-  granularity?: CashFlowGranularity
-  periodKey?: string | null
-  category?: string | null
-  merchant?: string | null
-}
-
 interface TransactionListProps {
   title?: string
-  filters?: TransactionFilters
+  granularity?: CashFlowGranularity
+  period?: string | null
+  periodLabel?: string | null
+  category?: string | null
 }
 
-function TransactionList({ title = 'All Transactions', filters }: TransactionListProps) {
+function uniqueValues(transactions: Transaction[], key: 'category' | 'source_file') {
+  return [...new Set(transactions.map((tx) => tx[key]).filter(Boolean))].sort()
+}
+
+function TransactionList({
+  title,
+  granularity = 'month',
+  period,
+  periodLabel,
+  category,
+}: TransactionListProps) {
+  const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState(false)
+  const [search, setSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState(category ?? '')
+  const [type, setType] = useState<LedgerTransactionOptions['type']>()
+  const [sourceFile, setSourceFile] = useState('')
+  const [sort, setSort] = useState<LedgerTransactionOptions['sort']>('date')
+  const [direction, setDirection] = useState<LedgerTransactionOptions['direction']>('asc')
 
-  const { data } = useQuery({
-    queryKey: queryKeys.ledger,
-    queryFn: getLedger,
-  })
-
-  const transactions = data?.transactions ?? []
-  const allCount = data?.count ?? 0
-
-  if (!allCount) return null
-
-  const filtered = transactions.filter((tx) => {
-    if (
-      filters?.periodKey &&
-      filters.granularity &&
-      !matchesPeriod(tx.date, filters.periodKey, filters.granularity)
-    ) {
-      return false
-    }
-    if (filters?.category && tx.category !== filters.category) {
-      return false
-    }
-    if (filters?.merchant && normalizeMerchantLabel(tx.description) !== filters.merchant) {
-      return false
-    }
-    return true
-  })
-
-  const count = filtered.length
-  if (!count) {
-    return (
-      <div className="card">
-        <h2>{title}</h2>
-        <p className="empty-state">No transactions match the selected cash-flow segment.</p>
-      </div>
-    )
+  const effectiveCategory = category ?? (selectedCategory || undefined)
+  const options: LedgerTransactionOptions = {
+    granularity,
+    period: period ?? undefined,
+    category: effectiveCategory,
+    type,
+    sourceFile: sourceFile || undefined,
+    search: search || undefined,
+    sort,
+    direction,
   }
 
-  const visible = expanded ? filtered : filtered.slice(0, 50)
-  const visibleRows = keyedTransactions(visible)
+  const { data } = useQuery({
+    queryKey: queryKeys.ledgerTransactions(options),
+    queryFn: () => getLedgerTransactions(options),
+  })
+
+  const rows = data?.transactions ?? []
+  const count = data?.count ?? 0
+  const visible = expanded ? rows : rows.slice(0, 50)
+  const categories = useMemo(() => uniqueValues(rows, 'category'), [rows])
+  const sourceFiles = useMemo(() => uniqueValues(rows, 'source_file'), [rows])
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, nextCategory }: { id: string; nextCategory: string }) =>
+      updateTransactionCategory(id, nextCategory),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ledger'] })
+      queryClient.invalidateQueries({ queryKey: ['cashflow'] })
+      queryClient.invalidateQueries({ queryKey: ['pnl'] })
+    },
+  })
+
+  const tableTitle = title ?? `${periodLabel ?? 'Selected Period'} Transactions`
+  const exportBase = {
+    ...options,
+    period: period ?? undefined,
+  }
+
+  if (!period && !count) return null
 
   return (
     <div className="card">
-      <h2>
-        {title} ({count.toLocaleString()})
-      </h2>
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Description</th>
-              <th className="u-text-right">Amount</th>
-              <th>Category</th>
-              <th className="col-source">Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleRows.map(({ transaction: t, key }) => (
-              <tr key={key}>
-                <td className="u-nowrap">{t.date}</td>
-                <td>{t.description}</td>
-                <td className={`amount ${t.amount >= 0 ? 'positive' : 'negative'}`}>
-                  {t.amount < 0 ? '-' : ''}
-                  {fmt(t.amount)}
-                </td>
-                <td>{t.category}</td>
-                <td className="col-source u-muted-source">{t.source_file}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="transaction-list-header">
+        <h2>
+          {tableTitle} ({count.toLocaleString()})
+        </h2>
+        <div className="transaction-export-actions">
+          <a
+            className="ghost-button"
+            href={ledgerTransactionsExportUrl({ ...exportBase, format: 'csv' })}
+          >
+            CSV
+          </a>
+          <a
+            className="ghost-button"
+            href={ledgerTransactionsExportUrl({ ...exportBase, format: 'xlsx' })}
+          >
+            XLSX
+          </a>
+        </div>
       </div>
+
+      <fieldset className="transaction-filters">
+        <legend className="sr-only">Transaction filters</legend>
+        <input
+          type="search"
+          placeholder="Search transactions"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <select
+          value={selectedCategory}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+          disabled={Boolean(category)}
+        >
+          <option value="">{category ? category : 'All categories'}</option>
+          <option value="Uncategorized">Uncategorized</option>
+          {categories.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <select
+          value={type ?? ''}
+          onChange={(event) =>
+            setType((event.target.value || undefined) as LedgerTransactionOptions['type'])
+          }
+        >
+          <option value="">All types</option>
+          <option value="income">Income</option>
+          <option value="spending">Spending</option>
+          <option value="transfer">Transfer</option>
+        </select>
+        <select value={sourceFile} onChange={(event) => setSourceFile(event.target.value)}>
+          <option value="">All sources</option>
+          {sourceFiles.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <select
+          value={`${sort}:${direction}`}
+          onChange={(event) => {
+            const [nextSort, nextDirection] = event.target.value.split(':')
+            setSort(nextSort as LedgerTransactionOptions['sort'])
+            setDirection(nextDirection as LedgerTransactionOptions['direction'])
+          }}
+        >
+          <option value="date:asc">Date asc</option>
+          <option value="date:desc">Date desc</option>
+          <option value="amount:asc">Amount asc</option>
+          <option value="amount:desc">Amount desc</option>
+          <option value="category:asc">Category asc</option>
+          <option value="description:asc">Description asc</option>
+        </select>
+      </fieldset>
+
+      {!count ? (
+        <p className="empty-state">No transactions match the active filters.</p>
+      ) : (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th className="u-text-right">Amount</th>
+                <th>Category</th>
+                <th className="col-source">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((t) => (
+                <tr key={t.id}>
+                  <td className="u-nowrap">{t.date}</td>
+                  <td>{t.description}</td>
+                  <td className={`amount ${t.amount >= 0 ? 'positive' : 'negative'}`}>
+                    {t.amount < 0 ? '-' : ''}
+                    {fmt(t.amount)}
+                  </td>
+                  <td>
+                    <input
+                      className="transaction-category-input"
+                      aria-label={`Category for ${t.description}`}
+                      defaultValue={t.category}
+                      onBlur={(event) => {
+                        const nextCategory = event.target.value.trim()
+                        if (nextCategory && nextCategory !== t.category) {
+                          editMutation.mutate({ id: t.id, nextCategory })
+                        }
+                      }}
+                    />
+                    {t.category_edited && <small className="budget-hint">Session only</small>}
+                  </td>
+                  <td className="col-source u-muted-source">{t.source_file}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {count > 50 && (
         <button
           type="button"

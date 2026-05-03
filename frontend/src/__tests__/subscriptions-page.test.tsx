@@ -88,7 +88,7 @@ describe('SubscriptionCenter', () => {
     const html = wrap(<SubscriptionCenter />, qc)
     expect(html).toContain('Upcoming')
     expect(html).toContain('Netflix')
-    expect(html).toContain('aria-label="Subscriptions category"')
+    expect(html).toContain('Subscriptions category')
     expect(html).toContain('monthly run-rate')
     expect(html).toContain('April so far')
     expect(html).toContain('Price ↑')

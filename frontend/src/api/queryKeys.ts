@@ -1,5 +1,27 @@
 export const queryKeys = {
   ledger: ['ledger'] as const,
+  ledgerTransactions: (params?: {
+    granularity?: 'year' | 'month' | 'quarter'
+    period?: string
+    category?: string
+    type?: 'income' | 'spending' | 'transfer'
+    sourceFile?: string
+    search?: string
+    sort?: string
+    direction?: string
+  }) =>
+    [
+      'ledger',
+      'transactions',
+      params?.granularity ?? 'month',
+      params?.period ?? 'latest',
+      params?.category ?? 'all',
+      params?.type ?? 'all',
+      params?.sourceFile ?? 'all',
+      params?.search ?? '',
+      params?.sort ?? 'date',
+      params?.direction ?? 'asc',
+    ] as const,
   transfers: ['transfers'] as const,
   pnl: {
     monthly: ['pnl', 'monthly'] as const,
@@ -9,7 +31,7 @@ export const queryKeys = {
   },
   cashflow: {
     byParams: (params?: {
-      granularity?: 'month' | 'quarter'
+      granularity?: 'year' | 'month' | 'quarter'
       groupBy?: 'category' | 'merchant'
       period?: string
     }) =>
