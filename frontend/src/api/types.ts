@@ -66,6 +66,11 @@ export interface SubscriptionItem {
   negotiation_opportunity: boolean
   is_new_recurring: boolean
   missed_expected_charge: boolean
+  status_group?: 'active' | 'inactive' | null
+  payment_state?: 'paid_ok' | 'paid_variance' | 'upcoming' | 'inactive' | null
+  next_due_date?: string | null
+  last_paid_amount?: number | null
+  manually_managed?: boolean
 }
 
 export interface SubscriptionListResponse {
@@ -158,6 +163,7 @@ export interface CashFlowTotals {
   income: number
   expenses: number
   net: number
+  transfers?: number
 }
 
 export interface CashFlowNode {

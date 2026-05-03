@@ -47,15 +47,6 @@ function totalSpent(item: SubscriptionItem): number {
   return item.charge_history.reduce((sum, h) => sum + h.amount, 0)
 }
 
-// Score 0–4: higher = more likely worth cancelling.
-function cancelPriority(item: SubscriptionItem): number {
-  if (!item.active || item.essential) return 0
-  if (item.price_increase) return 4
-  if (item.is_new_recurring) return 3
-  if (item.charge_count > 3) return 2
-  return 1
-}
-
 function indicatorColor(item: SubscriptionItem): string {
   if (!item.active) return 'var(--text-muted)'
   if (item.essential) return 'var(--green)'
@@ -141,6 +132,29 @@ interface RowActions {
   isEssential: boolean
 }
 
+interface RecurringV2Sections {
+  active: SubscriptionItem[]
+  inactive: SubscriptionItem[]
+  upcoming: SubscriptionItem[]
+}
+
+function paymentStateLabel(item: SubscriptionItem) {
+  switch (item.payment_state) {
+    case 'paid_ok':
+      return 'Paid on time'
+    case 'paid_variance':
+      return 'Paid with variance'
+    case 'inactive':
+      return 'Inactive'
+    default:
+      return 'Upcoming'
+  }
+}
+
+function dueLabel(item: SubscriptionItem) {
+  return item.next_due_date ?? item.next_expected_charge_date ?? item.last_charge_date
+}
+
 interface SubscriptionRowProps {
   item: SubscriptionItem
   variant: 'review' | 'essential' | 'other' | 'ignored'
@@ -174,6 +188,7 @@ function SubscriptionRow({
           <span className="sub-row-name">{item.merchant}</span>
           <span className="sub-row-cadence">{item.cadence}</span>
         </span>
+        <span className="sub-row-cadence">{paymentStateLabel(item)}</span>
         <span className="sub-row-amounts">
           <span className="sub-row-amount">
             {fmt(item.amount)}
@@ -241,49 +256,40 @@ function SubscriptionCenter() {
   const [filterIncreased, setFilterIncreased] = useState(false)
   const [filterOptional, setFilterOptional] = useState(false)
   const [threshold, setThreshold] = useState(0.1)
-  const [showIgnored, setShowIgnored] = useState(false)
   const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null)
   const [reminderMessages, setReminderMessages] = useState<Record<string, string>>({})
+  const [activeView, setActiveView] = useState<'upcoming' | 'all'>('upcoming')
 
   const listQuery = useQuery({
-    queryKey: [...queryKeys.subscriptions.list, 'all', filterIncreased, filterOptional, threshold],
-    queryFn: () => getSubscriptions({ status: 'all', filterIncreased, filterOptional, threshold }),
+    queryKey: [
+      ...queryKeys.subscriptions.list,
+      activeView,
+      filterIncreased,
+      filterOptional,
+      threshold,
+    ],
+    queryFn: () =>
+      getSubscriptions({
+        status: 'all',
+        filterIncreased,
+        filterOptional,
+        threshold,
+        view: activeView,
+        sort: activeView === 'upcoming' ? 'due_asc' : 'priority',
+      }),
   })
 
   const all = useMemo(() => listQuery.data?.subscriptions ?? [], [listQuery.data])
 
-  const sections = useMemo(() => {
-    const review: SubscriptionItem[] = []
-    const otherActive: SubscriptionItem[] = []
-    const essential: SubscriptionItem[] = []
-    const ignored: SubscriptionItem[] = []
-
-    for (const item of all) {
-      if (item.ignored) {
-        ignored.push(item)
-      } else if (item.essential) {
-        essential.push(item)
-      } else if (item.active && cancelPriority(item) > 0) {
-        review.push(item)
-      } else if (item.active) {
-        otherActive.push(item)
-      } else {
-        otherActive.push(item)
-      }
-    }
-
-    review.sort((a, b) => {
-      const pd = cancelPriority(b) - cancelPriority(a)
-      if (pd !== 0) return pd
-      return annualCost(b) - annualCost(a)
-    })
-    essential.sort((a, b) => annualCost(b) - annualCost(a))
-    otherActive.sort((a, b) => annualCost(b) - annualCost(a))
-
-    const monthlyAtRisk = review.reduce((sum, s) => sum + monthlyAmount(s), 0)
-    const essentialMonthly = essential.reduce((sum, s) => sum + monthlyAmount(s), 0)
-
-    return { review, otherActive, essential, ignored, monthlyAtRisk, essentialMonthly }
+  const recurringSections = useMemo<RecurringV2Sections>(() => {
+    const active = all
+      .filter((item) => item.status_group !== 'inactive' && !item.ignored)
+      .sort((a, b) => dueLabel(a).localeCompare(dueLabel(b)))
+    const inactive = all
+      .filter((item) => item.status_group === 'inactive' || item.ignored)
+      .sort((a, b) => annualCost(b) - annualCost(a))
+    const upcoming = active.slice().sort((a, b) => dueLabel(a).localeCompare(dueLabel(b)))
+    return { active, inactive, upcoming }
   }, [all])
 
   const prefMutation = useMutation({
@@ -345,23 +351,40 @@ function SubscriptionCenter() {
     setExpandedDetailId((prev) => (prev === streamId ? null : streamId))
   }
 
-  const reviewCountLabel = `${sections.review.length} ${sections.review.length === 1 ? 'subscription' : 'subscriptions'}`
-  const essentialCountLabel = `${sections.essential.length} ${sections.essential.length === 1 ? 'subscription' : 'subscriptions'}`
-  const otherCountLabel = `${sections.otherActive.length} ${sections.otherActive.length === 1 ? 'subscription' : 'subscriptions'}`
-  const ignoredCountLabel = `${sections.ignored.length} ${sections.ignored.length === 1 ? 'subscription' : 'subscriptions'}`
-
   return (
     <div className="card">
       <div className="sub-page-header">
         <h2>Subscription Center</h2>
-        <button
-          type="button"
-          className="ghost-button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          aria-expanded={showAdvanced}
-        >
-          Advanced {showAdvanced ? '▴' : '▾'}
-        </button>
+        <div className="control-row">
+          <div className="dashboard-report-tabs" role="tablist" aria-label="Subscription views">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'upcoming'}
+              className={activeView === 'upcoming' ? 'active' : ''}
+              onClick={() => setActiveView('upcoming')}
+            >
+              Upcoming
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'all'}
+              className={activeView === 'all' ? 'active' : ''}
+              onClick={() => setActiveView('all')}
+            >
+              All
+            </button>
+          </div>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            aria-expanded={showAdvanced}
+          >
+            Advanced {showAdvanced ? '▴' : '▾'}
+          </button>
+        </div>
       </div>
 
       {showAdvanced && (
@@ -402,19 +425,20 @@ function SubscriptionCenter() {
         <p className="empty-state">No subscriptions detected yet.</p>
       )}
 
-      {sections.review.length > 0 && (
+      {!listQuery.isLoading && activeView === 'upcoming' && (
         <section className="sub-section sub-section-review">
           <header className="sub-section-header">
-            <h3>
-              Needs Review · {reviewCountLabel} · {fmt(sections.monthlyAtRisk)}/mo at risk
-            </h3>
+            <h3>Upcoming</h3>
           </header>
           <div className="sub-section-body">
-            {sections.review.map((item) => (
+            {recurringSections.upcoming.length === 0 && (
+              <p className="empty-state">No upcoming recurring charges.</p>
+            )}
+            {recurringSections.upcoming.map((item) => (
               <SubscriptionRow
                 key={item.stream_id}
                 item={item}
-                variant="review"
+                variant="other"
                 expanded={expandedDetailId === item.stream_id}
                 onToggleDetail={() => toggleDetail(item.stream_id)}
                 actions={buildActions(item, true)}
@@ -425,66 +449,32 @@ function SubscriptionCenter() {
         </section>
       )}
 
-      {sections.otherActive.length > 0 && (
-        <section className="sub-section sub-section-other">
-          <header className="sub-section-header">
-            <h3>Other Active · {otherCountLabel}</h3>
-          </header>
-          <div className="sub-section-body">
-            {sections.otherActive.map((item) => (
-              <SubscriptionRow
-                key={item.stream_id}
-                item={item}
-                variant="other"
-                expanded={expandedDetailId === item.stream_id}
-                onToggleDetail={() => toggleDetail(item.stream_id)}
-                actions={buildActions(item, false)}
-                reminderMessage={reminderMessages[item.stream_id]}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {sections.essential.length > 0 && (
-        <section className="sub-section sub-section-essential">
-          <header className="sub-section-header">
-            <h3>
-              Essential · {essentialCountLabel} · {fmt(sections.essentialMonthly)}/mo
-            </h3>
-          </header>
-          <div className="sub-section-body">
-            {sections.essential.map((item) => (
-              <SubscriptionRow
-                key={item.stream_id}
-                item={item}
-                variant="essential"
-                expanded={expandedDetailId === item.stream_id}
-                onToggleDetail={() => toggleDetail(item.stream_id)}
-                actions={buildActions(item, false)}
-                reminderMessage={reminderMessages[item.stream_id]}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {sections.ignored.length > 0 && (
-        <section className="sub-section sub-section-ignored">
-          <header className="sub-section-header">
-            <h3>Ignored · {ignoredCountLabel}</h3>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => setShowIgnored((v) => !v)}
-              aria-expanded={showIgnored}
-            >
-              {showIgnored ? 'Hide' : 'Show'}
-            </button>
-          </header>
-          {showIgnored && (
+      {!listQuery.isLoading && activeView === 'all' && (
+        <>
+          <section className="sub-section sub-section-other">
+            <header className="sub-section-header">
+              <h3>Active</h3>
+            </header>
             <div className="sub-section-body">
-              {sections.ignored.map((item) => (
+              {recurringSections.active.map((item) => (
+                <SubscriptionRow
+                  key={item.stream_id}
+                  item={item}
+                  variant="other"
+                  expanded={expandedDetailId === item.stream_id}
+                  onToggleDetail={() => toggleDetail(item.stream_id)}
+                  actions={buildActions(item, true)}
+                  reminderMessage={reminderMessages[item.stream_id]}
+                />
+              ))}
+            </div>
+          </section>
+          <section className="sub-section sub-section-ignored">
+            <header className="sub-section-header">
+              <h3>Inactive</h3>
+            </header>
+            <div className="sub-section-body">
+              {recurringSections.inactive.map((item) => (
                 <SubscriptionRow
                   key={item.stream_id}
                   item={item}
@@ -496,8 +486,8 @@ function SubscriptionCenter() {
                 />
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        </>
       )}
     </div>
   )

@@ -100,9 +100,15 @@ describe('API client', () => {
       filterIncreased: true,
       filterOptional: true,
       threshold: 0.2,
+      view: 'upcoming',
+      statusGroup: 'active',
+      month: '2026-04',
+      sort: 'due_asc',
+      page: 2,
+      pageSize: 25,
     })
     expect(lastUrl).toBe(
-      '/api/subscriptions?status=active&filter_increased=true&filter_optional=true&threshold=0.2',
+      '/api/subscriptions?status=active&filter_increased=true&filter_optional=true&threshold=0.2&view=upcoming&status_group=active&month=2026-04&sort=due_asc&page=2&page_size=25',
     )
   })
 

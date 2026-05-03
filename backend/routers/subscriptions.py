@@ -43,6 +43,12 @@ def list_subscriptions(
     filter_increased: bool = Query(default=False),
     filter_optional: bool = Query(default=False),
     threshold: float = Query(default=0.10, ge=0, le=1),
+    view: str = Query(default="all", pattern="^(all|upcoming)$"),
+    status_group: str | None = Query(default=None, pattern="^(active|inactive)$"),
+    month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    sort: str = Query(default="priority", pattern="^(priority|due_asc|due_desc|amount_desc)$"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=250),
 ):
     subscriptions = _get_subscriptions(session_id, threshold, request)
 
@@ -58,7 +64,46 @@ def list_subscriptions(
     if filter_optional:
         subscriptions = [s for s in subscriptions if not s["essential"]]
 
-    return {"subscriptions": subscriptions, "count": len(subscriptions)}
+    if view == "upcoming":
+        subscriptions = [
+            s for s in subscriptions if s.get("status_group") == "active" and s.get("next_due_date")
+        ]
+    if status_group:
+        subscriptions = [s for s in subscriptions if s.get("status_group") == status_group]
+    if month:
+        subscriptions = [
+            s for s in subscriptions if str(s.get("next_due_date") or "").startswith(month)
+        ]
+
+    if sort == "priority":
+        payment_priority = {"upcoming": 0, "paid_variance": 1, "paid_ok": 2, "inactive": 3}
+        subscriptions.sort(
+            key=lambda s: (
+                1 if s.get("status_group") == "inactive" else 0,
+                payment_priority.get(str(s.get("payment_state")), 9),
+                s.get("next_due_date") is None,
+                s.get("next_due_date") or "",
+                -float(s.get("amount", 0.0)),
+            )
+        )
+    elif sort == "due_asc":
+        subscriptions.sort(
+            key=lambda s: (s.get("next_due_date") is None, s.get("next_due_date") or "")
+        )
+    elif sort == "due_desc":
+        subscriptions.sort(
+            key=lambda s: (s.get("next_due_date") is None, s.get("next_due_date") or ""),
+            reverse=True,
+        )
+    elif sort == "amount_desc":
+        subscriptions.sort(key=lambda s: float(s.get("amount", 0.0)), reverse=True)
+
+    total_count = len(subscriptions)
+    start = (page - 1) * page_size
+    end = start + page_size
+    subscriptions = subscriptions[start:end]
+
+    return {"subscriptions": subscriptions, "count": total_count}
 
 
 @router.get("/subscriptions/alerts", response_model=SubscriptionAlertsResponse)
@@ -73,7 +118,9 @@ def get_subscription_alerts(
     return {"alerts": alerts, "count": len(alerts)}
 
 
-@router.post("/subscriptions/{stream_id}/preferences", response_model=SubscriptionPreferenceResponse)
+@router.post(
+    "/subscriptions/{stream_id}/preferences", response_model=SubscriptionPreferenceResponse
+)
 def update_subscription_preferences(
     request: Request,
     stream_id: str,

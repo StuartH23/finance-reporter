@@ -19,11 +19,28 @@ CADENCES: dict[str, tuple[int, int]] = {
 }
 
 MIN_CONFIDENCE = 0.55
+EARLY_MATCH_DAYS = 3
+LATE_MATCH_DAYS = 5
+PAYMENT_VARIANCE_THRESHOLD = 0.15
 
 _NOISE_TOKENS = {
-    "ACH", "AUTOPAY", "PAYMENT", "PURCHASE", "CARD", "CHECKCARD", "POS",
-    "DEBIT", "CREDIT", "WITHDRAWAL", "ONLINE", "TRANSFER", "RECURRING",
-    "DBT", "PYMT", "WWW", "COM",
+    "ACH",
+    "AUTOPAY",
+    "PAYMENT",
+    "PURCHASE",
+    "CARD",
+    "CHECKCARD",
+    "POS",
+    "DEBIT",
+    "CREDIT",
+    "WITHDRAWAL",
+    "ONLINE",
+    "TRANSFER",
+    "RECURRING",
+    "DBT",
+    "PYMT",
+    "WWW",
+    "COM",
 }
 
 
@@ -44,6 +61,7 @@ class RecurringStream:
     date_series: list[str]
     price_increase: bool
     missed_expected_charge: bool
+    reference_date: pd.Timestamp
 
     @property
     def expected_amount(self) -> float:
@@ -57,6 +75,13 @@ class RecurringStream:
     @property
     def is_new_recurring(self) -> bool:
         return self.charge_count < 3
+
+
+@dataclass
+class ExpectedOccurrence:
+    expected_date: pd.Timestamp
+    matched_date: pd.Timestamp | None
+    matched_amount: float | None
 
 
 def normalize_merchant(description: str) -> str:
@@ -98,7 +123,8 @@ def _confidence(
     mean_amount = float(abs_amount.mean()) if not abs_amount.empty else 0.0
     amount_stability = (
         max(0.0, min(1.0, 1.0 - float(abs_amount.std(ddof=0)) / mean_amount))
-        if mean_amount > 0 else 0.0
+        if mean_amount > 0
+        else 0.0
     )
 
     count_score = min(1.0, count / 6)
@@ -122,9 +148,8 @@ def _pick_cadence(group: pd.DataFrame) -> tuple[str | None, float]:
         # When scores tie, prefer the cadence whose primary period is closest
         # to the actual median gap — prevents weekly (7*4=28d) from beating
         # monthly (30d) on charges that are clearly billed once a month.
-        closer = (
-            best_name is not None
-            and abs(period_days - median_gap) < abs(CADENCES[best_name][0] - median_gap)
+        closer = best_name is not None and abs(period_days - median_gap) < abs(
+            CADENCES[best_name][0] - median_gap
         )
         if score > best_score or (score == best_score and closer):
             best_name, best_score = cadence_name, score
@@ -162,9 +187,9 @@ def detect_recurring_streams(
     if ledger.empty:
         return []
 
-    debits = ledger[
-        (ledger["amount"] < 0) & (~ledger["category"].isin(TRANSFER_CATEGORIES))
-    ][["date", "description", "amount"]].copy()
+    debits = ledger[(ledger["amount"] < 0) & (~ledger["category"].isin(TRANSFER_CATEGORIES))][
+        ["date", "description", "amount"]
+    ].copy()
     if debits.empty:
         return []
 
@@ -199,23 +224,26 @@ def detect_recurring_streams(
         trend, baseline, current, price_increase = _amount_trend(
             ordered["amount"], price_increase_threshold
         )
-        streams.append(RecurringStream(
-            stream_id=_stream_id(merchant, cadence),
-            merchant=merchant,
-            cadence=cadence,
-            confidence=confidence,
-            current_amount=round(current, 2),
-            baseline_amount=round(baseline, 2),
-            amount_trend=trend,
-            active=active,
-            next_expected_charge_date=next_expected.strftime("%Y-%m-%d"),
-            last_charge_date=last_date.strftime("%Y-%m-%d"),
-            charge_count=len(ordered),
-            amount_series=[round(float(v), 2) for v in ordered["amount"].abs()],
-            date_series=[d.strftime("%Y-%m-%d") for d in ordered["date"]],
-            price_increase=price_increase,
-            missed_expected_charge=missed_expected,
-        ))
+        streams.append(
+            RecurringStream(
+                stream_id=_stream_id(merchant, cadence),
+                merchant=merchant,
+                cadence=cadence,
+                confidence=confidence,
+                current_amount=round(current, 2),
+                baseline_amount=round(baseline, 2),
+                amount_trend=trend,
+                active=active,
+                next_expected_charge_date=next_expected.strftime("%Y-%m-%d"),
+                last_charge_date=last_date.strftime("%Y-%m-%d"),
+                charge_count=len(ordered),
+                amount_series=[round(float(v), 2) for v in ordered["amount"].abs()],
+                date_series=[d.strftime("%Y-%m-%d") for d in ordered["date"]],
+                price_increase=price_increase,
+                missed_expected_charge=missed_expected,
+                reference_date=reference_date,
+            )
+        )
 
     streams.sort(key=lambda s: (not s.active, -s.confidence, s.merchant))
     return streams
@@ -234,37 +262,150 @@ def build_subscription_payload(
         pref = preferences.get(stream.stream_id, {})
         ignored = bool(pref.get("ignored", False))
         essential = bool(pref.get("essential", False))
-        result.append({
-            "stream_id": stream.stream_id,
-            "merchant": stream.merchant,
-            "cadence": stream.cadence,
-            "confidence": stream.confidence,
-            "active": stream.active,
-            "ignored": ignored,
-            "essential": essential,
-            "amount": stream.current_amount,
-            "baseline_amount": stream.baseline_amount,
-            "expected_amount": stream.expected_amount,
-            "next_expected_charge_date": stream.next_expected_charge_date,
-            "last_charge_date": stream.last_charge_date,
-            "trend": stream.amount_trend,
-            "price_increase": stream.price_increase,
-            "charge_count": stream.charge_count,
-            "charge_history": [
-                {"date": d, "amount": a}
-                for d, a in zip(stream.date_series, stream.amount_series, strict=True)
-            ],
-            "cancellation_candidate": not essential and stream.active,
-            "negotiation_opportunity": stream.price_increase,
-            "is_new_recurring": stream.is_new_recurring,
-            "missed_expected_charge": stream.missed_expected_charge,
-        })
+        occurrences = _expected_occurrences(stream)
+        current_occurrence = _current_occurrence(stream, occurrences)
+        expected_date = current_occurrence.expected_date if current_occurrence is not None else None
+        last_paid = _last_paid_occurrence(occurrences)
+        payment_state = _payment_state(stream, current_occurrence)
+        status_group = "inactive" if payment_state == "inactive" else "active"
+        result.append(
+            {
+                "stream_id": stream.stream_id,
+                "merchant": stream.merchant,
+                "cadence": stream.cadence,
+                "confidence": stream.confidence,
+                "active": stream.active,
+                "ignored": ignored,
+                "essential": essential,
+                "amount": stream.current_amount,
+                "baseline_amount": stream.baseline_amount,
+                "expected_amount": stream.expected_amount,
+                "next_expected_charge_date": expected_date.strftime("%Y-%m-%d")
+                if expected_date is not None
+                else stream.next_expected_charge_date,
+                "next_due_date": expected_date.strftime("%Y-%m-%d")
+                if expected_date is not None
+                else None,
+                "last_charge_date": stream.last_charge_date,
+                "last_paid_amount": round(float(last_paid.matched_amount), 2)
+                if last_paid and last_paid.matched_amount is not None
+                else None,
+                "trend": stream.amount_trend,
+                "price_increase": stream.price_increase,
+                "charge_count": stream.charge_count,
+                "charge_history": [
+                    {"date": d, "amount": a}
+                    for d, a in zip(stream.date_series, stream.amount_series, strict=True)
+                ],
+                "cancellation_candidate": not essential and stream.active,
+                "negotiation_opportunity": stream.price_increase,
+                "is_new_recurring": stream.is_new_recurring,
+                "missed_expected_charge": stream.missed_expected_charge,
+                "status_group": status_group,
+                "payment_state": payment_state,
+                "manually_managed": False,
+            }
+        )
     return result
 
 
+def _expected_occurrences(stream: RecurringStream) -> list[ExpectedOccurrence]:
+    period_days, _ = CADENCES[stream.cadence]
+    observed_dates = [pd.to_datetime(value).normalize() for value in stream.date_series]
+    observed_amounts = [float(value) for value in stream.amount_series]
+    if not observed_dates:
+        return []
+
+    window_end = stream.reference_date.normalize() + timedelta(days=period_days)
+    expected_dates: list[pd.Timestamp] = []
+    current = observed_dates[0]
+    while current <= window_end:
+        expected_dates.append(current)
+        current = current + timedelta(days=period_days)
+
+    unused_payments = list(zip(observed_dates, observed_amounts, strict=True))
+    occurrences: list[ExpectedOccurrence] = []
+    for expected_date in expected_dates:
+        due_start = expected_date - timedelta(days=EARLY_MATCH_DAYS)
+        due_end = expected_date + timedelta(days=LATE_MATCH_DAYS)
+        matched_index: int | None = None
+        best_score: tuple[int, int] | None = None
+        for index, (paid_date, _paid_amount) in enumerate(unused_payments):
+            if not (due_start <= paid_date <= due_end):
+                continue
+            score = (abs((paid_date - expected_date).days), 0 if paid_date <= expected_date else 1)
+            if best_score is None or score < best_score:
+                matched_index = index
+                best_score = score
+
+        if matched_index is None:
+            occurrences.append(
+                ExpectedOccurrence(
+                    expected_date=expected_date,
+                    matched_date=None,
+                    matched_amount=None,
+                )
+            )
+            continue
+
+        matched_date, matched_amount = unused_payments.pop(matched_index)
+        occurrences.append(
+            ExpectedOccurrence(
+                expected_date=expected_date,
+                matched_date=matched_date,
+                matched_amount=matched_amount,
+            )
+        )
+    return occurrences
+
+
+def _current_occurrence(
+    stream: RecurringStream,
+    occurrences: list[ExpectedOccurrence],
+) -> ExpectedOccurrence | None:
+    reference_date = stream.reference_date.normalize()
+    for occurrence in occurrences:
+        due_end = occurrence.expected_date + timedelta(days=LATE_MATCH_DAYS)
+        if due_end >= reference_date:
+            return occurrence
+    return occurrences[-1] if occurrences else None
+
+
+def _last_paid_occurrence(occurrences: list[ExpectedOccurrence]) -> ExpectedOccurrence | None:
+    matched = [occurrence for occurrence in occurrences if occurrence.matched_amount is not None]
+    return matched[-1] if matched else None
+
+
+def _payment_state(
+    stream: RecurringStream,
+    occurrence: ExpectedOccurrence | None,
+) -> str:
+    if not stream.active or occurrence is None:
+        return "inactive"
+
+    reference_date = stream.reference_date.normalize()
+    due_end = occurrence.expected_date + timedelta(days=LATE_MATCH_DAYS)
+    if occurrence.expected_date > reference_date:
+        return "upcoming"
+    if occurrence.matched_amount is not None:
+        if stream.expected_amount <= 0:
+            return "paid_ok"
+        ratio = (
+            abs(float(occurrence.matched_amount) - stream.expected_amount) / stream.expected_amount
+        )
+        return "paid_variance" if ratio > PAYMENT_VARIANCE_THRESHOLD else "paid_ok"
+    if due_end >= reference_date:
+        return "upcoming"
+    return "inactive"
+
+
 def _make_alert(sub: dict, alert_type: str, message: str) -> dict:
-    return {"stream_id": sub["stream_id"], "merchant": sub["merchant"],
-            "alert_type": alert_type, "message": message}
+    return {
+        "stream_id": sub["stream_id"],
+        "merchant": sub["merchant"],
+        "alert_type": alert_type,
+        "message": message,
+    }
 
 
 def build_alerts(subscriptions: list[dict], include_missed: bool = True) -> list[dict]:
@@ -273,18 +414,30 @@ def build_alerts(subscriptions: list[dict], include_missed: bool = True) -> list
         if sub["ignored"]:
             continue
         if sub["price_increase"]:
-            alerts.append(_make_alert(
-                sub, "price_increased",
-                f"{sub['merchant']} increased from ${sub['baseline_amount']:.2f} to ${sub['amount']:.2f}.",
-            ))
+            alerts.append(
+                _make_alert(
+                    sub,
+                    "price_increased",
+                    (
+                        f"{sub['merchant']} increased from "
+                        f"${sub['baseline_amount']:.2f} to ${sub['amount']:.2f}."
+                    ),
+                )
+            )
         if sub["is_new_recurring"]:
-            alerts.append(_make_alert(
-                sub, "new_recurring_charge_detected",
-                f"New recurring charge detected for {sub['merchant']}.",
-            ))
+            alerts.append(
+                _make_alert(
+                    sub,
+                    "new_recurring_charge_detected",
+                    f"New recurring charge detected for {sub['merchant']}.",
+                )
+            )
         if include_missed and sub["missed_expected_charge"]:
-            alerts.append(_make_alert(
-                sub, "missed_expected_charge",
-                f"Expected charge for {sub['merchant']} appears to be missed.",
-            ))
+            alerts.append(
+                _make_alert(
+                    sub,
+                    "missed_expected_charge",
+                    f"Expected charge for {sub['merchant']} appears to be missed.",
+                )
+            )
     return alerts

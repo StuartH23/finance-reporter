@@ -9,7 +9,11 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from main import app
-from sdk.subscriptions import detect_recurring_streams, normalize_merchant
+from sdk.subscriptions import (
+    build_subscription_payload,
+    detect_recurring_streams,
+    normalize_merchant,
+)
 
 
 def _fixture_ledger() -> pd.DataFrame:
@@ -70,7 +74,9 @@ def test_subscription_alerts_and_ignore_flow():
         b"2026-03-10,NEW APP SERVICE,-5.00\n"
         b"2026-03-14,One-off Purchase,-75.00\n"
     )
-    upload_resp = client.post("/api/upload", files=[("files", ("subscriptions.csv", csv, "text/csv"))])
+    upload_resp = client.post(
+        "/api/upload", files=[("files", ("subscriptions.csv", csv, "text/csv"))]
+    )
     assert upload_resp.status_code == 200
 
     sub_resp = client.get("/api/subscriptions")
@@ -97,3 +103,82 @@ def test_subscription_alerts_and_ignore_flow():
 
     after_ignore = client.get("/api/subscriptions").json()
     assert all(s["stream_id"] != netflix["stream_id"] for s in after_ignore["subscriptions"])
+
+
+def test_recurring_v2_classifies_paid_variance_upcoming_and_inactive_states():
+    paid_variance = pd.DataFrame(
+        [
+            ("2026-01-15", "UTILITY SUB", -20.0),
+            ("2026-02-14", "UTILITY SUB", -20.0),
+            ("2026-03-16", "UTILITY SUB", -30.0),
+        ],
+        columns=["date", "description", "amount"],
+    )
+    paid_variance["date"] = pd.to_datetime(paid_variance["date"])
+    paid_variance["category"] = "Subscriptions"
+    paid_variance["source_file"] = "fixture.csv"
+    variance_payload = build_subscription_payload(paid_variance)
+    assert variance_payload[0]["payment_state"] == "paid_variance"
+    assert variance_payload[0]["status_group"] == "active"
+    assert variance_payload[0]["last_paid_amount"] == 30.0
+
+    upcoming = pd.DataFrame(
+        [
+            ("2026-01-10", "STREAMING SERVICE", -12.0),
+            ("2026-02-09", "STREAMING SERVICE", -12.0),
+            ("2026-03-11", "STREAMING SERVICE", -12.0),
+        ],
+        columns=["date", "description", "amount"],
+    )
+    upcoming["date"] = pd.to_datetime(upcoming["date"])
+    upcoming["category"] = "Subscriptions"
+    upcoming["source_file"] = "fixture.csv"
+    upcoming_payload = build_subscription_payload(upcoming)
+    assert upcoming_payload[0]["payment_state"] == "paid_ok"
+    assert upcoming_payload[0]["next_due_date"] == "2026-03-11"
+
+    inactive = pd.DataFrame(
+        [
+            ("2025-12-01", "OLD BOX", -9.0),
+            ("2025-12-31", "OLD BOX", -9.0),
+            ("2026-01-30", "OLD BOX", -9.0),
+            ("2026-03-30", "REFERENCE", -5.0),
+            ("2026-04-29", "REFERENCE", -5.0),
+        ],
+        columns=["date", "description", "amount"],
+    )
+    inactive["date"] = pd.to_datetime(inactive["date"])
+    inactive["category"] = "Subscriptions"
+    inactive["source_file"] = "fixture.csv"
+    inactive_payload = [
+        item for item in build_subscription_payload(inactive) if item["merchant"] == "OLD BOX"
+    ]
+    assert inactive_payload[0]["payment_state"] == "inactive"
+    assert inactive_payload[0]["status_group"] == "inactive"
+
+
+def test_subscriptions_filters_count_before_pagination():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-10,STREAMING SERVICE,-12.00\n"
+        b"2026-02-09,STREAMING SERVICE,-12.00\n"
+        b"2026-03-11,STREAMING SERVICE,-12.00\n"
+        b"2026-01-15,UTILITY SUB,-20.00\n"
+        b"2026-02-14,UTILITY SUB,-20.00\n"
+        b"2026-03-16,UTILITY SUB,-30.00\n"
+    )
+    upload_resp = client.post(
+        "/api/upload", files=[("files", ("subscriptions.csv", csv, "text/csv"))]
+    )
+    assert upload_resp.status_code == 200
+
+    response = client.get(
+        "/api/subscriptions?view=upcoming&month=2026-03&sort=due_asc&page=1&page_size=1"
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["count"] == 2
+    assert len(data["subscriptions"]) == 1
+    assert data["subscriptions"][0]["next_due_date"] == "2026-03-11"

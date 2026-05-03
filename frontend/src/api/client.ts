@@ -81,12 +81,24 @@ export async function getSubscriptions(options?: {
   filterIncreased?: boolean
   filterOptional?: boolean
   threshold?: number
+  view?: 'all' | 'upcoming'
+  statusGroup?: 'active' | 'inactive'
+  month?: string
+  sort?: 'priority' | 'due_asc' | 'due_desc' | 'amount_desc'
+  page?: number
+  pageSize?: number
 }): Promise<SubscriptionListResponse> {
   const params = new URLSearchParams()
   if (options?.status) params.set('status', options.status)
   if (options?.filterIncreased) params.set('filter_increased', 'true')
   if (options?.filterOptional) params.set('filter_optional', 'true')
   if (options?.threshold !== undefined) params.set('threshold', String(options.threshold))
+  if (options?.view) params.set('view', options.view)
+  if (options?.statusGroup) params.set('status_group', options.statusGroup)
+  if (options?.month) params.set('month', options.month)
+  if (options?.sort) params.set('sort', options.sort)
+  if (options?.page !== undefined) params.set('page', String(options.page))
+  if (options?.pageSize !== undefined) params.set('page_size', String(options.pageSize))
   const qs = params.toString()
   return request<SubscriptionListResponse>(`/subscriptions${qs ? `?${qs}` : ''}`)
 }

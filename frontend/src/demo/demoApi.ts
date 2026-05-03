@@ -342,7 +342,9 @@ function createInitialState() {
       baseline_amount: 14.99,
       expected_amount: 15.99,
       next_expected_charge_date: '2026-04-09',
+      next_due_date: '2026-04-09',
       last_charge_date: '2026-03-09',
+      last_paid_amount: 15.99,
       trend: 'up',
       price_increase: true,
       charge_count: 6,
@@ -358,6 +360,9 @@ function createInitialState() {
       negotiation_opportunity: false,
       is_new_recurring: false,
       missed_expected_charge: false,
+      status_group: 'active',
+      payment_state: 'upcoming',
+      manually_managed: false,
     },
     {
       stream_id: 'sub-2',
@@ -371,7 +376,9 @@ function createInitialState() {
       baseline_amount: 29.99,
       expected_amount: 29.99,
       next_expected_charge_date: '2026-04-11',
+      next_due_date: '2026-04-11',
       last_charge_date: '2026-03-11',
+      last_paid_amount: 29.99,
       trend: 'flat',
       price_increase: false,
       charge_count: 5,
@@ -386,6 +393,9 @@ function createInitialState() {
       negotiation_opportunity: false,
       is_new_recurring: false,
       missed_expected_charge: false,
+      status_group: 'active',
+      payment_state: 'paid_ok',
+      manually_managed: false,
     },
   ]
 
@@ -714,6 +724,10 @@ function buildDemoCashFlow(searchParams: URLSearchParams): CashFlowResponse {
 
 function buildSubscriptionsList(searchParams: URLSearchParams): SubscriptionListResponse {
   const status = searchParams.get('status') ?? 'active'
+  const view = searchParams.get('view') ?? 'all'
+  const statusGroup = searchParams.get('status_group')
+  const month = searchParams.get('month')
+  const sort = searchParams.get('sort') ?? 'priority'
   const filterIncreased = searchParams.get('filter_increased') === 'true'
   const filterOptional = searchParams.get('filter_optional') === 'true'
   const threshold = Number.parseFloat(searchParams.get('threshold') ?? '0')
@@ -735,6 +749,32 @@ function buildSubscriptionsList(searchParams: URLSearchParams): SubscriptionList
 
   if (filterOptional) {
     subscriptions = subscriptions.filter((sub) => !sub.essential)
+  }
+
+  if (view === 'upcoming') {
+    subscriptions = subscriptions.filter(
+      (sub) => sub.status_group === 'active' && sub.next_due_date,
+    )
+  }
+
+  if (statusGroup === 'active' || statusGroup === 'inactive') {
+    subscriptions = subscriptions.filter((sub) => sub.status_group === statusGroup)
+  }
+
+  if (month) {
+    subscriptions = subscriptions.filter((sub) => sub.next_due_date?.startsWith(month))
+  }
+
+  if (sort === 'due_asc') {
+    subscriptions = subscriptions
+      .slice()
+      .sort((a, b) => (a.next_due_date ?? '').localeCompare(b.next_due_date ?? ''))
+  } else if (sort === 'due_desc') {
+    subscriptions = subscriptions
+      .slice()
+      .sort((a, b) => (b.next_due_date ?? '').localeCompare(a.next_due_date ?? ''))
+  } else if (sort === 'amount_desc') {
+    subscriptions = subscriptions.slice().sort((a, b) => b.amount - a.amount)
   }
 
   return {

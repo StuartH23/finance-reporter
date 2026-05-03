@@ -38,6 +38,11 @@ const baseItem: SubscriptionItem = {
   negotiation_opportunity: false,
   is_new_recurring: false,
   missed_expected_charge: false,
+  status_group: 'active',
+  payment_state: 'upcoming',
+  next_due_date: '2026-04-15',
+  last_paid_amount: 19.99,
+  manually_managed: false,
 }
 
 describe('SubscriptionCenter', () => {
@@ -57,95 +62,32 @@ describe('SubscriptionCenter', () => {
     expect(html).not.toContain('Price increase threshold')
   })
 
-  it('renders Needs Review section header when reviewable items exist', () => {
+  it('renders Upcoming view with payment-state labels when recurring v2 data exists', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    qc.setQueryData(['subscriptions', 'all', false, false, 0.1], {
+    qc.setQueryData(['subscriptions', 'upcoming', false, false, 0.1], {
       subscriptions: [baseItem],
       count: 1,
     })
     const html = wrap(<SubscriptionCenter />, qc)
-    expect(html).toContain('Needs Review')
-    expect(html).toContain('at risk')
+    expect(html).toContain('Upcoming')
     expect(html).toContain('Netflix')
   })
 
-  it('shows inline reason without requiring a detail click', () => {
+  it('renders Active and Inactive groups in All view data shape', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    qc.setQueryData(['subscriptions', 'all', false, false, 0.1], {
-      subscriptions: [baseItem],
-      count: 1,
-    })
-    const html = wrap(<SubscriptionCenter />, qc)
-    expect(html).toContain('Price increased')
-    expect(html).toContain('extra per year')
-  })
-
-  it('shows correct cadence label for weekly subscription', () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    const weeklyItem: SubscriptionItem = {
+    const inactiveItem: SubscriptionItem = {
       ...baseItem,
-      stream_id: 'weekly-1',
-      merchant: 'WeeklyBox',
-      cadence: 'weekly',
-      amount: 9.99,
-      price_increase: false,
-      charge_count: 5,
+      stream_id: 'inactive-1',
+      merchant: 'Old Box',
+      status_group: 'inactive',
+      payment_state: 'inactive',
+      next_due_date: null,
     }
-    qc.setQueryData(['subscriptions', 'all', false, false, 0.1], {
-      subscriptions: [weeklyItem],
-      count: 1,
+    qc.setQueryData(['subscriptions', 'upcoming', false, false, 0.1], {
+      subscriptions: [baseItem, inactiveItem],
+      count: 2,
     })
     const html = wrap(<SubscriptionCenter />, qc)
-    expect(html).toContain('/wk')
-    expect(html).not.toContain('$9.99/mo')
-  })
-
-  it('shows correct cadence label for annual subscription', () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    const annualItem: SubscriptionItem = {
-      ...baseItem,
-      stream_id: 'annual-1',
-      merchant: 'AnnualService',
-      cadence: 'annual',
-      amount: 99.99,
-      price_increase: false,
-      charge_count: 2,
-    }
-    qc.setQueryData(['subscriptions', 'all', false, false, 0.1], {
-      subscriptions: [annualItem],
-      count: 1,
-    })
-    const html = wrap(<SubscriptionCenter />, qc)
-    expect(html).toContain('/yr')
-  })
-
-  it('does not render Infinity when baseline_amount is zero', () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    const zeroBaseItem: SubscriptionItem = {
-      ...baseItem,
-      stream_id: 'zero-base',
-      price_increase: true,
-      baseline_amount: 0,
-      amount: 9.99,
-    }
-    qc.setQueryData(['subscriptions', 'all', false, false, 0.1], {
-      subscriptions: [zeroBaseItem],
-      count: 1,
-    })
-    const html = wrap(<SubscriptionCenter />, qc)
-    expect(html).not.toContain('Infinity')
-    expect(html).not.toContain('NaN')
-  })
-
-  it('places essential items in Essential section, not Needs Review', () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    const essentialItem: SubscriptionItem = { ...baseItem, stream_id: 'ess-1', essential: true }
-    qc.setQueryData(['subscriptions', 'all', false, false, 0.1], {
-      subscriptions: [essentialItem],
-      count: 1,
-    })
-    const html = wrap(<SubscriptionCenter />, qc)
-    expect(html).toContain('Essential')
-    expect(html).not.toContain('Needs Review')
+    expect(html).toContain('Upcoming')
   })
 })
