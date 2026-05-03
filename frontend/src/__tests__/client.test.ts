@@ -19,7 +19,7 @@ import {
   getTransfers,
   getYearlyPnl,
   recommendPaycheckPlan,
-  remindCancel,
+  reviewSubscription,
   savePaycheckPlan,
   setAccessTokenProvider,
   submitActionFeedback,
@@ -245,9 +245,9 @@ describe('API client', () => {
     expect(JSON.parse(lastOptions?.body as string)).toEqual({ ignored: true })
   })
 
-  it('remindCancel calls POST /api/subscriptions/:id/remind-cancel', async () => {
-    await remindCancel('abc123')
-    expect(lastUrl).toBe('/api/subscriptions/abc123/remind-cancel')
+  it('reviewSubscription calls POST /api/subscriptions/:id/review', async () => {
+    await reviewSubscription('abc123')
+    expect(lastUrl).toBe('/api/subscriptions/abc123/review')
     expect(lastOptions?.method).toBe('POST')
   })
 
@@ -286,6 +286,35 @@ describe('API client', () => {
     const ledger = await getLedger()
 
     expect(ledger.count).toBeGreaterThan(0)
+    expect(lastUrl).toBe('')
+  })
+
+  it('serves guest demo subscriptions with an unfiltered summary', async () => {
+    installGuestDemoWindow()
+    globalThis.fetch = (() => {
+      throw new Error('fetch should not be called for guest demo reads')
+    }) as unknown as typeof fetch
+
+    const full = await getSubscriptions({ status: 'all' })
+    const filtered = await getSubscriptions({
+      status: 'all',
+      filterIncreased: true,
+      threshold: 0.01,
+      view: 'upcoming',
+      page: 1,
+      pageSize: 1,
+    })
+
+    expect(full.summary).toEqual({
+      monthly_run_rate: 45.98,
+      annual_run_rate: 551.76,
+      active_count: 2,
+      latest_month_total: 45.98,
+      latest_month_label: '2026-03',
+      latest_month_is_complete: false,
+    })
+    expect(filtered.summary).toEqual(full.summary)
+    expect(filtered.subscriptions.length).toBeLessThanOrEqual(full.subscriptions.length)
     expect(lastUrl).toBe('')
   })
 

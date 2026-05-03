@@ -32,7 +32,16 @@ export const queryKeys = {
   },
   subscriptions: {
     list: ['subscriptions'] as const,
+    upcoming: (params?: { statusGroup?: 'active' | 'inactive'; limit?: number }) =>
+      [
+        'subscriptions',
+        'upcoming',
+        params?.statusGroup ?? 'active',
+        params?.limit ?? 'all',
+      ] as const,
     alerts: ['subscriptions', 'alerts'] as const,
+    cancelInfo: (streamId: string) => ['subscriptions', 'cancel-info', streamId] as const,
+    review: (streamId: string) => ['subscriptions', 'review', streamId] as const,
   },
   actions: {
     feed: ['actions', 'feed'] as const,

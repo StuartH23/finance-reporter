@@ -1,9 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { SubscriptionItem } from '../api/types'
+import { queryKeys } from '../api/queryKeys'
+import type {
+  CancelInfoResponse,
+  SubscriptionItem,
+  SubscriptionReviewResponse,
+  SubscriptionSummary,
+} from '../api/types'
 import { AuthProvider } from '../auth/AuthProvider'
-import SubscriptionCenter from '../components/SubscriptionCenter'
+import SubscriptionCenter, { CancelPanel, ReviewSection } from '../components/SubscriptionCenter'
 import { GuestFeatureProvider } from '../guest/GuestFeatureProvider'
 
 function wrap(ui: React.ReactElement, queryClient?: QueryClient) {
@@ -20,6 +26,7 @@ function wrap(ui: React.ReactElement, queryClient?: QueryClient) {
 const baseItem: SubscriptionItem = {
   stream_id: 'test-1',
   merchant: 'Netflix',
+  dominant_category: 'Subscriptions',
   cadence: 'monthly',
   confidence: 0.95,
   active: true,
@@ -45,6 +52,15 @@ const baseItem: SubscriptionItem = {
   manually_managed: false,
 }
 
+const summary: SubscriptionSummary = {
+  monthly_run_rate: 45.98,
+  annual_run_rate: 551.76,
+  active_count: 2,
+  latest_month_total: 45.98,
+  latest_month_label: '2026-04',
+  latest_month_is_complete: false,
+}
+
 describe('SubscriptionCenter', () => {
   it('renders title and empty state when no subscriptions', () => {
     const html = wrap(<SubscriptionCenter />)
@@ -62,15 +78,97 @@ describe('SubscriptionCenter', () => {
     expect(html).not.toContain('Price increase threshold')
   })
 
-  it('renders Upcoming view with payment-state labels when recurring v2 data exists', () => {
+  it('renders Upcoming view with hero summary and row state pills', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
     qc.setQueryData(['subscriptions', 'upcoming', false, false, 0.1], {
       subscriptions: [baseItem],
       count: 1,
+      summary,
     })
     const html = wrap(<SubscriptionCenter />, qc)
     expect(html).toContain('Upcoming')
     expect(html).toContain('Netflix')
+    expect(html).toContain('aria-label="Subscriptions category"')
+    expect(html).toContain('monthly run-rate')
+    expect(html).toContain('April so far')
+    expect(html).toContain('Price ↑')
+    expect(html).toContain('How to Cancel')
+  })
+
+  it('renders cancel panel with cancellation page link when info is found', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
+    const cancelInfo: CancelInfoResponse = {
+      stream_id: baseItem.stream_id,
+      merchant: baseItem.merchant,
+      found: true,
+      display_name: 'Netflix',
+      cancel_url: 'https://www.netflix.com/cancelplan',
+      support_url: 'https://help.netflix.com/contactus',
+      phone: null,
+      notes: null,
+    }
+    qc.setQueryData(queryKeys.subscriptions.cancelInfo(baseItem.stream_id), cancelInfo)
+    const html = wrap(
+      <CancelPanel
+        item={baseItem}
+        onClose={() => {}}
+        onStopTracking={() => {}}
+        isStopTrackingPending={false}
+      />,
+      qc,
+    )
+    expect(html).toContain('Cancel Netflix')
+    expect(html).toContain('https://www.netflix.com/cancelplan')
+    expect(html).toContain('Open cancellation page')
+    expect(html).toContain('I canceled this')
+  })
+
+  it('renders cancel panel with search fallback when info is not found', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
+    const cancelInfo: CancelInfoResponse = {
+      stream_id: baseItem.stream_id,
+      merchant: 'OBSCURE LOCAL GYM',
+      found: false,
+      cancel_url: null,
+      support_url: null,
+      phone: null,
+      notes: null,
+    }
+    const obscureItem = { ...baseItem, merchant: 'OBSCURE LOCAL GYM' }
+    qc.setQueryData(queryKeys.subscriptions.cancelInfo(baseItem.stream_id), cancelInfo)
+    const html = wrap(
+      <CancelPanel
+        item={obscureItem}
+        onClose={() => {}}
+        onStopTracking={() => {}}
+        isStopTrackingPending={false}
+      />,
+      qc,
+    )
+    expect(html).toContain('Search web for cancellation instructions')
+    expect(html).toContain(
+      `https://www.google.com/search?q=${encodeURIComponent('how to cancel OBSCURE LOCAL GYM')}`,
+    )
+    expect(html).toContain('have a cancellation page for this service')
+    expect(html).toContain('I canceled this')
+  })
+
+  it('renders review control and cached constrained verdict for eligible rows', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
+    const review: SubscriptionReviewResponse = {
+      stream_id: baseItem.stream_id,
+      verdict: 'price_concern',
+      reason: 'Netflix is above the prior baseline.',
+      evidence: ['Mar 1: $19.99'],
+      cached: true,
+    }
+    qc.setQueryData(queryKeys.subscriptions.review(baseItem.stream_id), review)
+    const html = wrap(<ReviewSection item={baseItem} />, qc)
+    expect(html).toContain('AI review')
+    expect(html).toContain('Review again')
+    expect(html).toContain('Price concern')
+    expect(html).toContain('cached')
+    expect(html).toContain('Netflix is above the prior baseline.')
   })
 
   it('renders Active and Inactive groups in All view data shape', () => {
@@ -86,6 +184,7 @@ describe('SubscriptionCenter', () => {
     qc.setQueryData(['subscriptions', 'upcoming', false, false, 0.1], {
       subscriptions: [baseItem, inactiveItem],
       count: 2,
+      summary,
     })
     const html = wrap(<SubscriptionCenter />, qc)
     expect(html).toContain('Upcoming')

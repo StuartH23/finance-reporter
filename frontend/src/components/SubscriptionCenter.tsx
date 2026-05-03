@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
-import { getSubscriptions, remindCancel, updateSubscriptionPreferences } from '../api/client'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  getCancelInfo,
+  getSubscriptions,
+  reviewSubscription,
+  updateSubscriptionPreferences,
+} from '../api/client'
 import { queryKeys } from '../api/queryKeys'
-import type { SubscriptionItem } from '../api/types'
+import type {
+  CancelInfoResponse,
+  SubscriptionItem,
+  SubscriptionReviewResponse,
+  SubscriptionSummary,
+} from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
 
 function fmt(n: number) {
@@ -11,12 +21,6 @@ function fmt(n: number) {
 
 function pct(n: number) {
   return `${Math.round(n * 100)}%`
-}
-
-const CADENCE_MONTHLY_FACTOR: Record<string, number> = {
-  weekly: 52 / 12,
-  monthly: 1,
-  annual: 1 / 12,
 }
 
 const CADENCE_ANNUAL_FACTOR: Record<string, number> = {
@@ -29,10 +33,6 @@ const CADENCE_UNIT: Record<string, string> = {
   weekly: '/wk',
   monthly: '/mo',
   annual: '/yr',
-}
-
-function monthlyAmount(item: SubscriptionItem): number {
-  return item.amount * (CADENCE_MONTHLY_FACTOR[item.cadence] ?? 1)
 }
 
 function annualCost(item: SubscriptionItem): number {
@@ -54,81 +54,26 @@ function indicatorColor(item: SubscriptionItem): string {
   return 'var(--yellow)'
 }
 
-function cancelReason(item: SubscriptionItem): string | null {
-  if (!item.active || item.essential) return null
-  if (item.price_increase && item.baseline_amount > 0) {
-    const increase = item.amount - item.baseline_amount
-    const increasePct = Math.round((increase / item.baseline_amount) * 100)
-    return `Price increased ${increasePct}% (${fmt(item.baseline_amount)} → ${fmt(item.amount)}). That's ${fmt(increase * 12)} extra per year.`
-  }
-  if (item.is_new_recurring) {
-    return `New recurring charge — only ${item.charge_count} payments so far. Did you authorize this?`
-  }
-  if (item.charge_count > 3) {
-    return `Optional — been charging you for ${item.charge_count} months. Still using it?`
-  }
-  return null
+function categoryIcon(category: string | undefined): string {
+  const normalized = (category ?? '').toLowerCase()
+  if (normalized.includes('subscription') || normalized.includes('entertainment')) return 'play'
+  if (normalized.includes('recreation') || normalized.includes('fitness')) return 'pulse'
+  if (normalized.includes('utilities')) return 'bolt'
+  if (normalized.includes('auto') || normalized.includes('car')) return 'auto'
+  if (normalized.includes('housing')) return 'home'
+  if (normalized.includes('medical')) return 'plus'
+  if (normalized.includes('dining') || normalized.includes('groceries')) return 'food'
+  return 'dot'
 }
 
-function Sparkline({ history }: { history: SubscriptionItem['charge_history'] }) {
-  if (history.length < 2) return null
-  const points = history.map((h) => h.amount)
-  const min = Math.min(...points)
-  const max = Math.max(...points)
-  const range = max - min
-  if (range === 0) return null
-  const coords = points.map((v, i) => {
-    const x = (i / (points.length - 1)) * 100
-    const y = 100 - ((v - min) / range) * 100
-    return `${x},${y}`
-  })
-  return (
-    <svg viewBox="0 0 100 100" className="sparkline" aria-label="Price history">
-      <polyline points={coords.join(' ')} fill="none" stroke="var(--accent)" strokeWidth="4" />
-    </svg>
-  )
-}
-
-function ActivityTimeline({ history }: { history: SubscriptionItem['charge_history'] }) {
-  if (history.length < 2) return null
-  const times = history.map((h) => new Date(h.date).getTime())
-  const minT = Math.min(...times)
-  const maxT = Math.max(...times)
-  const span = maxT - minT || 1
-
-  const monthTicks: { x: number; label: string }[] = []
-  const seenMonths = new Set<string>()
-  for (const h of history) {
-    const d = new Date(h.date)
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    if (!seenMonths.has(key)) {
-      seenMonths.add(key)
-      const x = 2 + ((d.getTime() - minT) / span) * 96
-      monthTicks.push({ x, label: d.toLocaleString('en-US', { month: 'short' }) })
-    }
-  }
-
-  return (
-    <svg viewBox="0 0 100 36" className="sub-timeline" aria-label="Charge activity timeline">
-      <line x1="2" y1="10" x2="98" y2="10" stroke="var(--border)" strokeWidth="1.5" />
-      {history.map((h) => {
-        const x = 2 + ((new Date(h.date).getTime() - minT) / span) * 96
-        return <circle key={`${h.date}-${h.amount}`} cx={x} cy="10" r="3.5" fill="var(--accent)" />
-      })}
-      {monthTicks.map(({ x, label }) => (
-        <text key={label} x={x} y="30" fontSize="9" fill="var(--text-muted)" textAnchor="middle">
-          {label}
-        </text>
-      ))}
-    </svg>
-  )
+function categoryIconLabel(category: string | undefined): string {
+  return category ? `${category} category` : 'Uncategorized'
 }
 
 interface RowActions {
-  onIgnore: () => void
   onToggleEssential: () => void
-  onSetReminder: () => void
-  showSetReminder: boolean
+  onCancelHelp: () => void
+  showCancelHelp: boolean
   isEssential: boolean
 }
 
@@ -155,13 +100,101 @@ function dueLabel(item: SubscriptionItem) {
   return item.next_due_date ?? item.next_expected_charge_date ?? item.last_charge_date
 }
 
+function shortDate(value: string | null | undefined): string {
+  if (!value) return 'date unknown'
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function rowMetaLabel(item: SubscriptionItem): string {
+  if (!item.active || item.status_group === 'inactive') {
+    return `last charged ${shortDate(item.last_charge_date)} · ${item.charge_count} charges`
+  }
+  return `renews ${shortDate(item.next_due_date ?? item.next_expected_charge_date)} · last charged ${shortDate(item.last_charge_date)} · ${item.charge_count} charges`
+}
+
+function stateLabel(item: SubscriptionItem): string {
+  if (!item.active || item.status_group === 'inactive') return 'Inactive'
+  if (item.price_increase) return 'Price ↑'
+  if (item.is_new_recurring) return 'New'
+  if (item.essential) return 'Essential'
+  return 'Optional'
+}
+
+function stateClass(item: SubscriptionItem): string {
+  if (!item.active || item.status_group === 'inactive') return 'muted'
+  if (item.price_increase) return 'danger'
+  if (item.is_new_recurring) return 'warning'
+  if (item.essential) return 'success'
+  return 'neutral'
+}
+
+function priceChangeLabel(item: SubscriptionItem): string | null {
+  if (!item.price_increase || item.baseline_amount <= 0) return null
+  const increasePct = Math.round(((item.amount - item.baseline_amount) / item.baseline_amount) * 100)
+  return `+${increasePct}%`
+}
+
+function isReviewEligible(item: SubscriptionItem): boolean {
+  return Boolean(item.is_new_recurring || item.price_increase)
+}
+
+function reviewVerdictLabel(verdict: SubscriptionReviewResponse['verdict']): string {
+  switch (verdict) {
+    case 'likely_authorized':
+      return 'Likely authorized'
+    case 'price_concern':
+      return 'Price concern'
+    default:
+      return 'Review needed'
+  }
+}
+
+function reviewVerdictClass(verdict: SubscriptionReviewResponse['verdict']): string {
+  if (verdict === 'likely_authorized') return 'success'
+  if (verdict === 'price_concern') return 'danger'
+  return 'warning'
+}
+
+function latestMonthHeroLabel(summary: SubscriptionSummary): string {
+  const [year, month] = summary.latest_month_label.split('-').map(Number)
+  const date = new Date(year, (month || 1) - 1, 1)
+  const monthName = Number.isNaN(date.getTime())
+    ? summary.latest_month_label
+    : date.toLocaleString('en-US', { month: 'long' })
+  return `${monthName} ${summary.latest_month_is_complete ? 'total' : 'so far'}`
+}
+
+function SubscriptionHero({ summary }: { summary: SubscriptionSummary }) {
+  return (
+    <div className="sub-hero" aria-label="Subscription summary">
+      <div className="sub-hero-item">
+        <span className="sub-hero-value">{fmt(summary.monthly_run_rate)}</span>
+        <span className="sub-hero-label">monthly run-rate</span>
+      </div>
+      <div className="sub-hero-item">
+        <span className="sub-hero-value">{summary.active_count}</span>
+        <span className="sub-hero-label">active subscriptions</span>
+      </div>
+      <div className="sub-hero-item">
+        <span className="sub-hero-value">{fmt(summary.annual_run_rate)}</span>
+        <span className="sub-hero-label">annual run-rate</span>
+      </div>
+      <div className="sub-hero-item">
+        <span className="sub-hero-value">{fmt(summary.latest_month_total)}</span>
+        <span className="sub-hero-label">{latestMonthHeroLabel(summary)}</span>
+      </div>
+    </div>
+  )
+}
+
 interface SubscriptionRowProps {
   item: SubscriptionItem
-  variant: 'review' | 'essential' | 'other' | 'ignored'
+  variant: 'other' | 'ignored'
   expanded: boolean
   onToggleDetail: () => void
   actions: RowActions
-  reminderMessage?: string
 }
 
 function SubscriptionRow({
@@ -170,81 +203,268 @@ function SubscriptionRow({
   expanded,
   onToggleDetail,
   actions,
-  reminderMessage,
 }: SubscriptionRowProps) {
-  const reason = cancelReason(item)
-  const showReason = variant === 'review' && reason
+  const changeLabel = priceChangeLabel(item)
+  const recentCharges = item.charge_history.slice(-6).reverse()
+  const showReview = variant !== 'ignored' && isReviewEligible(item)
 
   return (
     <div className={`sub-row sub-row-${variant} ${expanded ? 'expanded' : ''}`}>
-      <button
-        type="button"
-        className="sub-row-summary"
-        onClick={onToggleDetail}
-        aria-expanded={expanded}
-      >
-        <span className="sub-row-indicator" style={{ background: indicatorColor(item) }} />
-        <span className="sub-row-merchant">
-          <span className="sub-row-name">{item.merchant}</span>
-          <span className="sub-row-cadence">{item.cadence}</span>
-        </span>
-        <span className="sub-row-cadence">{paymentStateLabel(item)}</span>
-        <span className="sub-row-amounts">
+      <div className="sub-row-summary">
+        <button
+          type="button"
+          className="sub-row-main"
+          onClick={onToggleDetail}
+          aria-expanded={expanded}
+        >
+          <span className="sub-row-indicator" style={{ background: indicatorColor(item) }} />
+          <span
+            className={`sub-category-icon ${categoryIcon(item.dominant_category)}`}
+            aria-label={categoryIconLabel(item.dominant_category)}
+            title={item.dominant_category ?? 'Uncategorized'}
+          />
+          <span className="sub-row-merchant">
+            <span className="sub-row-name">{item.merchant}</span>
+            <span className="sub-row-meta">{rowMetaLabel(item)}</span>
+          </span>
           <span className="sub-row-amount">
             {fmt(item.amount)}
             {cadenceUnit(item)}
           </span>
-          <span className="sub-row-annual">{fmt(annualCost(item))}/yr</span>
-        </span>
-      </button>
-
-      {showReason && <div className="sub-row-reason">{reason}</div>}
-
-      {variant !== 'ignored' && (
-        <div className="sub-row-actions">
-          <button type="button" className="ghost-button" onClick={actions.onIgnore}>
-            Ignore
-          </button>
-          <button type="button" className="ghost-button" onClick={actions.onToggleEssential}>
-            {actions.isEssential ? 'Mark Optional' : 'Mark Essential'}
-          </button>
-          {actions.showSetReminder && (
-            <button type="button" className="ghost-button accent" onClick={actions.onSetReminder}>
-              Set Reminder
+          {changeLabel && <span className="sub-change-chip">{changeLabel}</span>}
+          <span className={`sub-state-pill ${stateClass(item)}`}>{stateLabel(item)}</span>
+        </button>
+        <span className="sub-row-actions">
+          {variant !== 'ignored' && (
+            <button type="button" className="ghost-button" onClick={actions.onToggleEssential}>
+              {actions.isEssential ? 'Mark Optional' : 'Mark Essential'}
             </button>
           )}
-        </div>
-      )}
-
-      {reminderMessage && <p className="budget-hint sub-row-reminder">{reminderMessage}</p>}
+          {variant !== 'ignored' && actions.showCancelHelp && (
+            <button
+              type="button"
+              className="ghost-button accent"
+              onClick={actions.onCancelHelp}
+            >
+              How to Cancel
+            </button>
+          )}
+        </span>
+      </div>
 
       {expanded && (
         <div className="sub-row-detail">
-          <div className="sub-stats">
-            <div className="sub-stat">
-              <span className="sub-stat-value">{fmt(monthlyAmount(item))}</span>
-              <span className="sub-stat-label">per month</span>
-            </div>
-            <div className="sub-stat">
-              <span className="sub-stat-value">{fmt(annualCost(item))}</span>
-              <span className="sub-stat-label">per year</span>
-            </div>
-            <div className="sub-stat">
-              <span className="sub-stat-value">{fmt(totalSpent(item))}</span>
-              <span className="sub-stat-label">total paid</span>
-            </div>
-            <div className="sub-stat">
-              <span className="sub-stat-value">{item.charge_count}</span>
-              <span className="sub-stat-label">charges</span>
-            </div>
-          </div>
           <div className="sub-detail-meta">
-            <span>Last charged {item.last_charge_date}</span>
+            <span>Total paid {fmt(totalSpent(item))}</span>
+            <span>{fmt(annualCost(item))}/yr run-rate</span>
+            <span>{paymentStateLabel(item)}</span>
           </div>
-          <ActivityTimeline history={item.charge_history} />
-          <Sparkline history={item.charge_history} />
+          <div className="sub-charge-list">
+            {recentCharges.length === 0 && <span>No charge history available.</span>}
+            {recentCharges.map((charge) => (
+              <span key={`${charge.date}-${charge.amount}`}>
+                {shortDate(charge.date)} {fmt(charge.amount)}
+              </span>
+            ))}
+          </div>
+          {showReview && <ReviewSection item={item} />}
         </div>
       )}
+    </div>
+  )
+}
+
+export function ReviewSection({ item }: { item: SubscriptionItem }) {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: () => reviewSubscription(item.stream_id),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.subscriptions.review(item.stream_id), data)
+    },
+  })
+  const cachedReview = queryClient.getQueryData<SubscriptionReviewResponse>(
+    queryKeys.subscriptions.review(item.stream_id),
+  )
+  const review = mutation.data ?? cachedReview
+
+  return (
+    <div className="sub-review">
+      <div className="sub-review-copy">
+        <span className="sub-review-title">AI review</span>
+        <span className="sub-review-meta">
+          {item.price_increase ? 'Checks the price change signal.' : 'Checks this new recurring charge.'}
+        </span>
+      </div>
+      <button
+        type="button"
+        className="ghost-button accent"
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending ? 'Reviewing…' : review ? 'Review again' : 'Review charge'}
+      </button>
+      {mutation.isError && (
+        <p className="sub-review-error">Could not review this subscription right now.</p>
+      )}
+      {review && (
+        <div className="sub-review-result">
+          <span className={`sub-state-pill ${reviewVerdictClass(review.verdict)}`}>
+            {reviewVerdictLabel(review.verdict)}
+            {review.cached ? ' · cached' : ''}
+          </span>
+          <p>{review.reason}</p>
+          {review.evidence.length > 0 && (
+            <ul>
+              {review.evidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function buildSearchUrl(merchant: string): string {
+  const query = encodeURIComponent(`how to cancel ${merchant}`)
+  return `https://www.google.com/search?q=${query}`
+}
+
+interface CancelPanelProps {
+  item: SubscriptionItem
+  onClose: () => void
+  onStopTracking: () => void
+  isStopTrackingPending: boolean
+}
+
+export function CancelPanel({
+  item,
+  onClose,
+  onStopTracking,
+  isStopTrackingPending,
+}: CancelPanelProps) {
+  const infoQuery = useQuery({
+    queryKey: queryKeys.subscriptions.cancelInfo(item.stream_id),
+    queryFn: () => getCancelInfo(item.stream_id),
+  })
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const info: CancelInfoResponse | undefined = infoQuery.data
+  const headerName = info?.found && info.display_name ? info.display_name : item.merchant
+  const searchUrl = buildSearchUrl(item.merchant)
+
+  return (
+    <div className="cancel-panel-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="cancel-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`How to cancel ${headerName}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="cancel-panel-header">
+          <h3>Cancel {headerName}</h3>
+          <button
+            type="button"
+            className="cancel-panel-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </header>
+
+        <p className="cancel-panel-meta">
+          {item.merchant} · {fmt(item.amount)}
+          {cadenceUnit(item)} · last charged {shortDate(item.last_charge_date)}
+        </p>
+
+        {infoQuery.isLoading && (
+          <p className="cancel-panel-note">Looking up cancellation info…</p>
+        )}
+
+        {infoQuery.isError && (
+          <div className="cancel-panel-body">
+            <p className="cancel-panel-note">
+              Couldn't load cancellation info — the subscription may no longer be tracked.
+            </p>
+            <a
+              className="cancel-panel-primary"
+              href={searchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Search web for cancellation instructions
+            </a>
+          </div>
+        )}
+
+        {info && info.found && (
+          <div className="cancel-panel-body">
+            {info.cancel_url ? (
+              <a
+                className="cancel-panel-primary"
+                href={info.cancel_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open cancellation page
+              </a>
+            ) : (
+              <p className="cancel-panel-note">
+                {headerName} doesn't offer a self-service cancellation page.
+              </p>
+            )}
+            {info.support_url && (
+              <a
+                className="cancel-panel-secondary"
+                href={info.support_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open support page
+              </a>
+            )}
+            {info.phone && <p className="cancel-panel-phone">Or call: {info.phone}</p>}
+            {info.notes && <p className="cancel-panel-notes">{info.notes}</p>}
+          </div>
+        )}
+
+        {info && !info.found && (
+          <div className="cancel-panel-body">
+            <p className="cancel-panel-note">
+              We don't have a cancellation page for this service yet.
+            </p>
+            <a
+              className="cancel-panel-primary"
+              href={searchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Search web for cancellation instructions
+            </a>
+          </div>
+        )}
+
+        <footer className="cancel-panel-footer">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={onStopTracking}
+            disabled={isStopTrackingPending}
+          >
+            I canceled this — stop tracking
+          </button>
+        </footer>
+      </div>
     </div>
   )
 }
@@ -257,8 +477,8 @@ function SubscriptionCenter() {
   const [filterOptional, setFilterOptional] = useState(false)
   const [threshold, setThreshold] = useState(0.1)
   const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null)
-  const [reminderMessages, setReminderMessages] = useState<Record<string, string>>({})
   const [activeView, setActiveView] = useState<'upcoming' | 'all'>('upcoming')
+  const [cancelPanelItem, setCancelPanelItem] = useState<SubscriptionItem | null>(null)
 
   const listQuery = useQuery({
     queryKey: [
@@ -280,6 +500,7 @@ function SubscriptionCenter() {
   })
 
   const all = useMemo(() => listQuery.data?.subscriptions ?? [], [listQuery.data])
+  const summary = listQuery.data?.summary
 
   const recurringSections = useMemo<RecurringV2Sections>(() => {
     const active = all
@@ -306,12 +527,6 @@ function SubscriptionCenter() {
     },
   })
 
-  const remindMutation = useMutation({
-    mutationFn: (streamId: string) => remindCancel(streamId),
-    onSuccess: (data, streamId) =>
-      setReminderMessages((prev) => ({ ...prev, [streamId]: data.message })),
-  })
-
   const updatePreference = (
     streamId: string,
     update: { essential?: boolean; ignored?: boolean },
@@ -320,32 +535,35 @@ function SubscriptionCenter() {
       guardGuestFeature({
         title: 'Sign in to save subscription choices',
         message:
-          'Guest Demo lets you review sample subscription alerts. Sign in to ignore subscriptions, mark essentials, and save reminders.',
+          'Guest Demo lets you review sample subscription alerts. Sign in to mark essentials and save subscription choices.',
       })
     )
       return
     prefMutation.mutate({ streamId, update })
   }
 
-  const setReminder = (streamId: string) => {
+  const buildActions = (item: SubscriptionItem, allowCancelHelp: boolean): RowActions => ({
+    onToggleEssential: () => updatePreference(item.stream_id, { essential: !item.essential }),
+    onCancelHelp: () => setCancelPanelItem(item),
+    showCancelHelp: allowCancelHelp,
+    isEssential: item.essential,
+  })
+
+  const handleStopTracking = () => {
+    if (!cancelPanelItem) return
     if (
       guardGuestFeature({
-        title: 'Sign in to save reminders',
+        title: 'Sign in to stop tracking subscriptions',
         message:
-          'Guest Demo can show subscription insights, but reminders are locked. Sign in to save cancel reminders.',
+          'Guest Demo lets you preview the cancel flow. Sign in to stop tracking subscriptions you have canceled.',
       })
     )
       return
-    remindMutation.mutate(streamId)
+    prefMutation.mutate(
+      { streamId: cancelPanelItem.stream_id, update: { ignored: true } },
+      { onSuccess: () => setCancelPanelItem(null) },
+    )
   }
-
-  const buildActions = (item: SubscriptionItem, allowReminder: boolean): RowActions => ({
-    onIgnore: () => updatePreference(item.stream_id, { ignored: true }),
-    onToggleEssential: () => updatePreference(item.stream_id, { essential: !item.essential }),
-    onSetReminder: () => setReminder(item.stream_id),
-    showSetReminder: allowReminder,
-    isEssential: item.essential,
-  })
 
   const toggleDetail = (streamId: string) => {
     setExpandedDetailId((prev) => (prev === streamId ? null : streamId))
@@ -355,7 +573,7 @@ function SubscriptionCenter() {
     <div className="card">
       <div className="sub-page-header">
         <h2>Subscription Center</h2>
-        <div className="control-row">
+        <div className="sub-header-controls">
           <div className="dashboard-report-tabs" role="tablist" aria-label="Subscription views">
             <button
               type="button"
@@ -420,13 +638,15 @@ function SubscriptionCenter() {
         </div>
       )}
 
+      {summary && <SubscriptionHero summary={summary} />}
+
       {listQuery.isLoading && <p>Loading subscriptions...</p>}
       {!listQuery.isLoading && all.length === 0 && (
         <p className="empty-state">No subscriptions detected yet.</p>
       )}
 
       {!listQuery.isLoading && activeView === 'upcoming' && (
-        <section className="sub-section sub-section-review">
+        <section className="sub-section sub-section-upcoming">
           <header className="sub-section-header">
             <h3>Upcoming</h3>
           </header>
@@ -442,11 +662,19 @@ function SubscriptionCenter() {
                 expanded={expandedDetailId === item.stream_id}
                 onToggleDetail={() => toggleDetail(item.stream_id)}
                 actions={buildActions(item, true)}
-                reminderMessage={reminderMessages[item.stream_id]}
               />
             ))}
           </div>
         </section>
+      )}
+
+      {cancelPanelItem && (
+        <CancelPanel
+          item={cancelPanelItem}
+          onClose={() => setCancelPanelItem(null)}
+          onStopTracking={handleStopTracking}
+          isStopTrackingPending={prefMutation.isPending}
+        />
       )}
 
       {!listQuery.isLoading && activeView === 'all' && (
@@ -456,6 +684,9 @@ function SubscriptionCenter() {
               <h3>Active</h3>
             </header>
             <div className="sub-section-body">
+              {recurringSections.active.length === 0 && (
+                <p className="empty-state">No active subscriptions.</p>
+              )}
               {recurringSections.active.map((item) => (
                 <SubscriptionRow
                   key={item.stream_id}
@@ -464,7 +695,6 @@ function SubscriptionCenter() {
                   expanded={expandedDetailId === item.stream_id}
                   onToggleDetail={() => toggleDetail(item.stream_id)}
                   actions={buildActions(item, true)}
-                  reminderMessage={reminderMessages[item.stream_id]}
                 />
               ))}
             </div>
@@ -474,6 +704,9 @@ function SubscriptionCenter() {
               <h3>Inactive</h3>
             </header>
             <div className="sub-section-body">
+              {recurringSections.inactive.length === 0 && (
+                <p className="empty-state">No inactive subscriptions.</p>
+              )}
               {recurringSections.inactive.map((item) => (
                 <SubscriptionRow
                   key={item.stream_id}
@@ -482,7 +715,6 @@ function SubscriptionCenter() {
                   expanded={expandedDetailId === item.stream_id}
                   onToggleDetail={() => toggleDetail(item.stream_id)}
                   actions={buildActions(item, false)}
-                  reminderMessage={reminderMessages[item.stream_id]}
                 />
               ))}
             </div>

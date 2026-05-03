@@ -5,6 +5,7 @@ import type {
   BudgetListResponse,
   BudgetUpdateResponse,
   BudgetVsActualResponse,
+  CancelInfoResponse,
   CashFlowResponse,
   CategoryBreakdownResponse,
   FeatureInterestRequest,
@@ -20,11 +21,11 @@ import type {
   PaycheckPlanResponse,
   PaycheckPlanSaveRequest,
   PaycheckPlanSaveResponse,
-  ReminderResponse,
   SavedPaycheckPlanResponse,
   SubscriptionAlertsResponse,
   SubscriptionListResponse,
   SubscriptionPreferenceResponse,
+  SubscriptionReviewResponse,
   TransferResponse,
   UploadResponse,
   YearlyPnlResponse,
@@ -127,8 +128,12 @@ export async function updateSubscriptionPreferences(
   })
 }
 
-export async function remindCancel(streamId: string): Promise<ReminderResponse> {
-  return request<ReminderResponse>(`/subscriptions/${streamId}/remind-cancel`, {
+export async function getCancelInfo(streamId: string): Promise<CancelInfoResponse> {
+  return request<CancelInfoResponse>(`/subscriptions/${streamId}/cancel-info`)
+}
+
+export async function reviewSubscription(streamId: string): Promise<SubscriptionReviewResponse> {
+  return request<SubscriptionReviewResponse>(`/subscriptions/${streamId}/review`, {
     method: 'POST',
   })
 }

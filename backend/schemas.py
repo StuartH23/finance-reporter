@@ -61,6 +61,7 @@ class SubscriptionChargePoint(BaseModel):
 class SubscriptionItem(BaseModel):
     stream_id: str
     merchant: str
+    dominant_category: str = "Uncategorized"
     cadence: str
     confidence: float
     active: bool
@@ -86,9 +87,19 @@ class SubscriptionItem(BaseModel):
     manually_managed: bool = False
 
 
+class SubscriptionSummary(BaseModel):
+    monthly_run_rate: float
+    annual_run_rate: float
+    active_count: int
+    latest_month_total: float
+    latest_month_label: str
+    latest_month_is_complete: bool
+
+
 class SubscriptionListResponse(BaseModel):
     subscriptions: list[SubscriptionItem]
     count: int
+    summary: SubscriptionSummary
 
 
 class SubscriptionPreferenceUpdate(BaseModel):
@@ -115,10 +126,23 @@ class SubscriptionAlertsResponse(BaseModel):
     count: int
 
 
-class ReminderResponse(BaseModel):
-    status: str
+class CancelInfoResponse(BaseModel):
     stream_id: str
-    message: str
+    merchant: str
+    found: bool
+    display_name: str | None = None
+    cancel_url: str | None = None
+    support_url: str | None = None
+    phone: str | None = None
+    notes: str | None = None
+
+
+class SubscriptionReviewResponse(BaseModel):
+    stream_id: str
+    verdict: Literal["likely_authorized", "review_needed", "price_concern"]
+    reason: str
+    evidence: list[str]
+    cached: bool
 
 
 # --- P&L ---

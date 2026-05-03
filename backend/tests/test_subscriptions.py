@@ -9,8 +9,11 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from main import app
+from routers import subscriptions as subscription_router
+from sdk.merchant_directory import lookup_cancel_info
 from sdk.subscriptions import (
     build_subscription_payload,
+    build_subscription_summary,
     detect_recurring_streams,
     normalize_merchant,
 )
@@ -155,6 +158,331 @@ def test_recurring_v2_classifies_paid_variance_upcoming_and_inactive_states():
     ]
     assert inactive_payload[0]["payment_state"] == "inactive"
     assert inactive_payload[0]["status_group"] == "inactive"
+
+
+def test_subscription_payload_includes_dominant_category_from_transactions():
+    ledger = pd.DataFrame(
+        [
+            ("2026-01-05", "NETFLIX.COM", -15.99, "Subscriptions"),
+            ("2026-02-05", "NETFLIX.COM", -15.99, "Entertainment"),
+            ("2026-03-05", "NETFLIX.COM", -15.99, "Entertainment"),
+        ],
+        columns=["date", "description", "amount", "category"],
+    )
+    ledger["date"] = pd.to_datetime(ledger["date"])
+    ledger["source_file"] = "fixture.csv"
+
+    payload = build_subscription_payload(ledger)
+    netflix = next(item for item in payload if "NETFLIX" in item["merchant"])
+
+    assert netflix["dominant_category"] == "Entertainment"
+
+
+def _summary_fixture(rows: list[tuple[str, str, float]]) -> pd.DataFrame:
+    frame = pd.DataFrame(rows, columns=["date", "description", "amount"])
+    frame["date"] = pd.to_datetime(frame["date"])
+    frame["category"] = "Subscriptions"
+    frame["source_file"] = "fixture.csv"
+    return frame
+
+
+def test_summary_latest_month_total_uses_reference_date_month_to_date():
+    ledger = _summary_fixture(
+        [
+            ("2026-01-10", "STREAMING SERVICE", -12.00),
+            ("2026-02-09", "STREAMING SERVICE", -12.00),
+            ("2026-03-11", "STREAMING SERVICE", -12.00),
+            ("2026-04-12", "STREAMING SERVICE", -12.00),
+            ("2026-01-15", "UTILITY SUB", -20.00),
+            ("2026-02-14", "UTILITY SUB", -20.00),
+            ("2026-03-16", "UTILITY SUB", -20.00),
+            ("2026-04-15", "UTILITY SUB", -20.00),
+        ]
+    )
+    payload = build_subscription_payload(ledger)
+    summary = build_subscription_summary(payload, ledger)
+
+    # Reference date is 2026-04-15 — mid-month, so total reflects April-to-date
+    assert summary["latest_month_label"] == "2026-04"
+    assert summary["latest_month_is_complete"] is False
+    assert summary["latest_month_total"] == 32.00
+    assert summary["active_count"] == 2
+    # Two monthly subs at $12 and $20 → $32/mo run rate
+    assert summary["monthly_run_rate"] == 32.00
+    assert summary["annual_run_rate"] == 384.00
+
+
+def test_summary_marks_month_complete_on_last_calendar_day():
+    ledger = _summary_fixture(
+        [
+            ("2026-02-28", "STREAMING SERVICE", -12.00),
+            ("2026-03-30", "STREAMING SERVICE", -12.00),
+            ("2026-04-30", "STREAMING SERVICE", -12.00),
+        ]
+    )
+    payload = build_subscription_payload(ledger)
+    summary = build_subscription_summary(payload, ledger)
+
+    assert summary["latest_month_label"] == "2026-04"
+    assert summary["latest_month_is_complete"] is True
+    assert summary["latest_month_total"] == 12.00
+
+
+def test_summary_excludes_ignored_streams_from_aggregates():
+    ledger = _summary_fixture(
+        [
+            ("2026-01-10", "STREAMING SERVICE", -12.00),
+            ("2026-02-09", "STREAMING SERVICE", -12.00),
+            ("2026-03-11", "STREAMING SERVICE", -12.00),
+            ("2026-01-15", "UTILITY SUB", -20.00),
+            ("2026-02-14", "UTILITY SUB", -20.00),
+            ("2026-03-16", "UTILITY SUB", -20.00),
+        ]
+    )
+    payload = build_subscription_payload(ledger)
+    streaming_stream_id = next(p["stream_id"] for p in payload if "STREAMING" in p["merchant"])
+    payload_with_ignore = [
+        {**p, "ignored": True} if p["stream_id"] == streaming_stream_id else p for p in payload
+    ]
+
+    summary = build_subscription_summary(payload_with_ignore, ledger)
+    assert summary["active_count"] == 1
+    assert summary["monthly_run_rate"] == 20.00
+    # March total only includes non-ignored Utility charge
+    assert summary["latest_month_total"] == 20.00
+
+
+def test_subscriptions_endpoint_returns_summary_unaffected_by_filters_and_pagination():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-10,STREAMING SERVICE,-12.00\n"
+        b"2026-02-09,STREAMING SERVICE,-12.00\n"
+        b"2026-03-11,STREAMING SERVICE,-12.00\n"
+        b"2026-01-15,UTILITY SUB,-20.00\n"
+        b"2026-02-14,UTILITY SUB,-20.00\n"
+        b"2026-03-16,UTILITY SUB,-30.00\n"
+    )
+    upload_resp = client.post(
+        "/api/upload", files=[("files", ("summary.csv", csv, "text/csv"))]
+    )
+    assert upload_resp.status_code == 200
+
+    full = client.get("/api/subscriptions").json()
+    assert "summary" in full
+    full_summary = full["summary"]
+    assert full_summary["active_count"] == 2
+    assert full_summary["latest_month_label"] == "2026-03"
+
+    # Apply a filter that shrinks the visible list and paginate to 1 item.
+    filtered = client.get(
+        "/api/subscriptions?filter_increased=true&page=1&page_size=1"
+    ).json()
+    assert len(filtered["subscriptions"]) <= 1
+    # Summary still reflects the full unfiltered set
+    assert filtered["summary"] == full_summary
+
+
+def test_cancel_directory_matches_single_token_canonical_key():
+    entry = lookup_cancel_info("NETFLIX")
+    assert entry is not None
+    assert entry["display_name"] == "Netflix"
+
+
+def test_cancel_directory_matches_when_brand_token_appears_among_others():
+    # Bank statements may pad the merchant with location/billing tokens.
+    entry = lookup_cancel_info("NETFLIX BILL CA")
+    assert entry is not None
+    assert entry["canonical_key"] == "NETFLIX"
+
+
+def test_cancel_directory_multi_token_key_requires_all_tokens():
+    # AMAZON PRIME requires both tokens — generic AMAZON purchases shouldn't match.
+    matched = lookup_cancel_info("AMAZON PRIME MEMBERSHIP")
+    assert matched is not None
+    assert matched["canonical_key"] == "AMAZON PRIME"
+
+    not_matched = lookup_cancel_info("AMAZON MKTP US")
+    assert not_matched is None
+
+
+def test_cancel_directory_alias_match():
+    entry = lookup_cancel_info("HBO MAX")
+    assert entry is not None
+    assert entry["canonical_key"] == "HBOMAX"
+
+
+def test_cancel_directory_returns_none_for_unknown_merchant():
+    assert lookup_cancel_info("OBSCURE LOCAL GYM") is None
+    assert lookup_cancel_info("") is None
+
+
+def test_cancel_info_endpoint_returns_metadata_for_known_merchant():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-05,NETFLIX.COM,-15.99\n"
+        b"2026-02-05,NETFLIX.COM,-15.99\n"
+        b"2026-03-05,NETFLIX.COM,-15.99\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    listing = client.get("/api/subscriptions").json()
+    netflix = next(s for s in listing["subscriptions"] if "NETFLIX" in s["merchant"])
+
+    info = client.get(f"/api/subscriptions/{netflix['stream_id']}/cancel-info")
+    assert info.status_code == 200
+    body = info.json()
+    assert body["found"] is True
+    assert body["display_name"] == "Netflix"
+    assert body["cancel_url"].startswith("https://www.netflix.com/")
+    assert body["merchant"] == netflix["merchant"]
+
+
+def test_cancel_info_endpoint_returns_found_false_for_unknown_merchant():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-05,OBSCURE LOCAL GYM,-29.00\n"
+        b"2026-02-05,OBSCURE LOCAL GYM,-29.00\n"
+        b"2026-03-05,OBSCURE LOCAL GYM,-29.00\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    listing = client.get("/api/subscriptions").json()
+    gym = next(s for s in listing["subscriptions"] if "GYM" in s["merchant"])
+
+    info = client.get(f"/api/subscriptions/{gym['stream_id']}/cancel-info")
+    assert info.status_code == 200
+    body = info.json()
+    assert body["found"] is False
+    assert body["cancel_url"] is None
+    assert body["display_name"] is None
+    assert body["merchant"] == gym["merchant"]
+
+
+def test_cancel_info_endpoint_404_for_unknown_stream_id():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-05,NETFLIX.COM,-15.99\n"
+        b"2026-02-05,NETFLIX.COM,-15.99\n"
+        b"2026-03-05,NETFLIX.COM,-15.99\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    info = client.get("/api/subscriptions/not-a-real-stream/cancel-info")
+    assert info.status_code == 404
+
+
+def test_review_endpoint_returns_model_verdict_and_uses_cache(monkeypatch):
+    subscription_router._review_cache.clear()
+    calls = {"count": 0}
+
+    def fake_review(prompt: str) -> dict:
+        calls["count"] += 1
+        assert "NETFLIX" in prompt
+        return {
+            "verdict": "price_concern",
+            "reason": "Netflix increased from the prior baseline.",
+            "evidence": ["2026-03-05: $18.00"],
+        }
+
+    monkeypatch.setattr(subscription_router, "_call_review_model", fake_review)
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-05,NETFLIX.COM,-15.00\n"
+        b"2026-02-05,NETFLIX.COM,-15.00\n"
+        b"2026-03-05,NETFLIX.COM,-18.00\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    listing = client.get("/api/subscriptions").json()
+    netflix = next(s for s in listing["subscriptions"] if "NETFLIX" in s["merchant"])
+
+    first = client.post(f"/api/subscriptions/{netflix['stream_id']}/review")
+    second = client.post(f"/api/subscriptions/{netflix['stream_id']}/review")
+
+    assert first.status_code == 200
+    assert first.json() == {
+        "stream_id": netflix["stream_id"],
+        "verdict": "price_concern",
+        "reason": "Netflix increased from the prior baseline.",
+        "evidence": ["2026-03-05: $18.00"],
+        "cached": False,
+    }
+    assert second.status_code == 200
+    assert second.json()["cached"] is True
+    assert calls["count"] == 1
+
+
+def test_review_endpoint_coerces_invalid_model_verdict(monkeypatch):
+    subscription_router._review_cache.clear()
+    monkeypatch.setattr(
+        subscription_router,
+        "_call_review_model",
+        lambda prompt: {"verdict": "maybe", "reason": "bad", "evidence": ["ignored"]},
+    )
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-02-05,NEW APP SERVICE,-5.00\n"
+        b"2026-03-05,NEW APP SERVICE,-5.00\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    listing = client.get("/api/subscriptions").json()
+    new_app = next(s for s in listing["subscriptions"] if "NEW APP" in s["merchant"])
+
+    response = client.post(f"/api/subscriptions/{new_app['stream_id']}/review")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verdict"] == "review_needed"
+    assert body["reason"].startswith("Couldn't parse the model verdict")
+    assert body["evidence"] == []
+
+
+def test_review_endpoint_409_for_ineligible_stable_subscription(monkeypatch):
+    subscription_router._review_cache.clear()
+    monkeypatch.setattr(subscription_router, "_call_review_model", lambda prompt: {})
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2025-11-05,STABLE SERVICE,-20.00\n"
+        b"2025-12-05,STABLE SERVICE,-20.00\n"
+        b"2026-01-05,STABLE SERVICE,-20.00\n"
+        b"2026-02-05,STABLE SERVICE,-20.00\n"
+        b"2026-03-05,STABLE SERVICE,-20.00\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    listing = client.get("/api/subscriptions").json()
+    stable = next(s for s in listing["subscriptions"] if "STABLE" in s["merchant"])
+
+    response = client.post(f"/api/subscriptions/{stable['stream_id']}/review")
+    assert response.status_code == 409
+
+
+def test_review_endpoint_404_for_unknown_stream_id():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-05,NETFLIX.COM,-15.99\n"
+        b"2026-02-05,NETFLIX.COM,-15.99\n"
+        b"2026-03-05,NETFLIX.COM,-17.99\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("subs.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    response = client.post("/api/subscriptions/not-a-real-stream/review")
+    assert response.status_code == 404
 
 
 def test_subscriptions_filters_count_before_pagination():

@@ -1,0 +1,254 @@
+[
+  {
+    "canonical_key": "NETFLIX",
+    "display_name": "Netflix",
+    "aliases": [],
+    "cancel_url": "https://www.netflix.com/cancelplan",
+    "support_url": "https://help.netflix.com/contactus",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "SPOTIFY",
+    "display_name": "Spotify",
+    "aliases": ["SPOTIFY USA"],
+    "cancel_url": "https://www.spotify.com/account/subscription/",
+    "support_url": "https://support.spotify.com/",
+    "phone": null,
+    "notes": "Cancel from Account → Manage Plan."
+  },
+  {
+    "canonical_key": "HULU",
+    "display_name": "Hulu",
+    "aliases": [],
+    "cancel_url": "https://secure.hulu.com/account/cancel",
+    "support_url": "https://help.hulu.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "DISNEY PLUS",
+    "display_name": "Disney+",
+    "aliases": ["DISNEYPLUS"],
+    "cancel_url": "https://www.disneyplus.com/account/subscription",
+    "support_url": "https://help.disneyplus.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "PARAMOUNT PLUS",
+    "display_name": "Paramount+",
+    "aliases": ["PARAMOUNTPLUS"],
+    "cancel_url": "https://www.paramountplus.com/account/signin/",
+    "support_url": "https://help.paramountplus.com/",
+    "phone": null,
+    "notes": "Sign in, then go to Account → Subscription → Cancel."
+  },
+  {
+    "canonical_key": "PEACOCK",
+    "display_name": "Peacock",
+    "aliases": ["PEACOCK PREMIUM"],
+    "cancel_url": "https://www.peacocktv.com/account/plans",
+    "support_url": "https://www.peacocktv.com/help",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "HBOMAX",
+    "display_name": "Max (HBO Max)",
+    "aliases": ["HBO MAX", "WARNERMEDIA DIRECT"],
+    "cancel_url": "https://auth.max.com/subscription",
+    "support_url": "https://help.max.com/",
+    "phone": null,
+    "notes": "If billed via Apple or Amazon, cancel through that platform instead."
+  },
+  {
+    "canonical_key": "AMAZON PRIME",
+    "display_name": "Amazon Prime",
+    "aliases": ["PRIME MEMBERSHIP"],
+    "cancel_url": "https://www.amazon.com/gp/help/customer/display.html?nodeId=GVTUC9HJTWJSF6FY",
+    "support_url": "https://www.amazon.com/contact-us",
+    "phone": null,
+    "notes": "Account & Lists → Memberships and Subscriptions → End Membership."
+  },
+  {
+    "canonical_key": "APPLE BILL",
+    "display_name": "Apple Services",
+    "aliases": ["APPLE SERVICES", "APPLE ITUNES"],
+    "cancel_url": "https://apps.apple.com/account/subscriptions",
+    "support_url": "https://support.apple.com/billing",
+    "phone": null,
+    "notes": "Apple bills cover Apple Music, TV+, iCloud, and App Store subscriptions. Manage all of them at the link above."
+  },
+  {
+    "canonical_key": "GOOGLE YOUTUBE",
+    "display_name": "YouTube Premium / YouTube TV",
+    "aliases": ["YOUTUBEPREMIUM", "YOUTUBE PREMIUM", "YOUTUBE TV"],
+    "cancel_url": "https://www.youtube.com/paid_memberships",
+    "support_url": "https://support.google.com/youtube/answer/6308277",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "GOOGLE STORAGE",
+    "display_name": "Google One",
+    "aliases": ["GOOGLE ONE"],
+    "cancel_url": "https://one.google.com/storage",
+    "support_url": "https://support.google.com/googleone",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "ADOBE",
+    "display_name": "Adobe Creative Cloud",
+    "aliases": ["ADOBE SYSTEMS", "ADOBE CREATIVE"],
+    "cancel_url": "https://account.adobe.com/plans",
+    "support_url": "https://helpx.adobe.com/contact.html",
+    "phone": "+1-800-833-6687",
+    "notes": "Cancellations within the first 14 days are free; later cancellations may incur a fee on annual plans."
+  },
+  {
+    "canonical_key": "MICROSOFT 365",
+    "display_name": "Microsoft 365",
+    "aliases": ["MSFT 365", "MICROSOFT OFFICE"],
+    "cancel_url": "https://account.microsoft.com/services",
+    "support_url": "https://support.microsoft.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "DROPBOX",
+    "display_name": "Dropbox",
+    "aliases": [],
+    "cancel_url": "https://www.dropbox.com/account/plan",
+    "support_url": "https://help.dropbox.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "NOTION",
+    "display_name": "Notion",
+    "aliases": ["NOTION LABS"],
+    "cancel_url": "https://www.notion.so/my-account",
+    "support_url": "https://www.notion.so/help",
+    "phone": null,
+    "notes": "Open the workspace settings → Billing to manage."
+  },
+  {
+    "canonical_key": "FIGMA",
+    "display_name": "Figma",
+    "aliases": [],
+    "cancel_url": "https://www.figma.com/settings/account",
+    "support_url": "https://help.figma.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "GITHUB",
+    "display_name": "GitHub",
+    "aliases": [],
+    "cancel_url": "https://github.com/settings/billing/plans",
+    "support_url": "https://support.github.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "NYTIMES",
+    "display_name": "The New York Times",
+    "aliases": ["NEW YORK TIMES", "NYT"],
+    "cancel_url": "https://myaccount.nytimes.com/seg/subscription",
+    "support_url": "https://help.nytimes.com/hc/en-us",
+    "phone": "+1-800-698-4637",
+    "notes": "Phone cancellation is required for some legacy subscriptions."
+  },
+  {
+    "canonical_key": "WSJ",
+    "display_name": "The Wall Street Journal",
+    "aliases": ["WALL STREET JOURNAL", "DOW JONES WSJ"],
+    "cancel_url": "https://customercenter.wsj.com/view/membership/cancel.html",
+    "support_url": "https://customercenter.wsj.com/contactus",
+    "phone": "+1-800-568-7625",
+    "notes": null
+  },
+  {
+    "canonical_key": "WASHINGTON POST",
+    "display_name": "The Washington Post",
+    "aliases": ["WASHPOST"],
+    "cancel_url": "https://subscribe.washingtonpost.com/myaccount/",
+    "support_url": "https://helpcenter.washingtonpost.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "THE ATHLETIC",
+    "display_name": "The Athletic",
+    "aliases": ["ATHLETIC MEDIA"],
+    "cancel_url": "https://theathletic.com/account/",
+    "support_url": "https://theathletic.com/help/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "PELOTON",
+    "display_name": "Peloton",
+    "aliases": ["PELOTON INTERACTIVE"],
+    "cancel_url": "https://account.onepeloton.com/billing",
+    "support_url": "https://support.onepeloton.com/",
+    "phone": "+1-866-679-9129",
+    "notes": "App-only members can cancel from the link above; equipment financing requires support."
+  },
+  {
+    "canonical_key": "PLANET FITNESS",
+    "display_name": "Planet Fitness",
+    "aliases": ["PLANET FIT"],
+    "cancel_url": null,
+    "support_url": "https://www.planetfitness.com/contact-us",
+    "phone": null,
+    "notes": "Planet Fitness requires cancellation in person at your home club or by certified mail. The support link has the form."
+  },
+  {
+    "canonical_key": "EQUINOX",
+    "display_name": "Equinox",
+    "aliases": [],
+    "cancel_url": null,
+    "support_url": "https://www.equinox.com/contactus",
+    "phone": "+1-866-332-6549",
+    "notes": "Equinox cancellations require either an in-club visit or a written notice — call to start the process."
+  },
+  {
+    "canonical_key": "HELLOFRESH",
+    "display_name": "HelloFresh",
+    "aliases": ["HELLO FRESH"],
+    "cancel_url": "https://www.hellofresh.com/my-account/settings",
+    "support_url": "https://www.hellofresh.com/help",
+    "phone": null,
+    "notes": "Settings → Plan settings → Cancel plan."
+  },
+  {
+    "canonical_key": "BLUE APRON",
+    "display_name": "Blue Apron",
+    "aliases": [],
+    "cancel_url": "https://www.blueapron.com/users/edit",
+    "support_url": "https://www.blueapron.com/contact",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "DOORDASH DASHPASS",
+    "display_name": "DoorDash DashPass",
+    "aliases": ["DASHPASS"],
+    "cancel_url": "https://www.doordash.com/dashpass/manage-membership/",
+    "support_url": "https://help.doordash.com/",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "canonical_key": "PATREON",
+    "display_name": "Patreon",
+    "aliases": [],
+    "cancel_url": "https://www.patreon.com/settings/memberships",
+    "support_url": "https://support.patreon.com/",
+    "phone": null,
+    "notes": null
+  }
+]

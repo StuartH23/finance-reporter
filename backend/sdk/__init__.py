@@ -11,6 +11,7 @@ from .categories import TRANSFER_CATEGORIES, categorize, load_categories
 from .csv_handler import ColumnGuess, guess_columns
 from .goals import build_paycheck_plan, compute_goal_progress, what_changed_lines
 from .insights import build_insights
+from .merchant_directory import lookup_cancel_info
 from .ledger import build_ledger, clean_amount, summarize
 from .next_actions import (
     apply_action_feedback,
@@ -19,7 +20,12 @@ from .next_actions import (
 )
 from .pdf_parser import parse_pdf_words_to_df
 from .semantics import category_semantic_type, is_budgetable_spending, resolve_semantic_type
-from .subscriptions import build_alerts, build_subscription_payload, detect_recurring_streams
+from .subscriptions import (
+    build_alerts,
+    build_subscription_payload,
+    build_subscription_summary,
+    detect_recurring_streams,
+)
 from .year_detection import infer_year
 
 __all__ = [
@@ -33,6 +39,7 @@ __all__ = [
     "build_ledger",
     "build_paycheck_plan",
     "build_subscription_payload",
+    "build_subscription_summary",
     "categorize",
     "category_semantic_type",
     "clean_amount",
@@ -44,6 +51,7 @@ __all__ = [
     "is_budgetable_spending",
     "load_budget",
     "load_categories",
+    "lookup_cancel_info",
     "normalize_merchant",
     "parse_pdf_words_to_df",
     "period_key_is_valid",

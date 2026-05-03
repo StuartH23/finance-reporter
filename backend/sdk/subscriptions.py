@@ -18,6 +18,12 @@ CADENCES: dict[str, tuple[int, int]] = {
     "annual": (365, 21),
 }
 
+CADENCE_MONTHLY_FACTOR: dict[str, float] = {
+    "weekly": 52 / 12,
+    "monthly": 1.0,
+    "annual": 1 / 12,
+}
+
 MIN_CONFIDENCE = 0.55
 EARLY_MATCH_DAYS = 3
 LATE_MATCH_DAYS = 5
@@ -48,6 +54,7 @@ _NOISE_TOKENS = {
 class RecurringStream:
     stream_id: str
     merchant: str
+    dominant_category: str
     cadence: str
     confidence: float
     current_amount: float
@@ -179,6 +186,30 @@ def _amount_trend(amounts: pd.Series, threshold: float) -> tuple[str, float, flo
     return "flat", baseline, current, False
 
 
+def _dominant_category(group: pd.DataFrame) -> str:
+    if "category" not in group:
+        return "Uncategorized"
+
+    categories = group["category"].fillna("Uncategorized").astype(str).str.strip()
+    categories = categories.replace("", "Uncategorized")
+    amounts = group["amount"].abs()
+    ranking = (
+        pd.DataFrame({"category": categories, "amount": amounts})
+        .groupby("category", sort=False)
+        .agg(count=("category", "size"), total=("amount", "sum"))
+        .reset_index()
+    )
+    if ranking.empty:
+        return "Uncategorized"
+
+    ranking = ranking.sort_values(
+        by=["count", "total", "category"],
+        ascending=[False, False, True],
+        kind="mergesort",
+    )
+    return str(ranking.iloc[0]["category"])
+
+
 def detect_recurring_streams(
     ledger: pd.DataFrame,
     *,
@@ -188,7 +219,7 @@ def detect_recurring_streams(
         return []
 
     debits = ledger[(ledger["amount"] < 0) & (~ledger["category"].isin(TRANSFER_CATEGORIES))][
-        ["date", "description", "amount"]
+        ["date", "description", "amount", "category"]
     ].copy()
     if debits.empty:
         return []
@@ -224,10 +255,12 @@ def detect_recurring_streams(
         trend, baseline, current, price_increase = _amount_trend(
             ordered["amount"], price_increase_threshold
         )
+        dominant_category = _dominant_category(ordered)
         streams.append(
             RecurringStream(
                 stream_id=_stream_id(merchant, cadence),
                 merchant=merchant,
+                dominant_category=dominant_category,
                 cadence=cadence,
                 confidence=confidence,
                 current_amount=round(current, 2),
@@ -272,6 +305,7 @@ def build_subscription_payload(
             {
                 "stream_id": stream.stream_id,
                 "merchant": stream.merchant,
+                "dominant_category": stream.dominant_category,
                 "cadence": stream.cadence,
                 "confidence": stream.confidence,
                 "active": stream.active,
@@ -397,6 +431,66 @@ def _payment_state(
     if due_end >= reference_date:
         return "upcoming"
     return "inactive"
+
+
+def _resolve_reference_date(ledger: pd.DataFrame) -> pd.Timestamp:
+    """Mirror detect_recurring_streams's reference-date logic so summary aligns."""
+    if not ledger.empty:
+        candidate = ledger["date"].dropna().max()
+        if not pd.isna(candidate):
+            return candidate
+    return pd.Timestamp.now(tz="UTC").tz_localize(None).normalize()
+
+
+def build_subscription_summary(
+    subscriptions: list[dict],
+    ledger: pd.DataFrame,
+) -> dict:
+    """Aggregate run-rates, counts, and a latest-month total over the unfiltered set.
+
+    latest_month_total is the sum of detected subscription charges in the
+    calendar month that contains the ledger's reference date. A CSV ending
+    mid-month therefore reflects month-to-date spend; on the last calendar
+    day of the month, latest_month_is_complete flips to True so the UI can
+    drop the "so far" qualifier.
+
+    Ignored streams are excluded from every aggregate — treated as noise.
+    """
+    reference_date = _resolve_reference_date(ledger).normalize()
+
+    eligible = [s for s in subscriptions if not s.get("ignored")]
+    active = [s for s in eligible if s.get("active")]
+
+    monthly_run_rate = sum(
+        float(s.get("amount", 0.0)) * CADENCE_MONTHLY_FACTOR.get(str(s.get("cadence")), 1.0)
+        for s in active
+    )
+    annual_run_rate = monthly_run_rate * 12
+
+    latest_month_label = f"{reference_date.year:04d}-{reference_date.month:02d}"
+    last_day_of_month = (reference_date + pd.offsets.MonthEnd(0)).normalize()
+    latest_month_is_complete = reference_date == last_day_of_month
+
+    latest_month_total = 0.0
+    for sub in eligible:
+        for charge in sub.get("charge_history", []):
+            charge_date = pd.to_datetime(charge.get("date"), errors="coerce")
+            if pd.isna(charge_date):
+                continue
+            if (
+                charge_date.year == reference_date.year
+                and charge_date.month == reference_date.month
+            ):
+                latest_month_total += float(charge.get("amount", 0.0))
+
+    return {
+        "monthly_run_rate": round(monthly_run_rate, 2),
+        "annual_run_rate": round(annual_run_rate, 2),
+        "active_count": len(active),
+        "latest_month_total": round(latest_month_total, 2),
+        "latest_month_label": latest_month_label,
+        "latest_month_is_complete": bool(latest_month_is_complete),
+    }
 
 
 def _make_alert(sub: dict, alert_type: str, message: str) -> dict:

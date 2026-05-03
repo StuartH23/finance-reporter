@@ -17,12 +17,14 @@ import type {
   NextBestActionFeedResponse,
   PaycheckPlanResponse,
   PaycheckPlanSaveResponse,
-  ReminderResponse,
+  CancelInfoResponse,
   SavedPaycheckPlanResponse,
   SubscriptionAlertsResponse,
   SubscriptionItem,
   SubscriptionListResponse,
+  SubscriptionSummary,
   SubscriptionPreferenceResponse,
+  SubscriptionReviewResponse,
   TransferResponse,
   UploadResponse,
   YearlyPnlResponse,
@@ -333,6 +335,7 @@ function createInitialState() {
     {
       stream_id: 'sub-1',
       merchant: 'Netflix',
+      dominant_category: 'Subscriptions',
       cadence: 'monthly',
       confidence: 0.93,
       active: true,
@@ -367,6 +370,7 @@ function createInitialState() {
     {
       stream_id: 'sub-2',
       merchant: 'Gym Membership',
+      dominant_category: 'Recreation',
       cadence: 'monthly',
       confidence: 0.9,
       active: true,
@@ -722,6 +726,62 @@ function buildDemoCashFlow(searchParams: URLSearchParams): CashFlowResponse {
   }
 }
 
+const SUBSCRIPTION_MONTHLY_FACTOR: Record<string, number> = {
+  weekly: 52 / 12,
+  monthly: 1,
+  annual: 1 / 12,
+}
+
+function buildSubscriptionSummary(subscriptions: SubscriptionItem[]): SubscriptionSummary {
+  const eligible = subscriptions.filter((sub) => !sub.ignored)
+  const active = eligible.filter((sub) => sub.active)
+  const monthlyRunRate = active.reduce(
+    (sum, sub) => sum + sub.amount * (SUBSCRIPTION_MONTHLY_FACTOR[sub.cadence] ?? 1),
+    0,
+  )
+
+  let referenceDate: Date | null = null
+  for (const sub of eligible) {
+    for (const charge of sub.charge_history) {
+      const chargeDate = new Date(`${charge.date}T00:00:00`)
+      if (Number.isNaN(chargeDate.getTime())) continue
+      if (!referenceDate || chargeDate > referenceDate) {
+        referenceDate = chargeDate
+      }
+    }
+  }
+  referenceDate ??= new Date()
+
+  const year = referenceDate.getFullYear()
+  const month = referenceDate.getMonth()
+  const latestMonthLabel = `${year}-${String(month + 1).padStart(2, '0')}`
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate()
+  const latestMonthIsComplete = referenceDate.getDate() === lastDayOfMonth
+
+  const latestMonthTotal = eligible.reduce(
+    (sum, sub) =>
+      sum +
+      sub.charge_history.reduce((chargeSum, charge) => {
+        const chargeDate = new Date(`${charge.date}T00:00:00`)
+        if (Number.isNaN(chargeDate.getTime())) return chargeSum
+        if (chargeDate.getFullYear() !== year || chargeDate.getMonth() !== month) {
+          return chargeSum
+        }
+        return chargeSum + charge.amount
+      }, 0),
+    0,
+  )
+
+  return {
+    monthly_run_rate: Math.round(monthlyRunRate * 100) / 100,
+    annual_run_rate: Math.round(monthlyRunRate * 12 * 100) / 100,
+    active_count: active.length,
+    latest_month_total: Math.round(latestMonthTotal * 100) / 100,
+    latest_month_label: latestMonthLabel,
+    latest_month_is_complete: latestMonthIsComplete,
+  }
+}
+
 function buildSubscriptionsList(searchParams: URLSearchParams): SubscriptionListResponse {
   const status = searchParams.get('status') ?? 'active'
   const view = searchParams.get('view') ?? 'all'
@@ -780,6 +840,7 @@ function buildSubscriptionsList(searchParams: URLSearchParams): SubscriptionList
   return {
     subscriptions: clone(subscriptions),
     count: subscriptions.length,
+    summary: buildSubscriptionSummary(demoState.subscriptions),
   }
 }
 
@@ -1021,15 +1082,50 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
     }
   }
 
-  if (method === 'POST' && pathname.endsWith('/remind-cancel')) {
+  if (method === 'GET' && pathname.endsWith('/cancel-info')) {
     const streamId = pathname.split('/')[2]
     const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
-    const response: ReminderResponse = {
-      status: 'ok',
+    if (!sub) {
+      // Mirror the real backend contract — unknown stream IDs 404.
+      throw new Error('API error: 404 Not Found')
+    }
+    const merchantUpper = sub.merchant.toUpperCase()
+    if (merchantUpper.includes('NETFLIX')) {
+      const found: CancelInfoResponse = {
+        stream_id: streamId,
+        merchant: sub.merchant,
+        found: true,
+        display_name: 'Netflix',
+        cancel_url: 'https://www.netflix.com/cancelplan',
+        support_url: 'https://help.netflix.com/contactus',
+        phone: null,
+        notes: null,
+      }
+      return found as T
+    }
+    const fallback: CancelInfoResponse = {
       stream_id: streamId,
-      message: sub
-        ? `Reminder created for ${sub.merchant}. Review cancellation at least 2 days before ${sub.next_expected_charge_date}.`
-        : 'Reminder created.',
+      merchant: sub.merchant,
+      found: false,
+    }
+    return fallback as T
+  }
+
+  if (method === 'POST' && pathname.endsWith('/review')) {
+    const streamId = pathname.split('/')[2]
+    const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
+    if (!sub) throw new Error('API error: 404 Not Found')
+    if (!sub.price_increase && !sub.is_new_recurring) {
+      throw new Error('API error: 409 Conflict')
+    }
+    const response: SubscriptionReviewResponse = {
+      stream_id: streamId,
+      verdict: sub.price_increase ? 'price_concern' : 'review_needed',
+      reason: sub.price_increase
+        ? `${sub.merchant} is above its previous baseline, so it is worth confirming the change.`
+        : `${sub.merchant} has only a short recurring history, so it is worth reviewing once.`,
+      evidence: sub.charge_history.slice(-3).map((charge) => `${charge.date}: $${charge.amount.toFixed(2)}`),
+      cached: false,
     }
     return response as T
   }

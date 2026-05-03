@@ -48,6 +48,7 @@ export interface SubscriptionChargePoint {
 export interface SubscriptionItem {
   stream_id: string
   merchant: string
+  dominant_category?: string
   cadence: 'weekly' | 'monthly' | 'annual' | string
   confidence: number
   active: boolean
@@ -73,9 +74,19 @@ export interface SubscriptionItem {
   manually_managed?: boolean
 }
 
+export interface SubscriptionSummary {
+  monthly_run_rate: number
+  annual_run_rate: number
+  active_count: number
+  latest_month_total: number
+  latest_month_label: string
+  latest_month_is_complete: boolean
+}
+
 export interface SubscriptionListResponse {
   subscriptions: SubscriptionItem[]
   count: number
+  summary: SubscriptionSummary
 }
 
 export interface SubscriptionPreferenceResponse {
@@ -97,10 +108,28 @@ export interface SubscriptionAlertsResponse {
   count: number
 }
 
-export interface ReminderResponse {
-  status: string
+export interface CancelInfoResponse {
   stream_id: string
-  message: string
+  merchant: string
+  found: boolean
+  display_name?: string | null
+  cancel_url?: string | null
+  support_url?: string | null
+  phone?: string | null
+  notes?: string | null
+}
+
+export type SubscriptionReviewVerdict =
+  | 'likely_authorized'
+  | 'review_needed'
+  | 'price_concern'
+
+export interface SubscriptionReviewResponse {
+  stream_id: string
+  verdict: SubscriptionReviewVerdict
+  reason: string
+  evidence: string[]
+  cached: boolean
 }
 
 // P&L
