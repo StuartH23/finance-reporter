@@ -71,4 +71,129 @@
     font-size: 0.9rem;
     font-variant-numeric: tabular-nums;
   }
+
+  .cashflow-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin: 1rem 0;
+  }
+
+  .cashflow-kpi,
+  .cashflow-selected-grid p {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 0.68rem 0.72rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-width: 0;
+  }
+
+  .cashflow-kpi span,
+  .cashflow-selected-grid span {
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .cashflow-kpi strong,
+  .cashflow-selected-grid strong {
+    font-size: 0.94rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cashflow-kpi small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cashflow-row-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 700;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .cashflow-row-selected {
+    background: rgba(74, 159, 241, 0.12);
+  }
+
+  .cashflow-selected-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+  }
+
+  .cashflow-recurring-list {
+    display: grid;
+    gap: 0.58rem;
+  }
+
+  .cashflow-recurring-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.58rem;
+  }
+
+  .cashflow-recurring-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .cashflow-recurring-row div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    min-width: 0;
+  }
+
+  .cashflow-recurring-row div:last-child {
+    align-items: flex-end;
+  }
+
+  .cashflow-recurring-row strong {
+    font-size: 0.82rem;
+  }
+
+  .cashflow-recurring-row span {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+
+  .cashflow-badge {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.08rem 0.42rem;
+    text-transform: capitalize;
+  }
+
+  @media (max-width: 960px) {
+    .cashflow-kpi-strip {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .cashflow-selected-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .cashflow-kpi-strip {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
 }

@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts'
-import { getCashFlow } from '../api/client'
-import { queryKeys } from '../api/queryKeys'
-import type { CashFlowGranularity, CashFlowGroupBy, CashFlowNode } from '../api/types'
+import type {
+  CashFlowGranularity,
+  CashFlowGroupBy,
+  CashFlowNode,
+  CashFlowResponse,
+} from '../api/types'
 
 const EXPENSE_COLORS = ['#f3c44d', '#f29f4a', '#e97a5f', '#dd5f93', '#9b82f2', '#5a9ef6', '#49c9ae']
 
@@ -30,37 +32,26 @@ export interface CashFlowSegmentSelection {
 }
 
 interface CashFlowSankeyChartProps {
+  data?: CashFlowResponse
+  granularity: CashFlowGranularity
+  groupBy: CashFlowGroupBy
+  period: string
+  onGranularityChange: (granularity: CashFlowGranularity) => void
+  onGroupByChange: (groupBy: CashFlowGroupBy) => void
+  onPeriodChange: (period: string) => void
   onSegmentSelect?: (selection: CashFlowSegmentSelection | null) => void
 }
 
-function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
-  const [granularity, setGranularity] = useState<CashFlowGranularity>('month')
-  const [groupBy, setGroupBy] = useState<CashFlowGroupBy>('category')
-  const [period, setPeriod] = useState('')
-
-  const { data } = useQuery({
-    queryKey: queryKeys.cashflow.byParams({
-      granularity,
-      groupBy,
-      period: period || undefined,
-    }),
-    queryFn: () =>
-      getCashFlow({
-        granularity,
-        groupBy,
-        period: period || undefined,
-      }),
-  })
-
-  useEffect(() => {
-    if (!period || !data) return
-    const exists = data.available_periods.some((item) => item.key === period)
-    if (!exists) {
-      setPeriod('')
-      onSegmentSelect?.(null)
-    }
-  }, [data, period, onSegmentSelect])
-
+function CashFlowSankeyChart({
+  data,
+  granularity,
+  groupBy,
+  period,
+  onGranularityChange,
+  onGroupByChange,
+  onPeriodChange,
+  onSegmentSelect,
+}: CashFlowSankeyChartProps) {
   const chartData = useMemo(() => {
     if (!data?.nodes.length || !data.links.length) return null
 
@@ -150,8 +141,7 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
             <select
               value={granularity}
               onChange={(event) => {
-                setGranularity(event.target.value as CashFlowGranularity)
-                setPeriod('')
+                onGranularityChange(event.target.value as CashFlowGranularity)
                 onSegmentSelect?.(null)
               }}
             >
@@ -164,7 +154,7 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
             <select
               value={groupBy}
               onChange={(event) => {
-                setGroupBy(event.target.value as CashFlowGroupBy)
+                onGroupByChange(event.target.value as CashFlowGroupBy)
                 onSegmentSelect?.(null)
               }}
             >
@@ -177,7 +167,7 @@ function CashFlowSankeyChart({ onSegmentSelect }: CashFlowSankeyChartProps) {
             <select
               value={period}
               onChange={(event) => {
-                setPeriod(event.target.value)
+                onPeriodChange(event.target.value)
                 onSegmentSelect?.(null)
               }}
             >

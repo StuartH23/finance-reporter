@@ -15,7 +15,14 @@ describe('cash flow sankey chart', () => {
 
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
-        <CashFlowSankeyChart />
+        <CashFlowSankeyChart
+          granularity="month"
+          groupBy="category"
+          period=""
+          onGranularityChange={() => {}}
+          onGroupByChange={() => {}}
+          onPeriodChange={() => {}}
+        />
       </QueryClientProvider>,
     )
 
@@ -64,7 +71,15 @@ describe('cash flow sankey chart', () => {
 
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
-        <CashFlowSankeyChart />
+        <CashFlowSankeyChart
+          data={cashFlow}
+          granularity="month"
+          groupBy="category"
+          period=""
+          onGranularityChange={() => {}}
+          onGroupByChange={() => {}}
+          onPeriodChange={() => {}}
+        />
       </QueryClientProvider>,
     )
 
