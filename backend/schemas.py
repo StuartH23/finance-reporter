@@ -79,6 +79,11 @@ class SubscriptionItem(BaseModel):
     negotiation_opportunity: bool
     is_new_recurring: bool
     missed_expected_charge: bool
+    status_group: Literal["active", "inactive"] | None = None
+    payment_state: Literal["paid_ok", "paid_variance", "upcoming", "inactive"] | None = None
+    next_due_date: str | None = None
+    last_paid_amount: float | None = None
+    manually_managed: bool = False
 
 
 class SubscriptionListResponse(BaseModel):
@@ -172,6 +177,7 @@ class CashFlowTotals(BaseModel):
     income: float
     expenses: float
     net: float
+    transfers: float = 0.0
 
 
 class CashFlowNode(BaseModel):

@@ -13,7 +13,14 @@ from schemas import (
     BudgetVsActualResponse,
     QuickCheckResponse,
 )
-from sdk import TRANSFER_CATEGORIES, budget_vs_actual, load_budget, save_budget
+from sdk import (
+    TRANSFER_CATEGORIES,
+    budget_vs_actual,
+    is_budgetable_spending,
+    load_budget,
+    resolve_semantic_type,
+    save_budget,
+)
 
 router = APIRouter(tags=["budget"])
 
@@ -54,6 +61,9 @@ def _filter_to_complete_months(pnl):
 def get_budget():
     """Return current monthly budget."""
     budget = load_budget()
+    budget = {
+        category: amount for category, amount in budget.items() if is_budgetable_spending(category)
+    }
     return {"budget": [{"category": k, "monthly_budget": v} for k, v in budget.items()]}
 
 
@@ -68,6 +78,9 @@ def update_budget(data: BudgetUpdate):
 def get_budget_vs_actual(request: Request, session_id: str | None = Cookie(default=None)):
     """Compare budget against actual spending."""
     budget = load_budget()
+    budget = {
+        category: amount for category, amount in budget.items() if is_budgetable_spending(category)
+    }
     ledger = get_session_ledger(session_id, request)
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
     pnl, _ = _filter_to_complete_months(pnl)
@@ -105,6 +118,9 @@ def quick_check(
 ):
     """Quick monthly budget status for a target month (or current/most recent)."""
     budget = load_budget()
+    budget = {
+        category: amount for category, amount in budget.items() if is_budgetable_spending(category)
+    }
     ledger = get_session_ledger(session_id, request)
     pnl_raw = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
     pnl, complete_month_keys = _filter_to_complete_months(pnl_raw)
@@ -133,6 +149,15 @@ def quick_check(
         month_label = datetime.strptime(target_key, "%Y-%m").strftime("%B %Y")
 
     spending = current_month[current_month["amount"] < 0].copy()
+    if not spending.empty:
+        spending = spending[
+            spending.apply(
+                lambda row: (
+                    resolve_semantic_type(row, category=str(row.get("category", ""))) == "spending"
+                ),
+                axis=1,
+            )
+        ].copy()
     spending["abs_amount"] = -spending["amount"]
 
     by_cat = (

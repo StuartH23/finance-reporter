@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fastapi.testclient import TestClient
 
 from main import app
+from sdk import budget_vs_actual, build_cashflow_payload
 from sdk.cashflow import _collapse_expense_groups
 
 
@@ -116,3 +117,72 @@ def test_collapse_expense_groups_appends_other_without_overwriting_top_index():
     assert len(collapsed) == 8
     assert "H" in labels
     assert "Other" in labels
+
+
+def test_cashflow_transfer_totals_are_scoped_to_requested_period():
+    client = TestClient(app)
+    csv = (
+        b"Date,Description,Amount\n"
+        b"2026-01-01,Payroll,4000.00\n"
+        b"2026-01-03,Rent,-1500.00\n"
+        b"2026-01-15,Transfer From Savings,-300.00\n"
+        b"2026-02-01,Payroll,4200.00\n"
+        b"2026-02-04,Rent,-1500.00\n"
+        b"2026-02-16,Transfer From Savings,-125.00\n"
+    )
+    upload = client.post("/api/upload", files=[("files", ("cashflow.csv", csv, "text/csv"))])
+    assert upload.status_code == 200
+
+    response = client.get("/api/cashflow?granularity=month&period=2026-02")
+    assert response.status_code == 200
+    assert response.json()["totals"]["transfers"] == 125.0
+
+
+def test_budget_and_cashflow_semantics_respect_transaction_override_precedence():
+    ledger = pd.DataFrame(
+        [
+            {
+                "date": pd.Timestamp("2026-02-01"),
+                "description": "Payroll",
+                "amount": 4000.0,
+                "category": "Income",
+                "source_file": "fixture.csv",
+            },
+            {
+                "date": pd.Timestamp("2026-02-05"),
+                "description": "Reimbursed meal",
+                "amount": -85.0,
+                "category": "Meals & Dining",
+                "semantic_type": "reimbursement",
+                "source_file": "fixture.csv",
+            },
+            {
+                "date": pd.Timestamp("2026-02-07"),
+                "description": "Groceries",
+                "amount": -120.0,
+                "category": "Groceries",
+                "source_file": "fixture.csv",
+            },
+            {
+                "date": pd.Timestamp("2026-02-10"),
+                "description": "Owner draw excluded from spend",
+                "amount": -300.0,
+                "category": "Groceries",
+                "semantic_type_override": "ignored",
+                "source_file": "fixture.csv",
+            },
+        ]
+    )
+
+    comparison = budget_vs_actual(
+        ledger, {"Income": 1000.0, "Groceries": 500.0, "Meals & Dining": 100.0}
+    )
+    comparison_by_category = {row["category"]: row for row in comparison.to_dict(orient="records")}
+    assert "Income" not in comparison_by_category
+    assert comparison_by_category["Groceries"]["total_actual"] == 120.0
+    assert comparison_by_category["Meals & Dining"]["total_actual"] == 0.0
+
+    cashflow = build_cashflow_payload(
+        ledger, granularity="month", group_by="category", period="2026-02"
+    )
+    assert cashflow["totals"]["expenses"] == 120.0

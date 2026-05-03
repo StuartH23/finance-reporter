@@ -7,6 +7,8 @@ from typing import Literal
 
 import pandas as pd
 
+from .semantics import resolve_semantic_type
+
 Granularity = Literal["month", "quarter"]
 GroupBy = Literal["category", "merchant"]
 
@@ -38,6 +40,19 @@ def _period_key_series(dates: pd.Series, granularity: Granularity) -> pd.Series:
     if granularity == "month":
         return dates.dt.strftime("%Y-%m")
     return dates.dt.year.astype(str) + "-Q" + dates.dt.quarter.astype(str)
+
+
+def selected_period_key(
+    ledger: pd.DataFrame,
+    *,
+    granularity: Granularity,
+    period: str | None = None,
+) -> str | None:
+    if ledger.empty:
+        return period
+    period_keys = _period_key_series(ledger["date"], granularity).dropna().unique().tolist()
+    available_keys = _sort_period_keys(period_keys, granularity)
+    return period or (available_keys[0] if available_keys else None)
 
 
 def period_key_label(period_key: str | None, granularity: Granularity) -> str | None:
@@ -124,7 +139,9 @@ def _allocate_income_to_expenses(income_total: float, expense_amounts: list[floa
         allocated[index] = round_money(max(0.0, allocated[index] + delta))
 
     # Keep allocation <= expense amount after rounding adjustments.
-    allocated = [min(round_money(expense_amounts[idx]), allocated[idx]) for idx in range(len(allocated))]
+    allocated = [
+        min(round_money(expense_amounts[idx]), allocated[idx]) for idx in range(len(allocated))
+    ]
 
     remaining = round_money(income_total - sum(allocated))
     if remaining > 0:
@@ -170,6 +187,27 @@ def build_cashflow_payload(
         }
 
     ledger = pnl_ledger.copy()
+    if not ledger.empty:
+        semantic_types = ledger.apply(
+            lambda row: resolve_semantic_type(row, category=str(row.get("category", ""))),
+            axis=1,
+        )
+        ledger = ledger[semantic_types.isin(["income", "spending"])].copy()
+
+    if ledger.empty:
+        return {
+            "granularity": granularity,
+            "group_by": group_by,
+            "period_key": period,
+            "period_label": period_key_label(period, granularity),
+            "available_periods": [],
+            "totals": {"income": 0.0, "expenses": 0.0, "net": 0.0},
+            "nodes": [],
+            "links": [],
+            "groups": [],
+            "transaction_count": 0,
+        }
+
     ledger["period_key"] = _period_key_series(ledger["date"], granularity)
 
     available_keys = _sort_period_keys(ledger["period_key"].dropna().unique().tolist(), granularity)
@@ -254,7 +292,9 @@ def build_cashflow_payload(
         )
 
         if income_share > 0:
-            links.append({"source": "income", "target": node_id, "value": round_money(income_share)})
+            links.append(
+                {"source": "income", "target": node_id, "value": round_money(income_share)}
+            )
 
         if deficit > 0:
             shortfall_total = round_money(shortfall_total + deficit)
@@ -299,5 +339,5 @@ def build_cashflow_payload(
         "nodes": nodes,
         "links": links,
         "groups": groups,
-        "transaction_count": int(len(period_rows)),
+        "transaction_count": len(period_rows),
     }

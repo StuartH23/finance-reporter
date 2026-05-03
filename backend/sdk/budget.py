@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .semantics import is_budgetable_spending, resolve_semantic_type
+
 BUDGET_PATH = Path(__file__).resolve().parent.parent / "data" / "budget.csv"
 
 
@@ -28,6 +30,33 @@ def budget_vs_actual(pnl_ledger: pd.DataFrame, budget: dict[str, float]) -> pd.D
     category, monthly_budget, avg_actual, total_actual, months, diff, pct_used
     """
     spending = pnl_ledger[pnl_ledger["amount"] < 0].copy()
+    if not spending.empty:
+        spending = spending[
+            spending.apply(
+                lambda row: (
+                    resolve_semantic_type(row, category=str(row.get("category", ""))) == "spending"
+                ),
+                axis=1,
+            )
+        ].copy()
+    budget = {
+        category: amount for category, amount in budget.items() if is_budgetable_spending(category)
+    }
+
+    if spending.empty and not budget:
+        return pd.DataFrame(
+            columns=[
+                "category",
+                "monthly_budget",
+                "total_actual",
+                "transactions",
+                "avg_actual",
+                "months",
+                "diff",
+                "pct_used",
+            ]
+        )
+
     spending["abs_amount"] = -spending["amount"]
     spending["month"] = spending["date"].dt.to_period("M")
 
