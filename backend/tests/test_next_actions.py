@@ -62,7 +62,12 @@ def test_diversity_penalty_demotes_repeated_type():
     state = default_personalization_state()
     now = datetime(2026, 3, 22, 15, tzinfo=UTC)
     state["history"] = [
-        {"action_id": "x1", "action_type": "spending_cap", "outcome": "dismissed", "at": now.isoformat()},
+        {
+            "action_id": "x1",
+            "action_type": "spending_cap",
+            "outcome": "dismissed",
+            "at": now.isoformat(),
+        },
         {
             "action_id": "x2",
             "action_type": "spending_cap",

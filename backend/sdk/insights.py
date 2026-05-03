@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from calendar import monthrange
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -116,7 +116,8 @@ def _spending_trend_candidate(
 
     txns = int(
         spending[
-            (spending["category"] == category) & (spending["month"].isin([prior_month, current_month]))
+            (spending["category"] == category)
+            & (spending["month"].isin([prior_month, current_month]))
         ]["amount"].count()
     )
 
@@ -140,10 +141,12 @@ def _spending_trend_candidate(
             f"from {prior_money} to {current_money}."
         )
         significance = (
-            "When one category climbs quickly, it can crowd out savings and make next month feel tight."
+            "When one category climbs quickly, it can crowd out savings and make "
+            "next month feel tight."
         )
         action = (
-            f"Set a one-week cap for {category} and move {change_money} to a protected essentials/savings bucket today."
+            f"Set a one-week cap for {category} and move {change_money} to a "
+            "protected essentials/savings bucket today."
         )
         severity = 2
     else:
@@ -152,7 +155,10 @@ def _spending_trend_candidate(
             f"{category} spending dropped by {change_money} ({_format_percent(abs(pct_delta))}) "
             f"from {prior_money} to {current_money}."
         )
-        significance = "This creates extra room you can intentionally direct before it gets absorbed elsewhere."
+        significance = (
+            "This creates extra room you can intentionally direct before it gets "
+            "absorbed elsewhere."
+        )
         action = (
             f"Route at least half of that {change_money} reduction into your top goal this week."
         )
@@ -177,7 +183,8 @@ def _spending_trend_candidate(
         },
         digest=(
             f"{category} is {direction} by {change_money} vs last month. "
-            f"Action: {'Cap for one week.' if direction == 'up' else 'Move the savings to your goal.'}"
+            f"Action: "
+            f"{'Cap for one week.' if direction == 'up' else 'Move the savings to your goal.'}"
         ),
     )
 
@@ -202,12 +209,16 @@ def _goal_trajectory_candidate(monthly: pd.DataFrame, currency: str) -> InsightC
     if gap >= 0:
         title = "Your spending goal is on track"
         observation = (
-            f"Recent monthly spending averages {_format_currency(avg_expenses, currency)} against a "
-            f"budget of {_format_currency(monthly_budget, currency)} ({_format_percent(utilization)} used)."
+            f"Recent monthly spending averages {_format_currency(avg_expenses, currency)} "
+            f"against a budget of {_format_currency(monthly_budget, currency)} "
+            f"({_format_percent(utilization)} used)."
         )
-        significance = "Staying under plan consistently compounds into more flexibility and faster progress."
+        significance = (
+            "Staying under plan consistently compounds into more flexibility and faster progress."
+        )
         action = (
-            f"Schedule an automatic transfer of {_format_currency(gap * 0.5, currency)} after payday to lock in progress."
+            f"Schedule an automatic transfer of {_format_currency(gap * 0.5, currency)} "
+            "after payday to lock in progress."
         )
         key = "goal_trajectory_on_track"
         severity = 1
@@ -215,14 +226,16 @@ def _goal_trajectory_candidate(monthly: pd.DataFrame, currency: str) -> InsightC
         short = abs(gap)
         title = "Your spending goal is drifting off track"
         observation = (
-            f"Recent monthly spending averages {_format_currency(avg_expenses, currency)}, about "
-            f"{_format_currency(short, currency)} above your {_format_currency(monthly_budget, currency)} target."
+            f"Recent monthly spending averages {_format_currency(avg_expenses, currency)}, "
+            f"about {_format_currency(short, currency)} above your "
+            f"{_format_currency(monthly_budget, currency)} target."
         )
         significance = (
             "Small monthly overruns can become a larger gap over a quarter if left unadjusted."
         )
         action = (
-            f"Pick one flexible category to trim by {_format_currency(short, currency)} this month and track it weekly."
+            f"Pick one flexible category to trim by {_format_currency(short, currency)} "
+            "this month and track it weekly."
         )
         key = "goal_trajectory_off_track"
         severity = 2
@@ -284,12 +297,14 @@ def _cashflow_risk_candidate(monthly: pd.DataFrame, spending: pd.DataFrame, curr
         kind="cashflow_risk",
         title="Cashflow risk: possible monthly shortfall",
         observation=(
-            f"Your recent net cashflow averages -{_format_currency(projected_shortfall, currency)} per month."
+            f"Your recent net cashflow averages -"
+            f"{_format_currency(projected_shortfall, currency)} per month."
         ),
         significance=(
-            "If this pattern continues, you could need to borrow or dip into savings to cover regular bills."
+            "If this pattern continues, you could need to borrow or dip into "
+            "savings to cover regular bills."
         ),
-        action=f"Reduce {focus} by {trim} this month and set a weekly check-in to stay ahead.",
+        action=(f"Reduce {focus} by {trim} this month and set a weekly check-in to stay ahead."),
         confidence=conf,
         severity=3,
         template_key="cashflow_risk_shortfall",
@@ -299,13 +314,16 @@ def _cashflow_risk_candidate(monthly: pd.DataFrame, spending: pd.DataFrame, curr
             "trim_amount": max(50.0, projected_shortfall * 0.6),
         },
         digest=(
-            f"Risk: trend suggests a {_format_currency(projected_shortfall, currency)} monthly shortfall. "
+            f"Risk: trend suggests a {_format_currency(projected_shortfall, currency)} "
+            "monthly shortfall. "
             f"Action: trim {focus}."
         ),
     )
 
 
-def _positive_reinforcement_candidate(monthly: pd.DataFrame, currency: str) -> InsightCandidate | None:
+def _positive_reinforcement_candidate(
+    monthly: pd.DataFrame, currency: str
+) -> InsightCandidate | None:
     if monthly.empty:
         return None
 
@@ -331,10 +349,13 @@ def _positive_reinforcement_candidate(monthly: pd.DataFrame, currency: str) -> I
             f"{_format_currency(recent_gain, currency)} net positive across that streak."
         ),
         significance=(
-            "Consistency matters more than perfection. This pattern is exactly what makes goals easier over time."
+            "Consistency matters more than perfection. This pattern is exactly "
+            "what makes goals easier over time."
         ),
         action=(
-            f"Celebrate it, then automate {_format_currency(max(25.0, recent_gain * 0.1), currency)} to savings so the streak compounds."
+            f"Celebrate it, then automate "
+            f"{_format_currency(max(25.0, recent_gain * 0.1), currency)} to savings "
+            "so the streak compounds."
         ),
         confidence=conf,
         severity=1,
@@ -350,7 +371,9 @@ def _positive_reinforcement_candidate(monthly: pd.DataFrame, currency: str) -> I
     )
 
 
-def _resolve_conflicts(candidates: list[InsightCandidate], threshold: float) -> tuple[list[InsightCandidate], int]:
+def _resolve_conflicts(
+    candidates: list[InsightCandidate], threshold: float
+) -> tuple[list[InsightCandidate], int]:
     accepted = [c for c in candidates if c.confidence >= threshold]
     suppressed = len(candidates) - len(accepted)
 
@@ -362,7 +385,8 @@ def _resolve_conflicts(candidates: list[InsightCandidate], threshold: float) -> 
     selected = list(by_kind.values())
 
     has_negative = any(
-        i.kind in {"cashflow_risk"} or (i.kind == "goal_trajectory" and i.template_key.endswith("off_track"))
+        i.kind in {"cashflow_risk"}
+        or (i.kind == "goal_trajectory" and i.template_key.endswith("off_track"))
         for i in selected
     )
     if has_negative:
@@ -384,7 +408,7 @@ def build_insights(
     """Build coach-style insights from a ledger."""
     if ledger.empty:
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "locale": locale,
             "currency": currency,
             "period_label": None,
@@ -396,7 +420,7 @@ def build_insights(
     pnl = ledger[~ledger["category"].isin(TRANSFER_CATEGORIES)].copy()
     if pnl.empty:
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "locale": locale,
             "currency": currency,
             "period_label": None,
@@ -411,7 +435,7 @@ def build_insights(
 
     if pnl.empty:
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "locale": locale,
             "currency": currency,
             "period_label": None,
@@ -471,7 +495,7 @@ def build_insights(
         )
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "locale": locale,
         "currency": currency,
         "period_label": period_label,

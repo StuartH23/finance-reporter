@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from math import ceil
-import re
-
 
 DEBT_KEYWORDS = (
     "debt",
@@ -43,7 +42,7 @@ class AllocationInput:
 
 
 def _to_cents(value: float) -> int:
-    return max(0, int(round(value * 100)))
+    return max(0, round(value * 100))
 
 
 def _from_cents(value: int) -> float:
@@ -77,7 +76,11 @@ def _priority_weight(priority: int) -> float:
     return float(6 - normalized)
 
 
-def _allocate_weighted_with_caps(total_cents: int, capacities: list[int], weights: list[float]) -> list[int]:
+def _allocate_weighted_with_caps(
+    total_cents: int,
+    capacities: list[int],
+    weights: list[float],
+) -> list[int]:
     """Allocate cents by weights while respecting per-goal caps, deterministically."""
     if total_cents <= 0 or not capacities:
         return [0 for _ in capacities]
@@ -144,9 +147,7 @@ def compute_goal_progress(
         }
 
     tokens = {
-        t
-        for t in re.findall(r"[a-z0-9]+", f"{goal_name} {goal_category}".lower())
-        if len(t) >= 3
+        t for t in re.findall(r"[a-z0-9]+", f"{goal_name} {goal_category}".lower()) if len(t) >= 3
     }
     category_hint = goal_category.lower()
     debt_goal = "debt" in category_hint
@@ -176,7 +177,10 @@ def compute_goal_progress(
     matched["contribution"] = -matched["amount"]
     matched["month"] = matched["date"].dt.strftime("%Y-%m")
     by_month = (
-        matched.groupby("month", sort=True)["contribution"].sum().reset_index().to_dict(orient="records")
+        matched.groupby("month", sort=True)["contribution"]
+        .sum()
+        .reset_index()
+        .to_dict(orient="records")
     )
 
     contributed = float(matched["contribution"].sum())
@@ -188,7 +192,8 @@ def compute_goal_progress(
         "remaining_amount": round(remaining, 2),
         "progress_pct": round(progress_pct, 1),
         "contribution_history": [
-            {"month": row["month"], "amount": round(float(row["contribution"]), 2)} for row in by_month
+            {"month": row["month"], "amount": round(float(row["contribution"]), 2)}
+            for row in by_month
         ],
     }
 
@@ -256,11 +261,13 @@ def build_paycheck_plan(
     remaining_after_needs = paycheck_cents - needs_cents
     reserve = min(safety_cents, remaining_after_needs)
     if reserve < safety_cents:
-        warnings.append("Paycheck cannot fully fund the requested safety buffer after fixed obligations.")
+        warnings.append(
+            "Paycheck cannot fully fund the requested safety buffer after fixed obligations."
+        )
 
     distributable = remaining_after_needs - reserve
     goals_share = 0.8 if payload.mode == "aggressive_savings" else 0.55
-    goals_cents = int(round(distributable * goals_share))
+    goals_cents = round(distributable * goals_share)
     discretionary_cents = distributable - goals_cents
 
     active_goals = [goal for goal in goals if goal.remaining_amount > 0]
@@ -279,7 +286,8 @@ def build_paycheck_plan(
             discretionary_cents -= shift
             if shift < delta:
                 warnings.append(
-                    "Emergency minimum contribution could not be fully met after obligations and safety buffer."
+                    "Emergency minimum contribution could not be fully met "
+                    "after obligations and safety buffer."
                 )
 
     capacities = [_to_cents(goal.remaining_amount) for goal in active_goals]
@@ -312,7 +320,9 @@ def build_paycheck_plan(
         capacities_left = [
             max(0, capacity - allocations_cents[idx]) for idx, capacity in enumerate(capacities)
         ]
-        extra_allocations = _allocate_weighted_with_caps(remaining_goal_cents, capacities_left, weights)
+        extra_allocations = _allocate_weighted_with_caps(
+            remaining_goal_cents, capacities_left, weights
+        )
         allocations_cents = [
             base + extra for base, extra in zip(allocations_cents, extra_allocations, strict=False)
         ]
@@ -358,8 +368,12 @@ def build_paycheck_plan(
     if payload.mode == "aggressive_savings":
         explanation.append("Aggressive savings mode increases the post-buffer share sent to goals.")
     else:
-        explanation.append("Balanced mode keeps a larger discretionary slice after obligations and buffer.")
-    explanation.append("Fixed obligations are funded first, then safety buffer, then goals/discretionary.")
+        explanation.append(
+            "Balanced mode keeps a larger discretionary slice after obligations and buffer."
+        )
+    explanation.append(
+        "Fixed obligations are funded first, then safety buffer, then goals/discretionary."
+    )
 
     warnings.extend(infeasible)
 
@@ -379,7 +393,9 @@ def build_paycheck_plan(
 def what_changed_lines(recommended: dict, saved_plan: dict | None) -> list[str]:
     """Create short transparency lines comparing recommendation vs saved custom split."""
     if not saved_plan:
-        return ["No saved custom split found, so this plan is based only on current inputs and goals."]
+        return [
+            "No saved custom split found, so this plan is based only on current inputs and goals."
+        ]
 
     lines: list[str] = []
     for bucket in ("needs", "goals", "discretionary"):
@@ -387,7 +403,9 @@ def what_changed_lines(recommended: dict, saved_plan: dict | None) -> list[str]:
         if abs(delta) < 0.01:
             continue
         direction = "increased" if delta > 0 else "decreased"
-        lines.append(f"{bucket.title()} {direction} by ${abs(delta):,.2f} versus your saved custom split.")
+        lines.append(
+            f"{bucket.title()} {direction} by ${abs(delta):,.2f} versus your saved custom split."
+        )
 
     if not lines:
         lines.append("No material change from your saved custom split.")

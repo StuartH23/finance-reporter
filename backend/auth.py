@@ -45,8 +45,7 @@ class AuthSettings:
         if not self.cognito_region or not self.cognito_user_pool_id:
             raise AuthConfigurationError("Cognito region and user pool ID are required.")
         return (
-            f"https://cognito-idp.{self.cognito_region}.amazonaws.com/"
-            f"{self.cognito_user_pool_id}"
+            f"https://cognito-idp.{self.cognito_region}.amazonaws.com/{self.cognito_user_pool_id}"
         )
 
     @property
@@ -127,9 +126,7 @@ def _load_jwt_modules():
         import jwt
         from jwt import InvalidTokenError, PyJWKClient
     except ModuleNotFoundError as exc:
-        raise AuthConfigurationError(
-            "PyJWT[crypto] is required when AUTH_MODE=cognito."
-        ) from exc
+        raise AuthConfigurationError("PyJWT[crypto] is required when AUTH_MODE=cognito.") from exc
     return jwt, InvalidTokenError, PyJWKClient
 
 

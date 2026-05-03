@@ -95,16 +95,10 @@ def _monthly_totals(frame: pd.DataFrame) -> pd.DataFrame:
     scoped = frame.copy()
     scoped["month"] = scoped["date"].dt.to_period("M").astype(str)
     income = (
-        scoped[scoped["amount"] > 0]
-        .groupby("month", sort=True)["amount"]
-        .sum()
-        .rename("income")
+        scoped[scoped["amount"] > 0].groupby("month", sort=True)["amount"].sum().rename("income")
     )
     expense = (
-        -scoped[scoped["amount"] < 0]
-        .groupby("month", sort=True)["amount"]
-        .sum()
-        .rename("expense")
+        -scoped[scoped["amount"] < 0].groupby("month", sort=True)["amount"].sum().rename("expense")
     )
     out = pd.concat([income, expense], axis=1).fillna(0).reset_index()
     out["net"] = out["income"] - out["expense"]
@@ -129,7 +123,9 @@ def _build_save_transfer(monthly: pd.DataFrame) -> ActionCandidate | None:
             f"Your average monthly cashflow is positive by {_fmt_money(avg_net)}. "
             f"Scheduling a recurring transfer captures surplus before it gets spent."
         ),
-        impact_estimate=f"Builds about {_fmt_money(impact)} per month ({_fmt_money(impact * 12)}/year).",
+        impact_estimate=(
+            f"Builds about {_fmt_money(impact)} per month ({_fmt_money(impact * 12)}/year)."
+        ),
         impact_monthly=round(impact, 2),
         impact_score=_clamp(impact / 400),
         urgency_score=0.56,
@@ -161,9 +157,7 @@ def _build_spending_cap(spending: pd.DataFrame, budget: dict[str, float]) -> Act
     latest_spend = float(pick["amount"])
     history_cat = by_month_cat[by_month_cat["category"] == category].sort_values("month")
     baseline = (
-        float(history_cat.iloc[:-1]["amount"].mean())
-        if len(history_cat) > 1
-        else latest_spend
+        float(history_cat.iloc[:-1]["amount"].mean()) if len(history_cat) > 1 else latest_spend
     )
     trend_jump = max(0.0, latest_spend - baseline)
 
@@ -177,8 +171,9 @@ def _build_spending_cap(spending: pd.DataFrame, budget: dict[str, float]) -> Act
     )
     if budgeted > 0:
         rationale = (
-            f"{category} is {_fmt_money(overage)} over your {_fmt_money(budgeted)} budget in {latest_month}. "
-            "A temporary cap can pull this category back in range."
+            f"{category} is {_fmt_money(overage)} over your {_fmt_money(budgeted)} "
+            f"budget in {latest_month}. A temporary cap can pull this category "
+            "back in range."
         )
 
     return ActionCandidate(
@@ -276,7 +271,9 @@ def _build_debt_extra_payment(pnl: pd.DataFrame) -> ActionCandidate | None:
 
 def _build_subscription_cleanup(subscriptions: list[dict]) -> ActionCandidate | None:
     optional = [
-        s for s in subscriptions if s.get("active") and not s.get("ignored") and not s.get("essential")
+        s
+        for s in subscriptions
+        if s.get("active") and not s.get("ignored") and not s.get("essential")
     ]
     if not optional:
         return None
@@ -332,7 +329,12 @@ def generate_action_candidates(
 
     # Never return empty if transactions indicate there is actionable data.
     if not out and not spending.empty:
-        top = spending.groupby("category", sort=False)["amount"].sum().abs().sort_values(ascending=False)
+        top = (
+            spending.groupby("category", sort=False)["amount"]
+            .sum()
+            .abs()
+            .sort_values(ascending=False)
+        )
         category = str(top.index[0])
         amount = float(top.iloc[0])
         fallback = round(min(160.0, max(20.0, amount * 0.07)), 2)
@@ -422,9 +424,7 @@ def rank_action_candidates(
             + ((1 - candidate["effort_score"]) * weights["effort"])
         )
         score = round(
-            weighted
-            + float(type_bias.get(candidate["action_type"], 0.0))
-            - diversity_penalty,
+            weighted + float(type_bias.get(candidate["action_type"], 0.0)) - diversity_penalty,
             6,
         )
 

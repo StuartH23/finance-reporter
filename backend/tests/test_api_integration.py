@@ -140,11 +140,7 @@ def test_pnl_categories_respects_year_query():
 def test_budget_quick_check_rejects_partial_month():
     """Quick check should not apply budget when selected month is only partially parsed."""
     client = TestClient(app)
-    csv = (
-        b"Date,Description,Amount\n"
-        b"2025-01-15,Rent,-1000.00\n"
-        b"2025-02-15,Rent,-1200.00\n"
-    )
+    csv = b"Date,Description,Amount\n2025-01-15,Rent,-1000.00\n2025-02-15,Rent,-1200.00\n"
     upload_resp = client.post("/api/upload", files=[("files", ("budget.csv", csv, "text/csv"))])
     assert upload_resp.status_code == 200
 
@@ -158,11 +154,7 @@ def test_budget_quick_check_rejects_partial_month():
 def test_budget_vs_actual_ignores_partial_months():
     """Budget vs actual should return no comparison when no complete month is parsed."""
     client = TestClient(app)
-    csv = (
-        b"Date,Description,Amount\n"
-        b"2025-01-15,Rent,-1000.00\n"
-        b"2025-02-15,Groceries,-300.00\n"
-    )
+    csv = b"Date,Description,Amount\n2025-01-15,Rent,-1000.00\n2025-02-15,Groceries,-300.00\n"
     upload_resp = client.post("/api/upload", files=[("files", ("budget.csv", csv, "text/csv"))])
     assert upload_resp.status_code == 200
 

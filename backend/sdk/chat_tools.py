@@ -17,9 +17,7 @@ from .subscriptions import build_subscription_payload, normalize_merchant
 def _spend_frame(ledger: pd.DataFrame) -> pd.DataFrame:
     if ledger.empty:
         return ledger
-    return ledger[
-        (ledger["amount"] < 0) & (~ledger["category"].isin(TRANSFER_CATEGORIES))
-    ].copy()
+    return ledger[(ledger["amount"] < 0) & (~ledger["category"].isin(TRANSFER_CATEGORIES))].copy()
 
 
 def _parse_date(value: str, field: str) -> pd.Timestamp:
@@ -209,9 +207,7 @@ def list_subscriptions_tool(
         for s in payload
     ]
     _to_monthly = {"weekly": 365 / 12 / 7, "monthly": 1.0, "annual": 1 / 12}
-    total = round(
-        sum(s["amount"] * _to_monthly.get(s["cadence"], 1.0) for s in summary), 2
-    )
+    total = round(sum(s["amount"] * _to_monthly.get(s["cadence"], 1.0) for s in summary), 2)
     return {"subscriptions": summary, "count": len(summary), "monthly_estimate": total}
 
 
@@ -222,5 +218,5 @@ def ledger_date_bounds(ledger: pd.DataFrame) -> dict:
     return {
         "earliest": ledger["date"].min().strftime("%Y-%m-%d"),
         "latest": ledger["date"].max().strftime("%Y-%m-%d"),
-        "transaction_count": int(len(ledger)),
+        "transaction_count": len(ledger),
     }

@@ -27,7 +27,9 @@ MODEL_ID = "claude-haiku-4-5"
 SYSTEM_PROMPT = """You are a personal financial analyst and budget optimizer.
 
 ## Data Context
-The user may upload one or more financial statements (CSV or PDF). All transactions are normalized into a single ledger CSV with the following columns:
+The user may upload one or more financial statements (CSV or PDF). All
+transactions are normalized into a single ledger CSV with the following
+columns:
 
 - date (ISO format preferred)
 - description (merchant or memo)
@@ -36,11 +38,15 @@ The user may upload one or more financial statements (CSV or PDF). All transacti
 - source_file (origin of transaction)
 
 ### Category Rules
-The following categories are considered transfers and must be excluded from income/expense calculations unless explicitly requested:
+The following categories are considered transfers and must be excluded from
+income/expense calculations unless explicitly requested:
 {Credit Card Payments, Venmo Transfers, Personal Transfers, Investments}
 
 ## Conversation Awareness
-You have access to the full conversation history. Reference prior messages and answers when relevant — do not treat each question as stateless. If the user refers to something you said earlier, use that context rather than recalculating from scratch.
+You have access to the full conversation history. Reference prior messages and
+answers when relevant - do not treat each question as stateless. If the user
+refers to something you said earlier, use that context rather than
+recalculating from scratch.
 
 ## Core Responsibilities
 You must:
@@ -63,8 +69,9 @@ You must:
 - ALL dollar figures MUST be computed directly from the dataset
 - NEVER estimate, approximate, or infer missing values
 - Round all currency to exactly 2 decimal places (e.g. $3,842.17)
-- Do NOT use: ~, ≈, "about", "around", ranges (e.g. $X–$Y), or guesses
-- If exact calculation is not possible → explicitly say: "Insufficient data to calculate"
+- Do NOT use: ~, ≈, "about", "around", ranges (e.g. $X-$Y), or guesses
+- If exact calculation is not possible -> explicitly say: "Insufficient data to
+  calculate"
 - Always specify the exact date range used for every number
 - Percentages must be rounded to 1 decimal place
 
@@ -83,14 +90,14 @@ You must:
 ## Open-Ended Questions
 If the user asks something broad (e.g., "How am I doing?"), respond in this order:
 1. Headline metric (net savings or deficit)
-2. 3–5 key insights
+2. 3-5 key insights
 3. 1 high-impact recommendation
 
 ## Required Ending Section
 Every substantive response MUST end with:
 
 **Next Steps**
-- 2–3 prioritized, specific actions
+- 2-3 prioritized, specific actions
 - Each must include a clear dollar impact (e.g., "$42.13/month saved") OR a concrete timeline
 
 ## Clarification Rule
@@ -113,6 +120,7 @@ def _is_authenticated(authorization: str | None) -> bool:
     except Exception:
         return False
     from auth import LOCAL_AUTH_MODES
+
     if settings.mode in LOCAL_AUTH_MODES:
         return True
     if not authorization:
@@ -122,6 +130,7 @@ def _is_authenticated(authorization: str | None) -> bool:
         return False
     try:
         from auth import _decode_cognito_access_token
+
         _decode_cognito_access_token(token.strip(), settings)
         return True
     except Exception:
@@ -161,9 +170,7 @@ def _sample_invalid_fill(
     if invalid.empty:
         return valid
     remainder = cap - len(valid)
-    sampled_invalid = invalid.sample(
-        n=min(remainder, len(invalid)), random_state=random_state
-    )
+    sampled_invalid = invalid.sample(n=min(remainder, len(invalid)), random_state=random_state)
     return pd.concat([valid, sampled_invalid], ignore_index=False)
 
 
@@ -201,15 +208,11 @@ def _sample_year_groups(
     sampled = []
     for year, year_count in allocation.items():
         year_frame = valid[valid["year"] == year].drop(columns="year")
-        sampled.append(
-            year_frame.sample(n=int(year_count), random_state=random_state + int(year))
-        )
+        sampled.append(year_frame.sample(n=int(year_count), random_state=random_state + int(year)))
     return pd.concat(sampled, ignore_index=False)
 
 
-def _sample_ledger_across_years(
-    df: pd.DataFrame, cap: int, random_state: int = 0
-) -> pd.DataFrame:
+def _sample_ledger_across_years(df: pd.DataFrame, cap: int, random_state: int = 0) -> pd.DataFrame:
     """Downsample by year so dense periods do not crowd out sparse years."""
     if len(df) <= cap:
         return df
@@ -286,21 +289,13 @@ def _call_analyst_model(req: AnalystChatRequest, ledger_csv: str) -> AnalystChat
             messages=[{"role": m.role, "content": m.content} for m in req.messages],
         )
     except anthropic.RateLimitError as exc:
-        raise HTTPException(
-            status_code=503, detail="Upstream model rate limit."
-        ) from exc
+        raise HTTPException(status_code=503, detail="Upstream model rate limit.") from exc
     except anthropic.APIStatusError as exc:
-        raise HTTPException(
-            status_code=502, detail=f"Upstream model error: {exc.message}"
-        ) from exc
+        raise HTTPException(status_code=502, detail=f"Upstream model error: {exc.message}") from exc
     except anthropic.APIConnectionError as exc:
-        raise HTTPException(
-            status_code=502, detail="Could not reach model API."
-        ) from exc
+        raise HTTPException(status_code=502, detail="Could not reach model API.") from exc
 
-    text = next(
-        (b.text for b in result.content if getattr(b, "type", None) == "text"), ""
-    )
+    text = next((b.text for b in result.content if getattr(b, "type", None) == "text"), "")
     return AnalystChatResponse(content=text)
 
 

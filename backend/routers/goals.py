@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response
 
@@ -48,7 +48,7 @@ register_session_cleanup(_clear_goal_session)
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _goal_store(session_id: str) -> list[dict]:
@@ -86,17 +86,28 @@ def _validate_saved_split(data: PaycheckPlanSaveRequest) -> None:
 
     fixed_total = _obligations_total(data.fixed_obligations)
     if data.needs + 0.01 < fixed_total:
-        raise HTTPException(status_code=400, detail="Needs allocation cannot fall below fixed obligations.")
+        raise HTTPException(
+            status_code=400,
+            detail="Needs allocation cannot fall below fixed obligations.",
+        )
 
-    goal_total = round(sum(float(item.recommended_amount) for item in data.goal_allocations), 2)
+    goal_total = round(
+        sum(float(item.recommended_amount) for item in data.goal_allocations),
+        2,
+    )
     if abs(goal_total - data.goals) > 0.01:
         raise HTTPException(
             status_code=400,
             detail="Goal allocation rows must sum to the goals bucket total.",
         )
 
-    emergency_rows = [item for item in data.goal_allocations if "emergency" in item.category.lower()]
-    emergency_total = round(sum(float(item.recommended_amount) for item in emergency_rows), 2)
+    emergency_rows = [
+        item for item in data.goal_allocations if "emergency" in item.category.lower()
+    ]
+    emergency_total = round(
+        sum(float(item.recommended_amount) for item in emergency_rows),
+        2,
+    )
     if (
         data.minimum_emergency_buffer > 0
         and emergency_rows

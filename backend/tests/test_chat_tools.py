@@ -85,8 +85,7 @@ def test_month_over_month_delta_compares_prior_month():
 
 def test_unusual_charges_flags_outlier():
     rows = [
-        {"date": f"2099-12-{d:02d}", "description": "COFFEE", "amount": -5.0}
-        for d in range(1, 11)
+        {"date": f"2099-12-{d:02d}", "description": "COFFEE", "amount": -5.0} for d in range(1, 11)
     ]
     rows.append({"date": "2099-12-15", "description": "COFFEE", "amount": -50.0})
     ledger = _ledger(rows)

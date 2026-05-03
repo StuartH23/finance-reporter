@@ -14,7 +14,6 @@ from auth import get_current_user
 from main import app
 from routers.upload import _session_last_seen, _session_owners, _sessions
 
-
 AUTH_ENV_VARS = (
     "APP_ENV",
     "AUTH_MODE",
