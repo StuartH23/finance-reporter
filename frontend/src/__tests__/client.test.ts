@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createGoal,
+  exportLedgerTransactions,
   getBudget,
   getCashFlow,
   getCategoryBreakdown,
@@ -38,6 +39,8 @@ function fakeFetch(url: string | URL | Request, options?: RequestInit) {
   lastOptions = options
   return Promise.resolve({
     ok: true,
+    headers: new Headers({ 'Content-Disposition': 'attachment; filename="transactions.csv"' }),
+    blob: () => Promise.resolve(new Blob(['id,date\n'])),
     json: () => Promise.resolve({ mock: true }),
   } as Response)
 }
@@ -275,6 +278,25 @@ describe('API client', () => {
     const headers = new Headers(lastOptions?.headers)
     expect(headers.get('Authorization')).toBe('Bearer test-access-token')
     expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('adds a bearer token when exporting ledger transactions', async () => {
+    setAccessTokenProvider(() => 'test-access-token')
+
+    const result = await exportLedgerTransactions({
+      granularity: 'month',
+      period: '2026-03',
+      sort: 'date',
+      direction: 'asc',
+      format: 'csv',
+    })
+
+    const headers = new Headers(lastOptions?.headers)
+    expect(lastUrl).toBe(
+      '/api/ledger/transactions/export?granularity=month&period=2026-03&sort=date&direction=asc&format=csv',
+    )
+    expect(headers.get('Authorization')).toBe('Bearer test-access-token')
+    expect(result.filename).toBe('transactions.csv')
   })
 
   it('serves guest demo reads locally without calling fetch', async () => {

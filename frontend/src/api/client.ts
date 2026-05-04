@@ -61,6 +61,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+async function requestBlob(path: string, options?: RequestInit): Promise<Response> {
+  const res = await fetch(`${BASE}${path}`, await withAuthHeader(options))
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+  return res
+}
+
 export async function uploadFiles(files: FileList | File[]): Promise<UploadResponse> {
   const form = new FormData()
   for (const file of files) {
@@ -111,6 +117,20 @@ export function ledgerTransactionsExportUrl(
   params.set('format', options?.format ?? 'csv')
   const qs = params.toString()
   return `${BASE}/ledger/transactions/export${qs ? `?${qs}` : ''}`
+}
+
+export async function exportLedgerTransactions(
+  options?: LedgerTransactionOptions & { format?: 'csv' | 'xlsx' },
+): Promise<{ blob: Blob; filename: string }> {
+  const params = ledgerTransactionParams(options)
+  params.set('format', options?.format ?? 'csv')
+  const qs = params.toString()
+  const res = await requestBlob(`/ledger/transactions/export${qs ? `?${qs}` : ''}`)
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const filenameMatch = disposition.match(/filename="?([^";]+)"?/)
+  const filename =
+    filenameMatch?.[1] ?? `transactions-export.${options?.format === 'xlsx' ? 'xlsx' : 'csv'}`
+  return { blob: await res.blob(), filename }
 }
 
 export async function updateTransactionCategory(

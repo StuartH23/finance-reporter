@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import {
+  exportLedgerTransactions,
   getLedgerTransactions,
   type LedgerTransactionOptions,
-  ledgerTransactionsExportUrl,
   updateTransactionCategory,
 } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
@@ -40,6 +40,7 @@ function TransactionList({
   const [sourceFile, setSourceFile] = useState('')
   const [sort, setSort] = useState<LedgerTransactionOptions['sort']>('date')
   const [direction, setDirection] = useState<LedgerTransactionOptions['direction']>('asc')
+  const [exportingFormat, setExportingFormat] = useState<'csv' | 'xlsx' | null>(null)
 
   const effectiveCategory = category ?? (selectedCategory || undefined)
   const options: LedgerTransactionOptions = {
@@ -80,6 +81,23 @@ function TransactionList({
     period: period ?? undefined,
   }
 
+  async function handleExport(format: 'csv' | 'xlsx') {
+    setExportingFormat(format)
+    try {
+      const { blob, filename } = await exportLedgerTransactions({ ...exportBase, format })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
   if (!period && !count) return null
 
   return (
@@ -89,18 +107,22 @@ function TransactionList({
           {tableTitle} ({count.toLocaleString()})
         </h2>
         <div className="transaction-export-actions">
-          <a
+          <button
+            type="button"
             className="ghost-button"
-            href={ledgerTransactionsExportUrl({ ...exportBase, format: 'csv' })}
+            onClick={() => handleExport('csv')}
+            disabled={exportingFormat !== null}
           >
-            CSV
-          </a>
-          <a
+            {exportingFormat === 'csv' ? 'Exporting CSV' : 'CSV'}
+          </button>
+          <button
+            type="button"
             className="ghost-button"
-            href={ledgerTransactionsExportUrl({ ...exportBase, format: 'xlsx' })}
+            onClick={() => handleExport('xlsx')}
+            disabled={exportingFormat !== null}
           >
-            XLSX
-          </a>
+            {exportingFormat === 'xlsx' ? 'Exporting XLSX' : 'XLSX'}
+          </button>
         </div>
       </div>
 
