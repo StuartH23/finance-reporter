@@ -1,6 +1,6 @@
 @layer base {
   body {
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-family: "Inter Variable", system-ui, -apple-system, sans-serif;
     font-feature-settings: "cv01", "ss03";
     background: var(--bg);
     color: var(--text);
@@ -13,7 +13,7 @@
   h2,
   h3,
   h4 {
-    font-family: "Sora", "Inter", sans-serif;
+    font-family: "Sora Variable", "Inter Variable", sans-serif;
     color: var(--text);
     letter-spacing: -0.015em;
   }
@@ -32,6 +32,27 @@
   select,
   textarea {
     font-family: inherit;
+  }
+}
+
+@layer base {
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none;
+      scroll-behavior: auto;
+      transition: none;
+    }
   }
 }
 

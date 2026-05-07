@@ -56,6 +56,17 @@
     background: var(--border-strong);
   }
 
+  .dashboard-upload-hint {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.22rem 0.52rem;
+    color: var(--text-secondary);
+    background: var(--surface-muted);
+    font-size: var(--font-small);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+  }
+
   .dashboard-monthly-layout {
     min-width: 0;
     display: flex;
@@ -211,7 +222,7 @@
   }
 
   .kpi-stat-label {
-    font-size: 0.62rem;
+    font-size: var(--font-eyebrow);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
@@ -219,7 +230,7 @@
   }
 
   .kpi-stat-value {
-    font-size: 1.2rem;
+    font-size: var(--metric-md);
     font-weight: 700;
     color: var(--text);
     font-variant-numeric: tabular-nums;
@@ -228,7 +239,7 @@
   }
 
   .kpi-stat-delta {
-    font-size: 0.67rem;
+    font-size: var(--font-small);
     font-weight: 600;
     margin-top: 0.05rem;
   }
@@ -350,7 +361,7 @@
   .dashboard-secondary-action-row span {
     color: var(--text-secondary);
     font-size: 0.8rem;
-    font-weight: 650;
+    font-weight: var(--weight-semibold);
   }
 
   .dashboard-secondary-action-row strong {
@@ -401,38 +412,6 @@
     font-size: 0.95rem;
   }
 
-  .monthly-health-action {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: rgba(6, 18, 34, 0.42);
-    padding: 0.85rem;
-  }
-
-  .monthly-health-action span {
-    display: block;
-    color: var(--text-muted);
-    font-size: 0.61rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 0.3rem;
-  }
-
-  .monthly-health-action strong {
-    display: block;
-    color: var(--text);
-    font-size: 0.95rem;
-    line-height: 1.25;
-    margin-bottom: 0.45rem;
-  }
-
-  .monthly-health-action p {
-    color: var(--text-muted);
-    font-size: 0.76rem;
-    line-height: 1.4;
-    margin: 0 0 0.7rem;
-  }
-
   .dashboard-reports-header {
     display: flex;
     justify-content: space-between;
@@ -443,7 +422,7 @@
 
   .dashboard-reports-header h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: var(--font-h2);
   }
 
   .dashboard-report-tabs {
@@ -462,7 +441,7 @@
     color: var(--text-secondary);
     padding: 0.3rem 0.72rem;
     font-size: 0.73rem;
-    font-weight: 750;
+    font-weight: var(--weight-bold);
   }
 
   .dashboard-report-tabs button.active {
@@ -512,7 +491,7 @@
 
   .preview-shot {
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     background: var(--surface-muted);
     padding: 0.5rem;
   }
@@ -520,7 +499,7 @@
   .preview-shot img {
     width: 100%;
     aspect-ratio: 16 / 9;
-    border-radius: 8px;
+    border-radius: var(--radius);
     border: 1px solid var(--border-strong);
     object-fit: cover;
     display: block;
@@ -580,10 +559,9 @@
 
   .nba-card {
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 0.7rem;
-    background:
-      linear-gradient(135deg, rgba(16, 41, 73, 0.6), rgba(11, 31, 60, 0.3)), var(--surface);
+    background: linear-gradient(135deg, var(--card-grad-from), var(--card-grad-to)), var(--surface);
     transition: border-color 0.15s ease;
   }
 
@@ -600,7 +578,7 @@
   }
 
   .nba-type {
-    font-size: 0.67rem;
+    font-size: var(--font-eyebrow);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);

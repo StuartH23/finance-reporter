@@ -61,7 +61,7 @@
   .transaction-category-input {
     min-height: 2.2rem;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
     color: var(--text);
     padding: 0.42rem 0.55rem;
@@ -81,6 +81,57 @@
     gap: 0.18rem;
     font-size: 0.69rem;
     color: var(--text-muted);
+  }
+
+  .cashflow-chart-tooltip {
+    min-width: 168px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--chart-shell-bg);
+    color: var(--text);
+    box-shadow: var(--shadow-card);
+    padding: 0.56rem 0.62rem;
+  }
+
+  .cashflow-chart-tooltip-label {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .cashflow-chart-tooltip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px var(--border);
+    flex: 0 0 auto;
+  }
+
+  .cashflow-chart-tooltip-dot.positive {
+    background: var(--chart-positive);
+  }
+
+  .cashflow-chart-tooltip-dot.savings {
+    background: var(--chart-6);
+  }
+
+  .cashflow-chart-tooltip-dot.shortfall {
+    background: var(--chart-3);
+  }
+
+  .cashflow-chart-tooltip-dot.expense {
+    background: var(--chart-4);
+  }
+
+  .cashflow-chart-tooltip-value {
+    margin-top: 0.22rem;
+    color: var(--text);
+    font-size: 0.92rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
   }
 
   .cashflow-summary {
@@ -122,22 +173,21 @@
 
   .cashflow-waterfall-bar {
     height: 100%;
-    border-radius: inherit;
+    border-radius: 999px;
   }
 
   .cashflow-waterfall-bar.positive {
-    background: #2db978;
+    background: var(--chart-positive);
   }
 
   .cashflow-waterfall-bar.negative {
-    background: #e97a5f;
+    background: var(--chart-negative);
   }
 
   .cashflow-summary p {
     border: 1px solid var(--border);
-    border-radius: 10px;
-    background:
-      linear-gradient(135deg, rgba(16, 41, 73, 0.5), rgba(11, 31, 60, 0.25)), var(--surface);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--card-grad-from), var(--card-grad-to)), var(--surface);
     padding: 0.48rem 0.55rem;
     display: flex;
     flex-direction: column;
@@ -171,7 +221,7 @@
   .cashflow-kpi,
   .cashflow-selected-grid p {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
     padding: 0.68rem 0.72rem;
     display: flex;

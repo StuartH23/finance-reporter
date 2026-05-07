@@ -13,7 +13,7 @@
     /* Text — four roles */
     --text: #edf2fa;
     --text-secondary: #96afc9;
-    --text-muted: #4c5f77;
+    --text-muted: #6f849d;
     --text-inverse: #ffffff;
 
     /* Accent */
@@ -44,22 +44,132 @@
     --panel-blue-border: #24517f;
     --chart-shell-bg: #0b1830;
     --mobile-nav-bg: #091629;
-    --mobile-nav-text: #566a84;
-    --focus-ring: rgba(36, 128, 255, 0.26);
+    --mobile-nav-text: #8fa6bf;
+    --focus-ring: rgba(96, 165, 250, 0.9);
     --focus-border: #2d8af5;
     --scrollbar-track: rgba(7, 14, 29, 0.92);
     --scrollbar-thumb: rgba(96, 165, 250, 0.34);
     --scrollbar-thumb-subtle: rgba(150, 175, 201, 0.3);
     --scrollbar-thumb-hover: rgba(96, 165, 250, 0.62);
 
-    /* No shadows — Revolut/Linear approach */
+    /* Shadow layers */
     --shadow-soft: none;
-    --shadow-card: none;
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+    /* Type scale */
+    --font-display: 1.75rem;
+    --font-h1: 1.25rem;
+    --font-h2: 1rem;
+    --font-eyebrow: 0.7rem;
+    --font-body: 0.95rem;
+    --font-small: 0.825rem;
+
+    /* Metric scale */
+    --metric-xl: 1.75rem;
+    --metric-md: 1.25rem;
+    --metric-sm: 1rem;
+
+    /* Spacing scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    /* Weight scale */
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    /* Chart palette */
+    --chart-1: #60a5fa;
+    --chart-2: #34d399;
+    --chart-3: #fbbf24;
+    --chart-4: #f87171;
+    --chart-5: #a78bfa;
+    --chart-6: #22d3ee;
+    --chart-7: #fb7185;
+    --chart-8: #c084fc;
+    --chart-positive: var(--green);
+    --chart-negative: var(--red);
+
+    /* Component layers */
+    --card-grad-from: rgba(16, 41, 73, 0.5);
+    --card-grad-to: rgba(11, 31, 60, 0.25);
+    --row-hover-bg: rgba(47, 91, 148, 0.3);
+    --chip-border: var(--border-strong);
 
     /* Radius scale */
     --radius-sm: 4px;
     --radius: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
+  }
+
+  [data-theme="light"] {
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface-muted: #eef3f8;
+    --surface-raised: rgba(15, 23, 42, 0.03);
+
+    --border: rgba(15, 23, 42, 0.1);
+    --border-strong: rgba(15, 23, 42, 0.18);
+
+    --text: #101828;
+    --text-secondary: #344054;
+    --text-muted: #526579;
+    --text-inverse: #ffffff;
+
+    --accent: #2563eb;
+    --accent-strong: #1d4ed8;
+    --accent-soft: rgba(37, 99, 235, 0.12);
+
+    --green: #15803d;
+    --green-soft: rgba(22, 163, 74, 0.12);
+    --green-text-soft: #166534;
+    --red: #dc2626;
+    --red-strong: #991b1b;
+    --red-soft: rgba(220, 38, 38, 0.08);
+    --red-border: rgba(220, 38, 38, 0.22);
+    --red-text-soft: #991b1b;
+    --yellow: #b7791f;
+    --yellow-soft: rgba(217, 119, 6, 0.12);
+
+    --overlay: rgba(15, 23, 42, 0.45);
+    --modal-overlay: rgba(15, 23, 42, 0.32);
+    --hover-surface: rgba(15, 23, 42, 0.05);
+    --active-surface: rgba(37, 99, 235, 0.1);
+    --table-head-bg: #e8f0fb;
+    --field-bg: #ffffff;
+    --panel-blue: #e8f1ff;
+    --panel-blue-border: #bfd6ff;
+    --chart-shell-bg: #f1f6fd;
+    --mobile-nav-bg: #ffffff;
+    --mobile-nav-text: #667085;
+    --focus-ring: rgba(37, 99, 235, 0.72);
+    --focus-border: #2563eb;
+    --scrollbar-track: rgba(238, 243, 248, 0.9);
+    --scrollbar-thumb: rgba(37, 99, 235, 0.28);
+    --scrollbar-thumb-subtle: rgba(82, 101, 121, 0.28);
+    --scrollbar-thumb-hover: rgba(37, 99, 235, 0.5);
+
+    --shadow-soft: none;
+    --shadow-card: 0 1px 0 rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.08);
+
+    --chart-1: #2563eb;
+    --chart-2: #059669;
+    --chart-3: #d97706;
+    --chart-4: #dc2626;
+    --chart-5: #7c3aed;
+    --chart-6: #0891b2;
+    --chart-7: #db2777;
+    --chart-8: #9333ea;
+
+    --card-grad-from: rgba(232, 241, 255, 0.85);
+    --card-grad-to: rgba(248, 250, 252, 0.65);
+    --row-hover-bg: rgba(37, 99, 235, 0.08);
+    --chip-border: var(--border-strong);
   }
 }

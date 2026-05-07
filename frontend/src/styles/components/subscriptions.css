@@ -145,7 +145,7 @@
     padding: 0.22rem 0.3rem;
     text-align: left;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     transition: background 0.15s ease;
   }
 
@@ -157,13 +157,13 @@
     flex-shrink: 0;
     width: 4px;
     height: 2rem;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
   }
 
   .sub-category-icon {
     width: 1.75rem;
     height: 1.75rem;
-    border-radius: 0.45rem;
+    border-radius: var(--radius);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -173,39 +173,6 @@
     font-size: 0.78rem;
     font-weight: 800;
     line-height: 1;
-  }
-
-  .sub-category-icon.play::before {
-    content: "▶";
-    font-size: 0.68rem;
-  }
-
-  .sub-category-icon.pulse::before {
-    content: "↗";
-  }
-
-  .sub-category-icon.bolt::before {
-    content: "⚡";
-  }
-
-  .sub-category-icon.auto::before {
-    content: "A";
-  }
-
-  .sub-category-icon.home::before {
-    content: "H";
-  }
-
-  .sub-category-icon.plus::before {
-    content: "+";
-  }
-
-  .sub-category-icon.food::before {
-    content: "F";
-  }
-
-  .sub-category-icon.dot::before {
-    content: "•";
   }
 
   .sub-row-merchant {
@@ -314,6 +281,16 @@
     background: rgba(58, 142, 246, 0.1);
   }
 
+  .button-chevron {
+    margin-left: 0.25rem;
+    transition: transform 0.15s ease;
+    vertical-align: -0.15em;
+  }
+
+  .button-chevron.open {
+    transform: rotate(180deg);
+  }
+
   /* --- Expanded detail drawer --- */
 
   .sub-row-detail {
@@ -407,7 +384,7 @@
     background: var(--surface);
     color: var(--text);
     border: 1px solid var(--border);
-    border-radius: 0.6rem;
+    border-radius: var(--radius-lg);
     padding: 1.1rem 1.2rem 1rem;
     width: min(100%, 28rem);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
@@ -459,14 +436,14 @@
     display: inline-block;
     text-align: center;
     padding: 0.5rem 0.75rem;
-    border-radius: 0.4rem;
+    border-radius: var(--radius-sm);
     text-decoration: none;
     font-size: 0.85rem;
   }
 
   .cancel-panel-primary {
     background: var(--accent);
-    color: var(--accent-contrast, #fff);
+    color: var(--text-inverse);
     font-weight: 600;
   }
 

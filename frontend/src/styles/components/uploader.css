@@ -228,7 +228,7 @@
     border: 1px solid var(--red);
     background: var(--red);
     color: var(--text-inverse);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: 0.52rem 0.72rem;
     font-size: 0.8rem;
   }
