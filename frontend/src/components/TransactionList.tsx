@@ -8,6 +8,8 @@ import {
 } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { CashFlowGranularity, Transaction } from '../api/types'
+import EmptyState from './primitives/EmptyState'
+import Skeleton from './primitives/Skeleton'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -54,7 +56,7 @@ function TransactionList({
     direction,
   }
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: queryKeys.ledgerTransactions(options),
     queryFn: () => getLedgerTransactions(options),
   })
@@ -183,8 +185,10 @@ function TransactionList({
         </select>
       </fieldset>
 
-      {!count ? (
-        <p className="empty-state">No transactions match the active filters.</p>
+      {isLoading ? (
+        <Skeleton variant="block" ariaLabel="Loading transactions" />
+      ) : !count ? (
+        <EmptyState body="No transactions match the active filters." />
       ) : (
         <div className="table-scroll">
           <table>
@@ -218,7 +222,9 @@ function TransactionList({
                         }
                       }}
                     />
-                    {t.category_edited && <small className="budget-hint">Session only</small>}
+                    {t.category_edited && (
+                      <small className="budget-hint">Session only — refresh clears edits</small>
+                    )}
                   </td>
                   <td className="col-source u-muted-source">{t.source_file}</td>
                 </tr>

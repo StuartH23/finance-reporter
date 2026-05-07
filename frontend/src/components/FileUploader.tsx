@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { uploadFiles } from '../api/client'
 import type { UploadResponse } from '../api/types'
@@ -281,7 +282,7 @@ function FileUploader({ openRequest = 0 }: FileUploaderProps) {
               aria-label="Close privacy notice"
               onClick={closePrivacyModal}
             >
-              X
+              <X aria-hidden="true" size={16} strokeWidth={2.5} />
             </button>
             <PrivacyNotice className="privacy-modal-content" />
             <div className="privacy-modal-actions">

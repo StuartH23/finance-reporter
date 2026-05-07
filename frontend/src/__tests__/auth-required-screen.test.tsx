@@ -12,7 +12,11 @@ describe('auth required screen', () => {
     expect(html).toContain('Sign in to continue')
     expect(html).toContain('Sign In')
     expect(html).toContain('Continue as Guest Demo')
+    expect(html).toContain('See it with sample data')
+    expect(html).toContain('Try Demo Mode')
     expect(html).toContain('/screenshots/preview-dashboard.svg')
+    expect(html).toContain('/screenshots/preview-budget.svg')
+    expect(html).toContain('/screenshots/preview-subscriptions.svg')
   })
 
   it('renders auth errors alongside actions', () => {

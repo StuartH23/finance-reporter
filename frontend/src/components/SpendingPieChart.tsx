@@ -62,6 +62,15 @@ interface SpendingSlice {
   share: number
 }
 
+interface SpendingTooltipProps {
+  active?: boolean
+  payload?: Array<{
+    payload?: SpendingSlice
+    value?: number
+    name?: string
+  }>
+}
+
 function hashCategory(category: string) {
   let hash = 0
   for (let i = 0; i < category.length; i += 1) {
@@ -122,6 +131,30 @@ function summarizeSpending(chartItems: SpendingChartItem[]) {
     otherBreakdown,
     otherTotal: otherBreakdown.reduce((sum, item) => sum + item.total, 0),
   }
+}
+
+function SpendingTooltip({ active, payload }: SpendingTooltipProps) {
+  if (!active || !payload?.length) return null
+
+  const item = payload[0]?.payload
+  const value = Number(payload[0]?.value ?? item?.total ?? 0)
+  const category = item?.category ?? payload[0]?.name ?? 'Category'
+  const share = item?.share ?? 0
+
+  return (
+    <div className="spending-chart-tooltip">
+      <div className="spending-chart-tooltip-label">
+        <span
+          className="spending-chart-tooltip-dot"
+          aria-hidden="true"
+          style={{ backgroundColor: colorForCategory(category) }}
+        />
+        <span>{category}</span>
+      </div>
+      <div className="spending-chart-tooltip-value">{fmt(value)}</div>
+      <div className="spending-chart-tooltip-meta">{pct(share)} of spending</div>
+    </div>
+  )
 }
 
 function SpendingPieChart({ showBreakdownTable = true, year }: SpendingPieChartProps) {
@@ -291,16 +324,7 @@ function SpendingPieChart({ showBreakdownTable = true, year }: SpendingPieChartP
                       />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(val: unknown) => fmt(Number(val))}
-                    cursor={false}
-                    contentStyle={{
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 6,
-                    }}
-                    itemStyle={{ color: 'var(--text)' }}
-                  />
+                  <Tooltip cursor={false} content={<SpendingTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="spending-donut-center" aria-hidden="true">

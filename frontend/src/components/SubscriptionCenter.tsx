@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Car, ChevronDown, Circle, Home, Play, Plus, TrendingUp, Utensils, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
   getCancelInfo,
@@ -14,6 +15,8 @@ import type {
   SubscriptionSummary,
 } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
+import EmptyState from './primitives/EmptyState'
+import Skeleton from './primitives/Skeleton'
 
 function fmt(n: number) {
   return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -64,6 +67,19 @@ function categoryIcon(category: string | undefined): string {
   if (normalized.includes('medical')) return 'plus'
   if (normalized.includes('dining') || normalized.includes('groceries')) return 'food'
   return 'dot'
+}
+
+function CategoryIcon({ category }: { category: string | undefined }) {
+  const icon = categoryIcon(category)
+  const props = { 'aria-hidden': true, size: 15, strokeWidth: 2.2 }
+  if (icon === 'play') return <Play {...props} />
+  if (icon === 'pulse') return <TrendingUp {...props} />
+  if (icon === 'bolt') return <Zap {...props} />
+  if (icon === 'auto') return <Car {...props} />
+  if (icon === 'home') return <Home {...props} />
+  if (icon === 'plus') return <Plus {...props} />
+  if (icon === 'food') return <Utensils {...props} />
+  return <Circle {...props} />
 }
 
 function categoryIconLabel(category: string | undefined): string {
@@ -128,6 +144,10 @@ function stateClass(item: SubscriptionItem): string {
   if (item.is_new_recurring) return 'warning'
   if (item.essential) return 'success'
   return 'neutral'
+}
+
+function badgeClass(tone: string): string {
+  return tone === 'muted' ? 'badge--neutral' : `badge--${tone}`
 }
 
 function priceChangeLabel(item: SubscriptionItem): string | null {
@@ -224,6 +244,7 @@ function SubscriptionRow({
             className={`sub-category-icon ${categoryIcon(item.dominant_category)}`}
             title={item.dominant_category ?? 'Uncategorized'}
           >
+            <CategoryIcon category={item.dominant_category} />
             <span className="sr-only">{categoryIconLabel(item.dominant_category)}</span>
           </span>
           <span className="sub-row-merchant">
@@ -235,7 +256,11 @@ function SubscriptionRow({
             {cadenceUnit(item)}
           </span>
           {changeLabel && <span className="sub-change-chip">{changeLabel}</span>}
-          <span className={`sub-state-pill ${stateClass(item)}`}>{stateLabel(item)}</span>
+          <span
+            className={`badge ${badgeClass(stateClass(item))} sub-state-pill ${stateClass(item)}`}
+          >
+            {stateLabel(item)}
+          </span>
         </button>
         <span className="sub-row-actions">
           {variant !== 'ignored' && (
@@ -309,7 +334,9 @@ export function ReviewSection({ item }: { item: SubscriptionItem }) {
       )}
       {review && (
         <div className="sub-review-result">
-          <span className={`sub-state-pill ${reviewVerdictClass(review.verdict)}`}>
+          <span
+            className={`badge ${badgeClass(reviewVerdictClass(review.verdict))} sub-state-pill ${reviewVerdictClass(review.verdict)}`}
+          >
             {reviewVerdictLabel(review.verdict)}
             {review.cached ? ' · cached' : ''}
           </span>
@@ -378,7 +405,7 @@ export function CancelPanel({
         onKeyDown={(event) => event.stopPropagation()}
       >
         <header className="cancel-panel-header">
-          <h3>Cancel {headerName}</h3>
+          <h3>How to cancel {headerName}</h3>
           <button type="button" className="cancel-panel-close" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -389,7 +416,9 @@ export function CancelPanel({
           {cadenceUnit(item)} · last charged {shortDate(item.last_charge_date)}
         </p>
 
-        {infoQuery.isLoading && <p className="cancel-panel-note">Looking up cancellation info…</p>}
+        {infoQuery.isLoading && (
+          <Skeleton variant="block" ariaLabel="Loading cancellation information" />
+        )}
 
         {infoQuery.isError && (
           <div className="cancel-panel-body">
@@ -574,7 +603,11 @@ function SubscriptionCenter() {
       <div className="sub-page-header">
         <h2>Subscription Center</h2>
         <div className="sub-header-controls">
-          <div className="dashboard-report-tabs" role="tablist" aria-label="Subscription views">
+          <div
+            className="segmented-control dashboard-report-tabs"
+            role="tablist"
+            aria-label="Subscription views"
+          >
             <button
               type="button"
               role="tab"
@@ -600,7 +633,12 @@ function SubscriptionCenter() {
             onClick={() => setShowAdvanced((v) => !v)}
             aria-expanded={showAdvanced}
           >
-            Advanced {showAdvanced ? '▴' : '▾'}
+            Advanced
+            <ChevronDown
+              className={`button-chevron ${showAdvanced ? 'open' : ''}`}
+              aria-hidden="true"
+              size={14}
+            />
           </button>
         </div>
       </div>
@@ -640,9 +678,9 @@ function SubscriptionCenter() {
 
       {summary && <SubscriptionHero summary={summary} />}
 
-      {listQuery.isLoading && <p>Loading subscriptions...</p>}
+      {listQuery.isLoading && <Skeleton variant="block" ariaLabel="Loading subscriptions" />}
       {!listQuery.isLoading && all.length === 0 && (
-        <p className="empty-state">No subscriptions detected yet.</p>
+        <EmptyState body="No subscriptions detected yet." />
       )}
 
       {!listQuery.isLoading && activeView === 'upcoming' && (
@@ -652,7 +690,7 @@ function SubscriptionCenter() {
           </header>
           <div className="sub-section-body">
             {recurringSections.upcoming.length === 0 && (
-              <p className="empty-state">No upcoming recurring charges.</p>
+              <EmptyState body="No upcoming recurring charges." />
             )}
             {recurringSections.upcoming.map((item) => (
               <SubscriptionRow
@@ -685,7 +723,7 @@ function SubscriptionCenter() {
             </header>
             <div className="sub-section-body">
               {recurringSections.active.length === 0 && (
-                <p className="empty-state">No active subscriptions.</p>
+                <EmptyState body="No active subscriptions." />
               )}
               {recurringSections.active.map((item) => (
                 <SubscriptionRow
@@ -705,7 +743,7 @@ function SubscriptionCenter() {
             </header>
             <div className="sub-section-body">
               {recurringSections.inactive.length === 0 && (
-                <p className="empty-state">No inactive subscriptions.</p>
+                <EmptyState body="No inactive subscriptions." />
               )}
               {recurringSections.inactive.map((item) => (
                 <SubscriptionRow

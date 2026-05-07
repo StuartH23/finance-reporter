@@ -6,6 +6,7 @@ import type {
   CashFlowNode,
   CashFlowResponse,
 } from '../api/types'
+import EmptyState from './primitives/EmptyState'
 
 const EXPENSE_COLORS = ['#f3c44d', '#f29f4a', '#e97a5f', '#dd5f93', '#9b82f2', '#5a9ef6', '#49c9ae']
 
@@ -40,6 +41,53 @@ interface CashFlowSankeyChartProps {
   onGroupByChange: (groupBy: CashFlowGroupBy) => void
   onPeriodChange: (period: string) => void
   onSegmentSelect?: (selection: CashFlowSegmentSelection | null) => void
+}
+
+interface CashFlowTooltipProps {
+  active?: boolean
+  payload?: Array<{
+    name?: string
+    value?: number
+    payload?: {
+      source?: { name?: string; label?: string }
+      target?: { name?: string; label?: string; type?: string }
+      name?: string
+      label?: string
+      type?: string
+    }
+  }>
+}
+
+function CashFlowTooltip({ active, payload }: CashFlowTooltipProps) {
+  if (!active || !payload?.length) return null
+
+  const entry = payload[0]
+  const linkPayload = entry.payload
+  const sourceName = linkPayload?.source?.label ?? linkPayload?.source?.name
+  const targetName = linkPayload?.target?.label ?? linkPayload?.target?.name
+  const nodeName = linkPayload?.label ?? linkPayload?.name ?? entry.name
+  const label =
+    sourceName && targetName ? `${sourceName} to ${targetName}` : (nodeName ?? 'Cash flow')
+  const value = Number(entry.value ?? 0)
+  const targetType = linkPayload?.target?.type ?? linkPayload?.type
+  const accentClass =
+    targetType === 'income'
+      ? 'positive'
+      : targetType === 'savings'
+        ? 'savings'
+        : targetType === 'shortfall'
+          ? 'shortfall'
+          : 'expense'
+
+  return (
+    <div className="cashflow-chart-tooltip">
+      <div className="cashflow-chart-tooltip-label">
+        <span className={`cashflow-chart-tooltip-dot ${accentClass}`} aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+      <div className="cashflow-chart-tooltip-value">{formatCurrency(value)}</div>
+    </div>
+  )
 }
 
 function CashFlowSankeyChart({
@@ -219,16 +267,7 @@ function CashFlowSankeyChart({
               margin={{ top: 14, right: 100, bottom: 12, left: 12 }}
               onClick={handleSankeyClick}
             >
-              <Tooltip
-                formatter={(rawValue: unknown) => formatCurrency(Number(rawValue))}
-                contentStyle={{
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  color: 'var(--text)',
-                }}
-                itemStyle={{ color: 'var(--text)' }}
-              />
+              <Tooltip content={<CashFlowTooltip />} />
             </Sankey>
           </ResponsiveContainer>
 
@@ -248,9 +287,7 @@ function CashFlowSankeyChart({
           </div>
         </>
       ) : (
-        <p className="empty-state">
-          Upload transactions to visualize how income flows into savings and spending.
-        </p>
+        <EmptyState body="Upload transactions to visualize how income flows into savings and spending." />
       )}
     </section>
   )

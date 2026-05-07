@@ -4,18 +4,37 @@ export type AppNavItem = {
   icon: 'dashboard' | 'cashflow' | 'budget' | 'goals' | 'subscriptions' | 'chat'
 }
 
-const baseNavItems: AppNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/cash-flow', label: 'Cash Flow', icon: 'cashflow' },
-  { to: '/budget', label: 'Budget', icon: 'budget' },
-  { to: '/chat', label: 'Ask AI', icon: 'chat' },
+export type AppNavGroup = {
+  label: string | null
+  items: AppNavItem[]
+}
+
+const navGroups: AppNavGroup[] = [
+  {
+    label: 'Review',
+    items: [
+      { to: '/', label: 'Money Checkup', icon: 'dashboard' },
+      { to: '/cash-flow', label: 'Cash Flow', icon: 'cashflow' },
+      { to: '/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
+    ],
+  },
+  {
+    label: 'Plan',
+    items: [
+      { to: '/budget', label: 'Budget', icon: 'budget' },
+      { to: '/goals', label: 'Goals', icon: 'goals' },
+    ],
+  },
+  {
+    label: null,
+    items: [{ to: '/chat', label: 'Ask AI', icon: 'chat' }],
+  },
 ]
 
+export function getNavGroups(): AppNavGroup[] {
+  return navGroups
+}
+
 export function getNavItems(): AppNavItem[] {
-  return [
-    ...baseNavItems.slice(0, 3),
-    { to: '/goals', label: 'Goals', icon: 'goals' },
-    { to: '/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
-    ...baseNavItems.slice(3),
-  ]
+  return navGroups.flatMap((group) => group.items)
 }

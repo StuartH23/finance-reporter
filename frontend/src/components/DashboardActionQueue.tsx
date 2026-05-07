@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { getNextBestActionFeed } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import { dashboardActionRoute, dashboardActionRouteLabel, formatMoney } from './dashboardActions'
+import EmptyState from './primitives/EmptyState'
+import Skeleton from './primitives/Skeleton'
 
 export default function DashboardActionQueue() {
   const navigate = useNavigate()
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: queryKeys.actions.feed,
     queryFn: getNextBestActionFeed,
   })
@@ -25,7 +27,11 @@ export default function DashboardActionQueue() {
         <span>{actions.length ? `${actions.length} open` : 'Ready after review'}</span>
       </div>
 
-      {topAction ? (
+      {isLoading ? (
+        <div className="dashboard-action-skeleton">
+          <Skeleton variant="block" ariaLabel="Loading recommended actions" />
+        </div>
+      ) : topAction ? (
         <>
           <article className="dashboard-primary-action">
             <div className="dashboard-primary-action-copy">
@@ -76,9 +82,10 @@ export default function DashboardActionQueue() {
           )}
         </>
       ) : (
-        <p className="empty-state empty-state-compact">
-          Once there is enough data, this area will show the next financial review action.
-        </p>
+        <EmptyState
+          compact
+          body="Once you've uploaded a couple months of statements, your top action will land here."
+        />
       )}
     </section>
   )

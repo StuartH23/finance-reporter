@@ -117,7 +117,7 @@ describe('SubscriptionCenter', () => {
       />,
       qc,
     )
-    expect(html).toContain('Cancel Netflix')
+    expect(html).toContain('How to cancel Netflix')
     expect(html).toContain('https://www.netflix.com/cancelplan')
     expect(html).toContain('Open cancellation page')
     expect(html).toContain('I canceled this')

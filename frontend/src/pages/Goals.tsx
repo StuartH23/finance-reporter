@@ -1,12 +1,13 @@
 import GoalBudgetPlanner from '../components/GoalBudgetPlanner'
+import PageHeader from '../components/primitives/PageHeader'
 
 function Goals() {
   return (
     <div className="dashboard-page">
-      <h1 className="page-title">Goal-Driven Budgeting</h1>
-      <p className="page-subtitle">
-        Build goals, auto-plan each paycheck, and review transparent allocation explanations.
-      </p>
+      <PageHeader
+        title="Goal-Driven Budgeting"
+        subtitle="Build goals, auto-plan each paycheck, and review transparent allocation explanations."
+      />
       <GoalBudgetPlanner />
     </div>
   )

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 
 import { getInsights } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
+import EmptyState from './primitives/EmptyState'
 
 function fallbackLocale() {
   if (typeof navigator !== 'undefined' && navigator.language) return navigator.language
@@ -32,9 +33,10 @@ function InsightsPanel() {
     return (
       <div className="card">
         <h2>Coach Insights</h2>
-        <div className="empty-state empty-state-compact">
-          Upload at least two full months of data to unlock actionable coaching insights.
-        </div>
+        <EmptyState
+          compact
+          body="Coach insights kick in after two full months of statements. Upload more to see them."
+        />
       </div>
     )
   }

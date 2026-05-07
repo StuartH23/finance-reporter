@@ -2,6 +2,7 @@ import { useState } from 'react'
 import BudgetEditor from '../components/BudgetEditor'
 import BudgetResources from '../components/BudgetResources'
 import GoalBudgetPlanner from '../components/GoalBudgetPlanner'
+import PageHeader from '../components/primitives/PageHeader'
 
 type BudgetTab = 'category' | 'goal'
 
@@ -11,13 +12,12 @@ function Budget() {
 
   return (
     <div className="dashboard-page">
-      <h1 className="page-title">Budget</h1>
-      <p className="page-subtitle">
-        Build monthly targets from real spending history, or set up goal-driven paycheck planning —
-        pick the approach that fits your style.
-      </p>
+      <PageHeader
+        title="Budget"
+        subtitle="Build monthly targets from real spending history, or set up goal-driven paycheck planning — pick the approach that fits your style."
+      />
 
-      <div className="budget-tab-bar">
+      <div className="budget-tab-bar segmented-control">
         <button
           type="button"
           className={`budget-tab ${activeTab === 'category' ? 'active' : ''}`}

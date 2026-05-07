@@ -4,6 +4,9 @@ import { getBudget, getBudgetVsActual, getLedger, getMonthlyPnl, updateBudget } 
 import { queryKeys } from '../api/queryKeys'
 import type { BudgetItem } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
+import { formatSignedMoney } from '../utils/signedMoney'
+import EmptyState from './primitives/EmptyState'
+import MoneyInput from './primitives/MoneyInput'
 
 type BudgetMode = 'diy' | 'guided'
 type GuidedPreset = '50-30-20' | '60-30-10' | 'custom'
@@ -632,10 +635,10 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
             1. Review your last 1-3 months of spending by category.
           </p>
           <p className="budget-guide-step">
-            2. Pick one small change this week (subscription, groceries, or savings transfer).
+            2. Pick one small change this week (subscription, groceries, or a savings goal).
           </p>
           <p className="budget-guide-step">
-            3. Automate savings and debt payments to stay consistent.
+            3. Set up auto-transfers at your bank — this app tracks them once they post.
           </p>
           <p className="budget-guide-step u-mt-checklist">
             Alternative methods: envelope budgeting, zero-based budgeting, and reverse budgeting.
@@ -660,8 +663,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
         <div className="metric">
           <div className="label">Net After Spending</div>
           <div className={`value ${netAfterSpending >= 0 ? 'positive' : 'negative'}`}>
-            {netAfterSpending < 0 ? '-' : ''}
-            {fmt(netAfterSpending)}
+            {formatSignedMoney(netAfterSpending)}
           </div>
         </div>
         <div className="metric">
@@ -678,8 +680,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
             )
           </div>
           <div className={`value ${selectedMonthRemaining >= 0 ? 'positive' : 'negative'}`}>
-            {selectedMonthRemaining < 0 ? '-' : ''}
-            {fmt(selectedMonthRemaining)}
+            {formatSignedMoney(selectedMonthRemaining)}
           </div>
         </div>
         <div className="metric">
@@ -696,10 +697,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
         </div>
       </div>
       {items.length === 0 ? (
-        <p className="empty-state">
-          No budget data yet. Upload at least one statement on the Profit and Loss Report page, then
-          return here to set monthly targets.
-        </p>
+        <EmptyState body="No budget data yet. Upload at least one statement on the Profit and Loss Report page, then return here to set monthly targets." />
       ) : (
         <>
           <div className="budget-actions">
@@ -727,13 +725,13 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
                 <tr key={item.category}>
                   <td>{item.category}</td>
                   <td className="u-text-right">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
+                    <MoneyInput
+                      min={0}
+                      digits={0}
                       value={item.monthly_budget}
-                      onChange={(e) => handleChange(idx, e.target.value)}
+                      onValueChange={(value) => handleChange(idx, String(value ?? 0))}
                       className="numeric-input"
+                      aria-label={`${item.category} monthly budget`}
                     />
                   </td>
                   <td className="u-text-right">

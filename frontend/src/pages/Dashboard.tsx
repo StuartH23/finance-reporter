@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getLedger, getMonthlyPnl } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
@@ -12,26 +12,22 @@ import PnlTable from '../components/PnlTable'
 import TransactionList from '../components/TransactionList'
 import { type DashboardReport, normalizeDashboardReport } from './dashboardReportState'
 
-const FileUploader = lazy(() => import('../components/FileUploader'))
-
 interface DashboardProps {
   canEnableDemo: boolean
+  canUpload?: boolean
   demoModeEnabled: boolean
   onEnableDemoMode: () => void
+  onUploadStatements?: () => void
 }
 
-function UploadFallback() {
-  return (
-    <div className="card upload-card upload-card-loading" role="status" aria-live="polite">
-      <p>Loading upload tools...</p>
-    </div>
-  )
-}
-
-function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: DashboardProps) {
+function Dashboard({
+  canEnableDemo,
+  canUpload = true,
+  demoModeEnabled,
+  onEnableDemoMode,
+  onUploadStatements = () => {},
+}: DashboardProps) {
   const [, setActivePnlYear] = useState<number | null>(null)
-  const [uploadVisible, setUploadVisible] = useState(false)
-  const [uploadOpenRequest, setUploadOpenRequest] = useState(0)
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeReport, setActiveReport] = useState<DashboardReport>(() =>
     normalizeDashboardReport(searchParams.get('report')),
@@ -65,15 +61,9 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
         .getElementById('reports-section')
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-    const onUploadStatements = () => {
-      setUploadVisible(true)
-      setUploadOpenRequest((request) => request + 1)
-    }
     window.addEventListener('app:view-reports', onViewReports)
-    window.addEventListener('app:upload-statements', onUploadStatements)
     return () => {
       window.removeEventListener('app:view-reports', onViewReports)
-      window.removeEventListener('app:upload-statements', onUploadStatements)
     }
   }, [])
 
@@ -92,23 +82,17 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
       ) : (
         <>
           <DashboardCommandHeader
+            canUpload={canUpload}
             demoModeEnabled={demoModeEnabled}
             ledgerData={ledgerData}
             monthlyData={monthlyData}
+            onUploadStatements={onUploadStatements}
           />
 
           <main className="dashboard-monthly-layout">
             <MonthlyHealthSummary monthlyData={monthlyData} />
             <DashboardKpis monthlyData={monthlyData} />
             <DashboardActionQueue />
-
-            {uploadVisible && (
-              <div className="dashboard-upload-flow">
-                <Suspense fallback={<UploadFallback />}>
-                  <FileUploader openRequest={uploadOpenRequest} />
-                </Suspense>
-              </div>
-            )}
 
             <section
               id="reports-section"
@@ -121,7 +105,7 @@ function Dashboard({ canEnableDemo, demoModeEnabled, onEnableDemoMode }: Dashboa
                   <h2 id="reports-title">Details</h2>
                 </div>
                 <div
-                  className="dashboard-report-tabs"
+                  className="segmented-control dashboard-report-tabs"
                   role="tablist"
                   aria-label="Dashboard reports"
                 >

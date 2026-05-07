@@ -13,6 +13,8 @@ import type {
 import type { CashFlowSegmentSelection } from '../components/CashFlowSankeyChart'
 import CashFlowSankeyChart from '../components/CashFlowSankeyChart'
 import InsightsPanel from '../components/InsightsPanel'
+import EmptyState from '../components/primitives/EmptyState'
+import PageHeader from '../components/primitives/PageHeader'
 import SpendingPieChart from '../components/SpendingPieChart'
 import TransactionList from '../components/TransactionList'
 
@@ -233,7 +235,7 @@ function WhereCashWentTable({
         <span className="budget-hint">{data?.period_label ?? 'Latest period'}</span>
       </div>
       {!groups.length ? (
-        <p className="empty-state">No spending groups in this period.</p>
+        <EmptyState body="No spending groups in this period." />
       ) : (
         <div className="table-scroll">
           <table>
@@ -337,7 +339,7 @@ function SelectedSegmentPanel({
           </strong>
         </p>
       </div>
-      {!group && <p className="empty-state">This segment is not present in the selected period.</p>}
+      {!group && <EmptyState body="This segment is not present in the selected period." />}
     </section>
   )
 }
@@ -357,7 +359,7 @@ function RecurringChargesModule({ subscriptions }: { subscriptions: Subscription
         </Link>
       </div>
       {!rows.length ? (
-        <p className="empty-state">No active upcoming recurring charges detected.</p>
+        <EmptyState body="No active upcoming recurring charges detected." />
       ) : (
         <div className="cashflow-recurring-list">
           {rows.map((item) => (
@@ -368,7 +370,7 @@ function RecurringChargesModule({ subscriptions }: { subscriptions: Subscription
               </div>
               <div>
                 <strong>{formatCurrency(item.expected_amount ?? item.amount)}</strong>
-                <span className="cashflow-badge">
+                <span className="badge badge--neutral cashflow-badge">
                   {item.payment_state ?? item.status_group ?? 'active'}
                 </span>
               </div>
@@ -450,8 +452,10 @@ function CashFlow() {
 
   return (
     <div className="dashboard-page">
-      <h1 className="page-title">{cashFlowData?.period_label ?? 'Latest Period'} Cash Flow</h1>
-      {verdict && <p className="page-subtitle">{verdict}</p>}
+      <PageHeader
+        title={`${cashFlowData?.period_label ?? 'Latest Period'} Cash Flow`}
+        subtitle={verdict}
+      />
       <PeriodControls
         data={cashFlowData}
         granularity={granularity}

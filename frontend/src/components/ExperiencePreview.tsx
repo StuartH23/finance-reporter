@@ -25,7 +25,7 @@ function ExperiencePreview({ onEnableDemo }: ExperiencePreviewProps) {
     <section className="card experience-preview">
       <div className="experience-header">
         <div>
-          <h2>Preview Maya's Money Checkup</h2>
+          <h2>See it with sample data</h2>
           <p className="budget-hint">
             Use sample data to see how the app explains what changed, what deserves attention, and
             what action to take next.

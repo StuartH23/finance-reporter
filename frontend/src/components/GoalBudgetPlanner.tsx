@@ -11,6 +11,8 @@ import {
 import { queryKeys } from '../api/queryKeys'
 import type { Goal, PaycheckObligation, PaycheckPlanResponse } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
+import EmptyState from './primitives/EmptyState'
+import MoneyInput from './primitives/MoneyInput'
 
 function fmtMoney(value: number) {
   return (
@@ -26,10 +28,6 @@ function parseAmount(value: string) {
   const parsed = Number.parseFloat(value)
   if (Number.isNaN(parsed)) return 0
   return Math.max(0, parsed)
-}
-
-function toInputAmount(value: number) {
-  return Number.isFinite(value) ? String(value) : '0'
 }
 
 function toCents(value: number) {
@@ -136,6 +134,7 @@ function GoalBudgetPlanner() {
   const effectiveMinimumEmergencyBuffer = enforceEmergencyMinimum
     ? parseAmount(minimumEmergencyBuffer)
     : 0
+  const today = new Date().toISOString().slice(0, 10)
 
   const { data: goalsData } = useQuery({
     queryKey: queryKeys.goals.list,
@@ -266,14 +265,13 @@ function GoalBudgetPlanner() {
               placeholder="Emergency Fund"
             />
           </label>
-          <label className="field-label">
+          <label className="field-label" htmlFor="goal-target-amount">
             Target Amount
-            <input
+            <MoneyInput
+              id="goal-target-amount"
+              value={parseAmount(goalAmount)}
+              onValueChange={(value) => setGoalAmount(String(value ?? 0))}
               className="text-input"
-              type="number"
-              min="0"
-              value={goalAmount}
-              onChange={(e) => setGoalAmount(e.target.value)}
             />
           </label>
           <label className="field-label">
@@ -281,9 +279,11 @@ function GoalBudgetPlanner() {
             <input
               className="text-input"
               type="date"
+              min={today}
               value={goalTargetDate}
               onChange={(e) => setGoalTargetDate(e.target.value)}
             />
+            <span className="budget-hint">Leave blank if open-ended.</span>
           </label>
           <label className="field-label">
             Priority (1 high - 5 low)
@@ -337,7 +337,7 @@ function GoalBudgetPlanner() {
       <div className="card">
         <h2>Goals</h2>
         {goals.length === 0 ? (
-          <p className="empty-state">No goals yet. Add your first goal above.</p>
+          <EmptyState body="No goals yet. Add your first goal above." />
         ) : (
           <table>
             <thead>
@@ -389,24 +389,22 @@ function GoalBudgetPlanner() {
       <div className="card">
         <h2>Paycheck Plan</h2>
         <div className="feature-form-grid goal-form-grid">
-          <label className="field-label">
+          <label className="field-label" htmlFor="paycheck-amount">
             Paycheck Amount
-            <input
+            <MoneyInput
+              id="paycheck-amount"
+              value={parseAmount(paycheckAmount)}
+              onValueChange={(value) => setPaycheckAmount(String(value ?? 0))}
               className="text-input"
-              type="number"
-              min="0"
-              value={paycheckAmount}
-              onChange={(e) => setPaycheckAmount(e.target.value)}
             />
           </label>
-          <label className="field-label">
+          <label className="field-label" htmlFor="paycheck-safety-buffer">
             Safety Buffer
-            <input
+            <MoneyInput
+              id="paycheck-safety-buffer"
+              value={parseAmount(safetyBuffer)}
+              onValueChange={(value) => setSafetyBuffer(String(value ?? 0))}
               className="text-input"
-              type="number"
-              min="0"
-              value={safetyBuffer}
-              onChange={(e) => setSafetyBuffer(e.target.value)}
             />
           </label>
           <label className="field-label">
@@ -419,12 +417,10 @@ function GoalBudgetPlanner() {
               />
               <span>Enforce minimum emergency contribution</span>
             </div>
-            <input
+            <MoneyInput
+              value={parseAmount(minimumEmergencyBuffer)}
+              onValueChange={(value) => setMinimumEmergencyBuffer(String(value ?? 0))}
               className="text-input"
-              type="number"
-              min="0"
-              value={minimumEmergencyBuffer}
-              onChange={(e) => setMinimumEmergencyBuffer(e.target.value)}
               disabled={!enforceEmergencyMinimum}
             />
           </label>
@@ -465,16 +461,14 @@ function GoalBudgetPlanner() {
               }}
               placeholder="Rent"
             />
-            <input
-              className="text-input obligation-amount-input"
-              type="number"
-              min="0"
-              value={toInputAmount(item.amount)}
-              onChange={(e) => {
+            <MoneyInput
+              value={item.amount}
+              onValueChange={(value) => {
                 const next = [...obligations]
-                next[idx] = { ...next[idx], amount: parseAmount(e.target.value) }
+                next[idx] = { ...next[idx], amount: value ?? 0 }
                 setObligations(next)
               }}
+              className="text-input obligation-amount-input"
             />
             <button
               type="button"
@@ -544,40 +538,33 @@ function GoalBudgetPlanner() {
             )}
 
             <div className="feature-form-grid u-mb-md">
-              <label className="field-label">
+              <label className="field-label" htmlFor="plan-needs-override">
                 Needs Override
-                <input
+                <MoneyInput
+                  id="plan-needs-override"
+                  value={draftPlan.needs}
+                  onValueChange={(value) => setDraftPlan({ ...draftPlan, needs: value ?? 0 })}
                   className="text-input"
-                  type="number"
-                  min="0"
-                  value={toInputAmount(draftPlan.needs)}
-                  onChange={(e) =>
-                    setDraftPlan({ ...draftPlan, needs: parseAmount(e.target.value) })
-                  }
                 />
               </label>
-              <label className="field-label">
+              <label className="field-label" htmlFor="plan-goals-override">
                 Goals Override
-                <input
+                <MoneyInput
+                  id="plan-goals-override"
+                  value={draftPlan.goals}
+                  onValueChange={(value) => setDraftPlan({ ...draftPlan, goals: value ?? 0 })}
                   className="text-input"
-                  type="number"
-                  min="0"
-                  value={toInputAmount(draftPlan.goals)}
-                  onChange={(e) =>
-                    setDraftPlan({ ...draftPlan, goals: parseAmount(e.target.value) })
-                  }
                 />
               </label>
-              <label className="field-label">
+              <label className="field-label" htmlFor="plan-discretionary-override">
                 Discretionary Override
-                <input
-                  className="text-input"
-                  type="number"
-                  min="0"
-                  value={toInputAmount(draftPlan.discretionary)}
-                  onChange={(e) =>
-                    setDraftPlan({ ...draftPlan, discretionary: parseAmount(e.target.value) })
+                <MoneyInput
+                  id="plan-discretionary-override"
+                  value={draftPlan.discretionary}
+                  onValueChange={(value) =>
+                    setDraftPlan({ ...draftPlan, discretionary: value ?? 0 })
                   }
+                  className="text-input"
                 />
               </label>
             </div>

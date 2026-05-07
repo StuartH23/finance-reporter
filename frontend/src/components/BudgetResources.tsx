@@ -38,7 +38,7 @@ const appIdeas = [
     detail: 'Choose strict per-category limits or one flexible spending bucket.',
   },
   {
-    feature: 'Move Money Between Categories',
+    feature: 'Reallocate Budget Between Categories',
     detail:
       'Tap overspent category and fund it from another category without changing total budget.',
   },

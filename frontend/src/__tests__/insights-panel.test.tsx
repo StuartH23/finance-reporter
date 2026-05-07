@@ -20,7 +20,7 @@ describe('insights panel', () => {
     )
 
     expect(html).toContain('Coach Insights')
-    expect(html).toContain('Upload at least two full months of data')
+    expect(html).toContain('Coach insights kick in after two full months of statements')
   })
 
   it('renders why/do sections when insights exist', () => {

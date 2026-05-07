@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { clearDemoSession, seedDemoSession } from './api/client'
-import { type AppNavItem, getNavItems } from './appNavigation'
+import { type AppNavItem, getNavGroups, getNavItems } from './appNavigation'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import AuthRequiredScreen from './components/AuthRequiredScreen'
 import { getDemoTransactions, resetDemoState } from './demo/demoApi'
@@ -16,16 +17,45 @@ const CashFlow = lazy(() => import('./pages/CashFlow'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Goals = lazy(() => import('./pages/Goals'))
 const Subscriptions = lazy(() => import('./pages/Subscriptions'))
+const FileUploader = lazy(() => import('./components/FileUploader'))
 
+const navGroups = getNavGroups()
 const navItems = getNavItems()
 
 const SIDEBAR_PREF_KEY = 'pnl-reporter.sidebar-collapsed'
+const THEME_PREF_KEY = 'pnl-reporter.theme'
+
+type AppTheme = 'dark' | 'light'
+
+function getPreferredTheme(): AppTheme {
+  if (typeof window === 'undefined') return 'dark'
+
+  const painted = document.documentElement.dataset.theme
+  if (painted === 'dark' || painted === 'light') return painted
+
+  try {
+    const stored = window.localStorage.getItem(THEME_PREF_KEY)
+    if (stored === 'dark' || stored === 'light') return stored
+  } catch {
+    // Ignore unavailable storage.
+  }
+
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
 
 function RouteFallback() {
   return (
     <section className="card route-loading" aria-label="Loading page">
       <p>Loading page...</p>
     </section>
+  )
+}
+
+function UploadFallback() {
+  return (
+    <div className="card upload-card upload-card-loading" role="status" aria-live="polite">
+      <p>Loading upload tools...</p>
+    </div>
   )
 }
 
@@ -115,6 +145,12 @@ function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const [demoModeEnabled, setDemoModeEnabled] = useState(() => getDemoMode())
+  const [uploadSheetOpen, setUploadSheetOpen] = useState(false)
+  const [uploadOpenRequest, setUploadOpenRequest] = useState(0)
+  const [theme, setTheme] = useState<AppTheme>(() => getPreferredTheme())
+  const uploadSheetRef = useRef<HTMLElement>(null)
+  const uploadCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const uploadOpenerRef = useRef<HTMLElement | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -127,7 +163,14 @@ function AppShell() {
     item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to),
   )
 
-  const dispatchDashboardEvent = (name: 'app:view-reports' | 'app:upload-statements') => {
+  const openUploadSheet = () => {
+    const active = document.activeElement
+    uploadOpenerRef.current = active instanceof HTMLElement ? active : null
+    setUploadSheetOpen(true)
+    setUploadOpenRequest((request) => request + 1)
+  }
+
+  const dispatchDashboardEvent = (name: 'app:view-reports') => {
     const dispatch = () => window.dispatchEvent(new CustomEvent(name))
     if (location.pathname !== '/') {
       navigate('/')
@@ -155,6 +198,57 @@ function AppShell() {
     }
   }, [sidebarCollapsed])
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try {
+      window.localStorage.setItem(THEME_PREF_KEY, theme)
+    } catch {
+      // Ignore persistence errors.
+    }
+  }, [theme])
+
+  useEffect(() => {
+    if (!uploadSheetOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    uploadCloseButtonRef.current?.focus()
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setUploadSheetOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+      const focusable = uploadSheetRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      if (!focusable?.length) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+      const opener = uploadOpenerRef.current
+      if (opener && document.contains(opener)) {
+        opener.focus()
+      }
+      uploadOpenerRef.current = null
+    }
+  }, [uploadSheetOpen])
+
   const enableGuestDemoMode = () => {
     if (!getDemoMode()) {
       resetDemoState()
@@ -174,6 +268,11 @@ function AppShell() {
   const isGuestDemo = demoModeEnabled && guestFeature.isGuestDemo
   const requiresSignIn =
     auth.isConfigured && !auth.isSignedIn && !demoModeEnabled && !isAuthCallback
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger, not read in the body.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!auth.isSignedIn || !demoModeEnabled) return
@@ -218,30 +317,49 @@ function AppShell() {
           <span className="rail-label">{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
         </button>
         <div className="rail-nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className="rail-link"
-              title={sidebarCollapsed ? item.label : undefined}
-              aria-label={item.label}
-            >
-              <NavIcon icon={item.icon} />
-              <span className="rail-label">{item.label}</span>
-            </NavLink>
+          {navGroups.map((group) => (
+            <div className="rail-nav-group" key={group.label ?? 'ask-ai'}>
+              {group.label && <span className="rail-group-label">{group.label}</span>}
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/'}
+                  className="rail-link"
+                  title={sidebarCollapsed ? item.label : undefined}
+                  aria-label={item.label}
+                >
+                  <NavIcon icon={item.icon} />
+                  <span className="rail-label">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </div>
       </aside>
 
       <section className="workspace">
         <header className="workspace-header">
-          <nav className="breadcrumbs" aria-label="Breadcrumb">
-            <span>Home</span>
-            <span>/</span>
-            <strong>{current?.label ?? 'Dashboard'}</strong>
-          </nav>
+          <div className="breadcrumbs">
+            <strong>{current?.label ?? 'Money Checkup'}</strong>
+          </div>
           <div className="header-actions">
+            <button
+              type="button"
+              className="header-button toggle"
+              onClick={() =>
+                setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))
+              }
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              aria-pressed={theme === 'light'}
+            >
+              {theme === 'dark' ? (
+                <Sun size={14} aria-hidden="true" />
+              ) : (
+                <Moon size={14} aria-hidden="true" />
+              )}
+            </button>
             {auth.isConfigured && (
               <>
                 {auth.isSignedIn && <span className="header-auth-label">{authLabel}</span>}
@@ -274,23 +392,11 @@ function AppShell() {
             >
               View Reports
             </button>
-            <button
-              type="button"
-              className={`header-button ${isGuestDemo ? 'secondary' : 'primary'}`}
-              onClick={() => {
-                if (isGuestDemo) {
-                  guestFeature.showGuestFeature({
-                    title: 'Sign in to unlock uploads',
-                    message:
-                      'Guest Demo uses sample transactions only. Sign in with email or Google to upload statements and save your own finance data.',
-                  })
-                  return
-                }
-                dispatchDashboardEvent('app:upload-statements')
-              }}
-            >
-              {isGuestDemo ? 'Uploads Locked' : 'Upload Statements'}
-            </button>
+            {!isGuestDemo && (
+              <button type="button" className="header-button primary" onClick={openUploadSheet}>
+                Upload Statements
+              </button>
+            )}
           </div>
         </header>
 
@@ -302,8 +408,10 @@ function AppShell() {
                 element={
                   <Dashboard
                     canEnableDemo={!auth.isConfigured || !auth.isSignedIn}
+                    canUpload={!isGuestDemo}
                     demoModeEnabled={demoModeEnabled}
                     onEnableDemoMode={enableGuestDemoMode}
+                    onUploadStatements={openUploadSheet}
                   />
                 }
               />
@@ -315,6 +423,40 @@ function AppShell() {
             </Routes>
           </Suspense>
         </main>
+        {uploadSheetOpen && (
+          <div className="upload-sheet-backdrop">
+            <button
+              type="button"
+              className="upload-sheet-backdrop-dismiss"
+              aria-label="Close upload"
+              tabIndex={-1}
+              onClick={() => setUploadSheetOpen(false)}
+            />
+            <section
+              ref={uploadSheetRef}
+              className="upload-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Upload statements"
+            >
+              <div className="upload-sheet-header">
+                <strong>Upload Statements</strong>
+                <button
+                  ref={uploadCloseButtonRef}
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setUploadSheetOpen(false)}
+                  aria-label="Close upload"
+                >
+                  Close
+                </button>
+              </div>
+              <Suspense fallback={<UploadFallback />}>
+                <FileUploader openRequest={uploadOpenRequest} />
+              </Suspense>
+            </section>
+          </div>
+        )}
       </section>
     </div>
   )

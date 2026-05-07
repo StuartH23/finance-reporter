@@ -4,6 +4,8 @@ interface DashboardCommandHeaderProps {
   demoModeEnabled: boolean
   ledgerData?: LedgerResponse
   monthlyData?: MonthlyPnlResponse
+  canUpload?: boolean
+  onUploadStatements: () => void
 }
 
 function toMonthDate(monthStr: string) {
@@ -35,6 +37,8 @@ export default function DashboardCommandHeader({
   demoModeEnabled,
   ledgerData,
   monthlyData,
+  canUpload = true,
+  onUploadStatements,
 }: DashboardCommandHeaderProps) {
   const transactionCount = ledgerData?.count ?? 0
   const sourceCount = uniqueSourceCount(ledgerData)
@@ -44,8 +48,6 @@ export default function DashboardCommandHeader({
       : demoModeEnabled
         ? 'Sample data'
         : 'No sources'
-
-  const dispatchUpload = () => window.dispatchEvent(new CustomEvent('app:upload-statements'))
 
   return (
     <section className="dashboard-command-header" aria-labelledby="money-checkup-title">
@@ -58,9 +60,16 @@ export default function DashboardCommandHeader({
         <span>{demoModeEnabled ? 'Demo' : 'Live'}</span>
         <span>{transactionCount.toLocaleString()} transactions</span>
         <span>{sourceLabel}</span>
-        <button type="button" className="ghost-button" onClick={dispatchUpload}>
-          Upload
-        </button>
+        {canUpload && (
+          <button type="button" className="ghost-button" onClick={onUploadStatements}>
+            Upload
+          </button>
+        )}
+        {!canUpload && demoModeEnabled && (
+          <span className="dashboard-upload-hint" title="Sign in to upload personal statements">
+            Sign in to upload
+          </span>
+        )}
       </div>
     </section>
   )

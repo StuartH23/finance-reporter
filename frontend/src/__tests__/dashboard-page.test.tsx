@@ -123,14 +123,21 @@ function seedDashboardData(client: QueryClient) {
 }
 
 describe('Dashboard page', () => {
-  it('renders demo-first money checkup preview when there are no transactions', () => {
+  it('renders demo-first money checkup preview for signed-in zero-data users', () => {
     const html = renderDashboard({ canEnableDemo: true })
 
-    expect(html).toContain('Preview Maya&#x27;s Money Checkup')
+    expect(html).toContain('See it with sample data')
     expect(html).toContain('what changed')
     expect(html).toContain('what deserves attention')
     expect(html).toContain('what action to take next')
     expect(html).toContain('Try Demo Mode')
+  })
+
+  it('renders the dashboard shell when demo preview is not available', () => {
+    const html = renderDashboard({ canEnableDemo: false })
+
+    expect(html).toContain('Money Checkup')
+    expect(html).not.toContain('See it with sample data')
   })
 
   it('renders the monthly health dashboard when data exists', () => {
@@ -153,6 +160,8 @@ describe('Dashboard page', () => {
     expect(html).toContain('What deserves attention')
     expect(html).toContain('Review optional subscriptions')
     expect(html.match(/Review optional subscriptions/g)).toHaveLength(1)
+    expect(html).not.toContain('Highest-impact review')
+    expect(html).not.toContain('Start Here')
     expect(html).toContain('Set a restaurant spending cap')
     expect(html).toContain('Other recommended actions')
     expect(html).not.toContain('Priority Review')

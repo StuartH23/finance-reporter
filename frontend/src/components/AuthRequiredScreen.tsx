@@ -1,3 +1,5 @@
+import ExperiencePreview from './ExperiencePreview'
+
 type AuthRequiredScreenProps = Readonly<{
   error?: string | null
   onSignIn: () => void
@@ -12,7 +14,7 @@ function AuthRequiredScreen({ error, onSignIn, onGuestDemo }: AuthRequiredScreen
           <p className="auth-brand">Finance Reporter</p>
           <h1 id="auth-entry-title">Sign in to continue</h1>
           <p className="auth-lede">
-            Upload statements, save budgets, and keep your goals with your account.
+            Upload statements, draft budgets, and track goals across sessions.
           </p>
           {error && (
             <p className="form-error auth-entry-error" role="alert">
@@ -27,21 +29,9 @@ function AuthRequiredScreen({ error, onSignIn, onGuestDemo }: AuthRequiredScreen
               Continue as Guest Demo
             </button>
           </div>
-          <p className="auth-demo-note">Guest demo uses sample transactions only.</p>
+          <p className="auth-demo-note">Guest demo uses sample data — no signup, no data saved.</p>
         </div>
-        <section className="auth-entry-preview" aria-label="Finance snapshot">
-          <img src="/screenshots/preview-dashboard.svg" alt="Finance dashboard preview" />
-          <section className="auth-preview-metrics" aria-label="Sample finance snapshot">
-            <div>
-              <span>Monthly Net</span>
-              <strong>$2,450</strong>
-            </div>
-            <div>
-              <span>Goal Room</span>
-              <strong>$680</strong>
-            </div>
-          </section>
-        </section>
+        <ExperiencePreview onEnableDemo={onGuestDemo} />
       </section>
     </main>
   )

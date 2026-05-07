@@ -21,7 +21,7 @@ export function dashboardActionRouteLabel(action: NextBestAction): string {
     return 'Go To Budget'
   }
   if (action.action_type === 'save_transfer') {
-    return 'Plan Transfer'
+    return 'Open Budget'
   }
   return 'View Details'
 }
