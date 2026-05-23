@@ -42,6 +42,36 @@ def test_process_csv_valid():
     assert result["amount"].iloc[0] == 100.00
 
 
+def test_process_csv_credit_card_statement_uses_charge_and_payment_when_amount_is_zero():
+    """Some credit-card CSVs include a placeholder Amount column plus real
+    Charge/Payment columns. The parser should not turn purchases into $0 rows.
+    """
+    csv_content = (
+        b"Date,Description,Amount,Charge,Payment\n"
+        b"2025-01-01,Coffee Shop,0.00,12.34,\n"
+        b"2025-01-02,Autopay Thank You,0.00,,100.00\n"
+    )
+
+    result = _process_csv(csv_content)
+
+    assert result is not None
+    assert result["amount"].tolist() == [-12.34, 100.00]
+
+
+def test_process_csv_credit_card_statement_detects_plural_charge_payment_columns():
+    """Plural credit-card column labels should be treated as split amount columns."""
+    csv_content = (
+        b"Date,Description,Charges,Payments\n"
+        b"2025-01-01,Grocery Store,45.67,\n"
+        b"2025-01-02,Statement Credit,,5.00\n"
+    )
+
+    result = _process_csv(csv_content)
+
+    assert result is not None
+    assert result["amount"].tolist() == [-45.67, 5.00]
+
+
 def test_process_csv_malformed():
     """Malformed CSV should return None, not crash."""
     result = _process_csv(b"\x00\x01\x02\x03")

@@ -79,6 +79,124 @@ def test_build_ledger_with_debit_credit():
     assert result["amount"].iloc[1] == -100.00
 
 
+def test_build_ledger_prefers_split_columns_when_amount_is_zero_placeholder():
+    """CSV statements can include a placeholder Amount plus real split columns."""
+    df = pd.DataFrame(
+        {
+            "date": ["2025-01-01", "2025-01-02"],
+            "description": ["Coffee Shop", "Autopay Thank You"],
+            "amount": ["0.00", "0.00"],
+            "charge": ["12.34", ""],
+            "payment": ["", "100.00"],
+        }
+    )
+    result = build_ledger(
+        df=df,
+        date_col="date",
+        desc_col="description",
+        amount_col="amount",
+        debit_col="charge",
+        credit_col="payment",
+        flip_sign=False,
+        prefer_split_when_amount_zero=True,
+    )
+    assert result["amount"].tolist() == [-12.34, 100.00]
+
+
+def test_build_ledger_keeps_nonzero_amount_when_split_columns_exist():
+    df = pd.DataFrame(
+        {
+            "date": ["2025-01-01"],
+            "description": ["Posted Transaction"],
+            "amount": ["25.00"],
+            "charge": ["12.34"],
+            "payment": [""],
+        }
+    )
+    result = build_ledger(
+        df=df,
+        date_col="date",
+        desc_col="description",
+        amount_col="amount",
+        debit_col="charge",
+        credit_col="payment",
+        flip_sign=False,
+        prefer_split_when_amount_zero=True,
+    )
+    assert result["amount"].tolist() == [25.00]
+
+
+def test_build_ledger_uses_split_columns_row_wise_for_zero_amounts():
+    df = pd.DataFrame(
+        {
+            "date": ["2025-01-01", "2025-01-02"],
+            "description": ["Posted Transaction", "Placeholder Purchase"],
+            "amount": ["25.00", "0.00"],
+            "charge": ["", "12.34"],
+            "payment": ["", ""],
+        }
+    )
+    result = build_ledger(
+        df=df,
+        date_col="date",
+        desc_col="description",
+        amount_col="amount",
+        debit_col="charge",
+        credit_col="payment",
+        flip_sign=False,
+        prefer_split_when_amount_zero=True,
+    )
+    assert result["amount"].tolist() == [25.00, -12.34]
+
+
+def test_build_ledger_drops_invalid_nonblank_split_amounts():
+    df = pd.DataFrame(
+        {
+            "date": ["2025-01-01", "2025-01-02"],
+            "description": ["Good Purchase", "Bad Purchase"],
+            "amount": ["0.00", "0.00"],
+            "charge": ["12.34", "not-an-amount"],
+            "payment": ["", ""],
+        }
+    )
+    result = build_ledger(
+        df=df,
+        date_col="date",
+        desc_col="description",
+        amount_col="amount",
+        debit_col="charge",
+        credit_col="payment",
+        flip_sign=False,
+        prefer_split_when_amount_zero=True,
+    )
+    assert result["description"].tolist() == ["Good Purchase"]
+    assert result["amount"].tolist() == [-12.34]
+
+
+def test_build_ledger_drops_invalid_nonblank_amount_instead_of_using_split():
+    df = pd.DataFrame(
+        {
+            "date": ["2025-01-01", "2025-01-02"],
+            "description": ["Blank Amount", "Bad Amount"],
+            "amount": ["", "not-an-amount"],
+            "charge": ["12.34", "45.67"],
+            "payment": ["", ""],
+        }
+    )
+    result = build_ledger(
+        df=df,
+        date_col="date",
+        desc_col="description",
+        amount_col="amount",
+        debit_col="charge",
+        credit_col="payment",
+        flip_sign=False,
+        prefer_split_when_amount_zero=True,
+    )
+    assert result["description"].tolist() == ["Blank Amount"]
+    assert result["amount"].tolist() == [-12.34]
+
+
 def test_build_ledger_debit_only():
     """Only debit column provided (no credit) should work."""
     df = pd.DataFrame(

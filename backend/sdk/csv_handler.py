@@ -16,8 +16,8 @@ class ColumnGuess:
 DATE_CANDIDATES = ["date", "posting date", "transaction date", "posted date"]
 DESCRIPTION_CANDIDATES = ["description", "merchant", "payee", "details", "memo"]
 AMOUNT_CANDIDATES = ["amount", "transaction amount", "amt"]
-DEBIT_CANDIDATES = ["debit", "withdrawal", "charge"]
-CREDIT_CANDIDATES = ["credit", "deposit", "payment"]
+DEBIT_CANDIDATES = ["debit", "debit amount", "withdrawal", "charge", "charges", "purchase"]
+CREDIT_CANDIDATES = ["credit", "credit amount", "deposit", "payment", "payments"]
 
 
 def _normalize_col(name: str) -> str:

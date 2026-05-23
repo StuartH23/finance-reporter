@@ -35,13 +35,26 @@ def build_ledger(
     debit_col: str | None,
     credit_col: str | None,
     flip_sign: bool,
+    prefer_split_when_amount_zero: bool = False,
 ) -> pd.DataFrame:
     if amount_col:
-        amount = df[amount_col].apply(clean_amount)
+        raw_amount = df[amount_col]
+        amount = raw_amount.apply(clean_amount)
+        if prefer_split_when_amount_zero and (debit_col or credit_col):
+            amount_is_blank = raw_amount.isna() | raw_amount.astype(str).str.strip().eq("")
+            amount_is_zero = amount.eq(0) | amount_is_blank
+            if amount_is_zero.any():
+                debit_values = _clean_amount_column(df, debit_col)
+                credit_values = _clean_amount_column(df, credit_col)
+                split_amount = credit_values - debit_values
+                split_is_invalid = split_amount.isna()
+                split_has_value = split_amount.fillna(0) != 0
+                amount = amount.mask(amount_is_zero & split_has_value, split_amount)
+                amount = amount.mask(amount_is_zero & split_is_invalid)
     elif debit_col or credit_col:
-        debit = df[debit_col].apply(clean_amount) if debit_col else pd.Series(0, index=df.index)
-        credit = df[credit_col].apply(clean_amount) if credit_col else pd.Series(0, index=df.index)
-        amount = credit.fillna(0) - debit.fillna(0)
+        debit_values = _clean_amount_column(df, debit_col)
+        credit_values = _clean_amount_column(df, credit_col)
+        amount = credit_values - debit_values
     else:
         raise ValueError("No amount, debit, or credit column provided")
 
@@ -57,6 +70,15 @@ def build_ledger(
     )
     ledger = ledger.dropna(subset=["date", "amount"])
     return ledger
+
+
+def _clean_amount_column(df: pd.DataFrame, column: str | None) -> pd.Series:
+    if column is None:
+        return pd.Series(0, index=df.index)
+    raw = df[column]
+    parsed = raw.apply(clean_amount)
+    blank = raw.isna() | raw.astype(str).str.strip().eq("")
+    return parsed.mask(blank, 0)
 
 
 def summarize(ledger: pd.DataFrame) -> pd.DataFrame:

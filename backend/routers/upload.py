@@ -373,7 +373,8 @@ def _process_csv(content: bytes) -> pd.DataFrame | None:
         date_col=guess.date,
         desc_col=guess.description,
         amount_col=guess.amount,
-        debit_col=guess.debit if not guess.amount else None,
-        credit_col=guess.credit if not guess.amount else None,
+        debit_col=guess.debit,
+        credit_col=guess.credit,
         flip_sign=False,
+        prefer_split_when_amount_zero=True,
     )
