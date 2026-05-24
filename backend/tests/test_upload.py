@@ -5,11 +5,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import pytest
 from fastapi.testclient import TestClient
 
 from main import app
 from routers import upload as upload_router
-from routers.upload import _process_csv, _session_cookie_options
+from routers.upload import _process_csv, _process_pdf, _session_cookie_options
 
 
 def test_process_csv_empty_bytes():
@@ -40,6 +41,27 @@ def test_process_csv_valid():
     assert result is not None
     assert len(result) == 1
     assert result["amount"].iloc[0] == 100.00
+
+
+def test_process_pdf_discover_statement_fixture():
+    statement = Path("/Users/stu/Downloads/Discover-Statement-20260424-0229.pdf")
+    if not statement.exists():
+        pytest.skip("Discover statement fixture is only available on the local dev machine")
+
+    result = _process_pdf(statement.read_bytes(), statement.name)
+
+    assert result is not None
+    assert len(result) == 25
+    amounts_by_description = dict(zip(result["description"], result["amount"]))
+    assert amounts_by_description["DIRECTPAY FULL BALANCE"] == 840.04
+    assert (
+        amounts_by_description["SMITHS-FUEL #9207 SARATOGA SPRIUT Gasoline"]
+        == -65.05
+    )
+    assert (
+        amounts_by_description["SWIG SARATOGA SPRINGS SARATOGA Restaurants"]
+        == -10.06
+    )
 
 
 def test_process_csv_credit_card_statement_uses_charge_and_payment_when_amount_is_zero():

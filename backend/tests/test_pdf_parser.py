@@ -264,3 +264,44 @@ def test_pass1_ignores_unparseable_credit_card_table_lines():
 
     assert rows == {}
     assert orphan_amounts == []
+
+
+def test_pass1_parses_discover_left_column_when_rewards_share_line():
+    line_map = {
+        148: [
+            {"text": "04/19", "x0": 38},
+            {"text": "DIRECTPAY", "x0": 80},
+            {"text": "FULL", "x0": 124},
+            {"text": "BALANCE", "x0": 144},
+            {"text": "-$840.04", "x0": 369},
+            {"text": "1%", "x0": 421},
+            {"text": "Cashback", "x0": 436},
+            {"text": "Bonus", "x0": 476},
+            {"text": "+$6.17", "x0": 566},
+        ],
+        204: [
+            {"text": "03/23", "x0": 38},
+            {"text": "SMITHS-FUEL", "x0": 80},
+            {"text": "#9207", "x0": 133},
+            {"text": "SARATOGA", "x0": 161},
+            {"text": "SPRIUT", "x0": 205},
+            {"text": "Gasoline", "x0": 256},
+            {"text": "$65.05", "x0": 377},
+            {"text": "$121.30", "x0": 560},
+        ],
+    }
+
+    rows = _pass1_classify_lines(line_map, orphan_amounts=[])
+
+    assert rows == {
+        148: {
+            "Date": "04/19",
+            "Description": "DIRECTPAY FULL BALANCE",
+            "Amount": "$840.04",
+        },
+        204: {
+            "Date": "03/23",
+            "Description": "SMITHS-FUEL #9207 SARATOGA SPRIUT Gasoline",
+            "Amount": "-$65.05",
+        },
+    }

@@ -178,6 +178,11 @@ def _pass1_classify_lines_with_state(
             continue
 
         texts, had_marker = _clean_marker_texts(texts)
+        discover_row = _parse_discover_statement_row(line)
+        if discover_row:
+            txn_lines[y_key] = discover_row
+            prev_dateless = None
+            continue
         if _is_credit_card_statement_header(texts):
             in_credit_card_table = True
             prev_dateless = None
@@ -214,6 +219,38 @@ def _is_credit_card_statement_header(texts: list[str]) -> bool:
         return False
     tokens = [text.strip().lower().rstrip(".:") for text in texts[: len(header)]]
     return tokens == header
+
+
+def _parse_discover_statement_row(words: list[dict]) -> dict | None:
+    """Parse Discover's left-column transaction rows.
+
+    Discover statements can place rewards amounts in a right-hand column on the
+    same y-coordinate as transaction rows. Use x-positions to select the
+    transaction amount instead of the rightmost amount on the line.
+    """
+    line = sorted(words, key=lambda w: w["x0"])
+    texts = [w["text"] for w in line]
+    if not texts or not DATE_WORD_RE.match(texts[0]):
+        return None
+
+    amount_index = None
+    for index in range(len(line) - 1, 0, -1):
+        text = line[index]["text"]
+        if AMOUNT_WORD_RE.match(text) and 300 <= line[index]["x0"] <= 410:
+            amount_index = index
+            break
+    if amount_index is None:
+        return None
+
+    description = " ".join(texts[1:amount_index]).strip()
+    if not description:
+        return None
+
+    return {
+        "Date": texts[0],
+        "Description": description,
+        "Amount": _invert_amount_text(texts[amount_index]),
+    }
 
 
 def _credit_card_amount_index(texts: list[str]) -> int | None:
