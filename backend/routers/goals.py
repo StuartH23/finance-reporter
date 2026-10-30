@@ -44,6 +44,26 @@ def _clear_goal_session(session_id: str) -> None:
     _session_saved_plans.pop(session_id, None)
 
 
+def replace_session_goals(session_id: str, goals: list[dict]) -> None:
+    """Replace the goals stored for a session."""
+    _session_goals[session_id] = goals
+
+
+def replace_saved_paycheck_plan(session_id: str, plan: dict | None) -> None:
+    """Replace or clear the saved paycheck plan for a session."""
+    if plan is None:
+        _session_saved_plans.pop(session_id, None)
+        return
+    _session_saved_plans[session_id] = plan
+
+
+def export_goal_state(session_id: str, ledger) -> tuple[list[dict], dict | None]:
+    """Return stored goals, with progress filled in, and the saved paycheck plan."""
+    goals = _enriched_goals(session_id, ledger) if session_id in _session_goals else []
+    goals.sort(key=lambda item: (item["priority"], str(item["name"]).lower()))
+    return goals, _session_saved_plans.get(session_id)
+
+
 register_session_cleanup(_clear_goal_session)
 
 

@@ -18,7 +18,10 @@ def load_budget() -> dict[str, float]:
 def save_budget(budget: dict[str, float]) -> None:
     """Save monthly budget targets to the gitignored local override."""
     path = local_data_csv("budget.csv")
-    df = pd.DataFrame([{"category": k, "monthly_budget": v} for k, v in budget.items()])
+    df = pd.DataFrame(
+        [{"category": k, "monthly_budget": v} for k, v in budget.items()],
+        columns=["category", "monthly_budget"],
+    )
     df.to_csv(path, index=False)
 
 

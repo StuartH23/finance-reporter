@@ -19,6 +19,7 @@ A full-stack personal finance analysis app that converts raw bank statements int
 - Goal budgeting planner
 - Subscription center workflow
 - Insight panel and personalized next-best-action feed
+- Full data export (Excel workbook, CSV zip, or JSON backup) and JSON restore
 
 ## Architecture
 
@@ -122,7 +123,7 @@ The files in `backend/data/` are generic examples safe to keep in a public repo.
 - `backend/data/local/budget.csv`
 - `backend/data/local/categories.csv`
 
-Use the same columns as the examples (`category,monthly_budget` and `category,keywords`). The app reads a local file when it exists. Budget edits from the app are written to `backend/data/local/budget.csv`, so the shared example stays unchanged.
+Use the same columns as the examples (`category,monthly_budget` and `category,keywords`). The app reads a local file when it exists. Budget edits and backup restores write `backend/data/local/budget.csv` and `backend/data/local/categories.csv`, so the shared examples stay unchanged.
 
 ## Known Constraints
 

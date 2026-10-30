@@ -25,6 +25,10 @@ describe('app navigation', () => {
         label: null,
         items: [{ to: '/chat', label: 'Ask AI', icon: 'chat' }],
       },
+      {
+        label: 'Data',
+        items: [{ to: '/export', label: 'Export', icon: 'export' }],
+      },
     ])
   })
 
@@ -36,6 +40,7 @@ describe('app navigation', () => {
       'Budget',
       'Goals',
       'Ask AI',
+      'Export',
     ])
   })
 })

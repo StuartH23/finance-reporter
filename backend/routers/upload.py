@@ -208,6 +208,30 @@ def get_action_state(session_id: str | None, request: Request | None = None) -> 
     return _session_action_state.setdefault(session_id, {})
 
 
+def replace_imported_session(
+    session_id: str,
+    *,
+    ledger: pd.DataFrame,
+    category_overrides: dict[str, str],
+    subscription_preferences: dict[str, dict[str, bool]],
+    action_state: dict,
+    request: Request | None = None,
+) -> None:
+    """Replace the session records that a backup restore owns."""
+    _prune_expired_sessions()
+    if session_id not in _sessions:
+        return
+    if not _session_belongs_to_owner(session_id, _session_owner(request)):
+        return
+    _touch_session(session_id)
+    _sessions[session_id] = [ledger]
+    _session_category_overrides[session_id] = dict(category_overrides)
+    _session_subscription_preferences[session_id] = {
+        stream_id: dict(flags) for stream_id, flags in subscription_preferences.items()
+    }
+    _session_action_state[session_id] = dict(action_state)
+
+
 def set_subscription_preference(
     session_id: str | None,
     stream_id: str,
