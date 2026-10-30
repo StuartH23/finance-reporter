@@ -1,28 +1,28 @@
 category,keywords
-Income,payroll|salary|stripe payout|ach credit
-Personal Transfers,zelle|transfer from|remote online deposit|apple cash
-Credit Card Payments,discover e-payment|discover payments|applecard|chase credit crd|credit crd autopay
+Income,payroll|salary|direct deposit|paycheck
+Personal Transfers,zelle|transfer from|online transfer
+Credit Card Payments,credit card payment|card payment|autopay
 Venmo Transfers,venmo
-Owner Draw,transfer to owner|owner draw
-Groceries,costco whse|walmart|wal-mart|wm superc|smith's f\b|smiths(?!-fuel)|kroger|target|sam's club|ridley|macey|dollar\s*tre|carniceria|mike's market|www costco com|trader joe
-Meals & Dining,mcdonald|waffle love|seven brothers|restaurant|cafe|coffee|doordash|uber eats|chick-fil|wendy|taco bell|chipotle|subway|starbucks|panera|panda express|costa vida|apollo burger|dairy queen|won won wok|raising cane|jurassic street|mo\s*bettah|mobettah|handels|crumbl|quench it|five guys|cubby|hama sushi|brooker|swig|the other side
-Medical,medical|pharmacy|pharmac|dental|doctor|hospital|health|cvs|walgreens|musculoskeletal|anesthesia|gynecolog|laboratories|radiology|pediatric|surgery|costco online rx|advanced sports
-Housing,mortgage|hoa dues|paylease|rent
-Subscriptions,netflix|apple\.com/bill|cursor|floatplane|spotify|hulu|disney|youtube|amazon prime|hellofresh|nordvpn|nord\*|paramount\+
-Shopping,keebio|bambulab|amazon|ebay|preloved|aybl|etsy|killbuilt|ecompanystore|glory allan|fms-rc|deseret book|f&p llc
-Donations,jesuschrist
-Entertainment,kill tony|ticketmaster|live nation|maestro\.io|eventbrite|nintendo|xsolla|ctlp\*national|fatcats
-Car Payment,ssfcu
-Gas & Auto,fuel|gas station|shell|chevron|exxon|valero|jiffy lube|maverik|costco gas
-Recreation,john hancock|pickleb|hbgroup|eagle mountain sport|reps utah|jl sorenson|recreation|thanksgiving point
-Travel,airlines|hotel|uber(?! eats)|lyft|rental car|train|airbnb
-Marketing,\bads\b|facebook|google ads|\blinkedin|marketing
-Utilities,questargas|rocky\s*mtn|pacific power|electric|power bill|directcom|advancedcommu|pyl\*advanced|comcast|xfinity|\binternet\b|\bwater\b
-Investments,robinhood
-Government Fees,drivers license|dmv|vital records|ctlp\*state
-Insurance,insurance|premium
-Office Supplies,staples|office depot|\bpaper\b|\bprinter\b|\bink\b
-Bank Fees,\bfee\b|service charge|maintenance
-Taxes,\btax\b|irs|state tax|franchise|utahtaxrfd
-Software,software|saas|github|slack|notion|google workspace
+Owner Draw,owner draw|owner distribution
+Groceries,walmart|kroger|target|costco|trader joe|whole foods|aldi|safeway|publix|grocery
+Meals & Dining,mcdonald|restaurant|cafe|coffee|doordash|uber eats|starbucks|chipotle|taco bell|subway|panera
+Medical,pharmacy|cvs|walgreens|dental|doctor|hospital|clinic
+Housing,mortgage|\brent\b|hoa
+Subscriptions,netflix|spotify|hulu|disney\+|youtube|amazon prime|apple\.com/bill
+Shopping,amazon|ebay|etsy
+Donations,donation|charity|red cross
+Entertainment,ticketmaster|live nation|nintendo|amc|regal
+Car Payment,car payment|auto loan
+Gas & Auto,shell|chevron|exxon|\bbp\b|valero|gas station|fuel|jiffy lube
+Recreation,gym|ymca|recreation
+Travel,airline|hotel|\buber\b|lyft|airbnb|marriott
+Marketing,google ads|facebook ads|marketing
+Utilities,electric|power bill|\bwater\b|internet|comcast|xfinity|verizon
+Investments,vanguard|fidelity|schwab|robinhood
+Government Fees,dmv|drivers license
+Insurance,insurance|premium|geico|state farm
+Office Supplies,staples|office depot
+Bank Fees,service charge|maintenance fee|\bfee\b
+Taxes,\btax\b|irs
+Software,github|slack|notion|adobe|microsoft|software
 Uncategorized,

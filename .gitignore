@@ -28,6 +28,9 @@ htmlcov/
 frontend/node_modules/
 frontend/dist/
 
+# Optional personal budget and category files. See README.
+backend/data/local/*.csv
+
 # Claude
 .claudeignore
 docker-build.sh

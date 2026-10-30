@@ -200,19 +200,46 @@ def _write_rules(path: Path, rules: list[tuple[str, str]]) -> None:
         writer.writerows(rules)
 
 
-def test_full_export_round_trips_every_format(tmp_path, monkeypatch):
-    import sdk.budget as budget_sdk
-    import sdk.categories as category_sdk
+def _isolate_data_dirs(tmp_path, monkeypatch):
+    """Point budget and category IO at a temp tree and snapshot the real files."""
+    import sdk.data_paths as data_paths
 
-    real_budget_path = budget_sdk.BUDGET_PATH
-    real_rules_path = category_sdk.CATEGORIES_PATH
-    original_budget = real_budget_path.read_bytes()
-    original_rules = real_rules_path.read_bytes()
-    budget_path = tmp_path / "budget.csv"
-    rules_path = tmp_path / "categories.csv"
-    budget_path.write_text("category,monthly_budget\n", encoding="utf-8")
+    real_data = data_paths.DATA_DIR
+    real_local = data_paths.LOCAL_DIR
+    snapshots: dict[Path, bytes | None] = {}
+    for path in (
+        real_data / "budget.csv",
+        real_data / "categories.csv",
+        real_local / "budget.csv",
+        real_local / "categories.csv",
+    ):
+        snapshots[path] = path.read_bytes() if path.exists() else None
+
+    data = tmp_path / "data"
+    local = data / "local"
+    data.mkdir()
+    local.mkdir()
+    monkeypatch.setattr(data_paths, "DATA_DIR", data)
+    monkeypatch.setattr(data_paths, "LOCAL_DIR", local)
+    return data, local, snapshots
+
+
+def _assert_real_data_unchanged(snapshots: dict[Path, bytes | None]) -> None:
+    for path, original in snapshots.items():
+        if original is None:
+            assert not path.exists()
+        else:
+            assert path.read_bytes() == original
+
+
+def test_full_export_round_trips_every_format(tmp_path, monkeypatch):
+    data, local, snapshots = _isolate_data_dirs(tmp_path, monkeypatch)
+    shipped_budget = "category,monthly_budget\nGroceries,10\n"
+    shipped_rules = "category,keywords\nGroceries,walmart\n"
+    (data / "budget.csv").write_text(shipped_budget, encoding="utf-8")
+    (data / "categories.csv").write_text(shipped_rules, encoding="utf-8")
     _write_rules(
-        rules_path,
+        local / "categories.csv",
         [
             ("Income", "payroll|salary"),
             ("Meals", "cafe|coffee"),
@@ -221,8 +248,6 @@ def test_full_export_round_trips_every_format(tmp_path, monkeypatch):
             ("Quoted", "alpha, beta"),
         ],
     )
-    monkeypatch.setattr(budget_sdk, "BUDGET_PATH", budget_path)
-    monkeypatch.setattr(category_sdk, "CATEGORIES_PATH", rules_path)
 
     client = TestClient(app)
     csv_body = (
@@ -445,7 +470,7 @@ def test_full_export_round_trips_every_format(tmp_path, monkeypatch):
     )
     replacement = b"Date,Description,Amount\n2026-01-01,Other,-1.00\n"
     client.post("/api/upload", files=[("files", ("other.csv", replacement, "text/csv"))])
-    _write_rules(rules_path, [("Groceries", "market")])
+    _write_rules(local / "categories.csv", [("Groceries", "market")])
     get_action_state(session_id).clear()
     mutated = client.get("/api/budget").json()["budget"]
     assert mutated == [{"category": "Meals", "monthly_budget": 1.0}]
@@ -474,23 +499,23 @@ def test_full_export_round_trips_every_format(tmp_path, monkeypatch):
         "category": "Quoted",
         "keywords": "alpha, beta",
     }
-    assert real_budget_path.read_bytes() == original_budget
-    assert real_rules_path.read_bytes() == original_rules
+    assert (data / "budget.csv").read_text(encoding="utf-8") == shipped_budget
+    assert (data / "categories.csv").read_text(encoding="utf-8") == shipped_rules
+    assert "Meals" in (local / "budget.csv").read_text(encoding="utf-8")
+    assert "alpha, beta" in (local / "categories.csv").read_text(encoding="utf-8")
+    _assert_real_data_unchanged(snapshots)
 
 
 def test_transaction_export_filters_by_date_and_category(tmp_path, monkeypatch):
-    import sdk.categories as category_sdk
-
-    rules_path = tmp_path / "categories.csv"
+    data, _local, snapshots = _isolate_data_dirs(tmp_path, monkeypatch)
     _write_rules(
-        rules_path,
+        data / "categories.csv",
         [
             ("Meals", "cafe"),
             ("Income", "payroll"),
             ("Shopping", "book"),
         ],
     )
-    monkeypatch.setattr(category_sdk, "CATEGORIES_PATH", rules_path)
     client = TestClient(app)
     csv_body = (
         b"Date,Description,Amount\n"
@@ -562,6 +587,7 @@ def test_transaction_export_filters_by_date_and_category(tmp_path, monkeypatch):
     assert invalid.status_code == 422
     bad_date = client.get("/api/ledger/transactions/export", params={"start_date": "2026-02-31"})
     assert bad_date.status_code == 422
+    _assert_real_data_unchanged(snapshots)
 
 
 def test_backup_preview_rejects_invalid_documents():

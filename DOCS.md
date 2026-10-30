@@ -2,7 +2,7 @@
 
 ## Overview
 
-Decoupled **React + Vite frontend** (TypeScript) and **FastAPI backend** (Python 3.13+). The original Streamlit code is preserved in `deprecated/streamlit-app/`.
+Decoupled **React + Vite frontend** (TypeScript) and **FastAPI backend** (Python 3.13+).
 
 ---
 
@@ -16,8 +16,9 @@ pnl-reporter/
 │   ├── schemas.py                  # Pydantic request/response models
 │   ├── requirements.txt            # Python dependencies
 │   ├── data/
-│   │   ├── categories.csv          # Category regex rules
-│   │   └── budget.csv              # Monthly budget targets
+│   │   ├── categories.csv          # Example category rules
+│   │   ├── budget.csv              # Example monthly targets
+│   │   └── local/                  # Gitignored personal overrides
 │   ├── sdk/                        # Reusable core library
 │   │   ├── __init__.py             # Public exports
 │   │   ├── pdf_parser.py           # Chase PDF word-coordinate parser
@@ -66,8 +67,6 @@ pnl-reporter/
 │       │   └── Budget.tsx          # Quick check + budget editor
 │       └── __tests__/
 │           └── client.test.ts      # API client tests
-└── deprecated/
-    └── streamlit-app/              # Original code for reference/revert
 ```
 
 ---
@@ -1577,7 +1576,7 @@ File names look like `finance-export-2026-10-30.xlsx`. Dates are ISO (`YYYY-MM-D
 
 `GET /api/ledger/transactions/export` still exports the filtered transaction list as CSV or XLSX. Optional `start_date` and `end_date` (`YYYY-MM-DD`) and repeated `categories` narrow that file. `all_dates=true` exports every transaction instead of only the latest month. `category` still filters to one category. The download name includes the range, or the period, and today's date.
 
-`POST /api/export/preview` checks a JSON backup and returns row counts. `POST /api/export/restore` replaces saved data only after that preview. Subscription charges and goal contributions are rebuilt from transactions and goals. Essential and ignored subscription flags are restored. Paycheck obligation names are not stored, so the backup keeps the obligation total.
+`POST /api/export/preview` checks a JSON backup and returns row counts. `POST /api/export/restore` replaces saved data only after that preview. Budgets and category rules are read from `backend/data/local/` when those files exist, and restore writes them only there. The example files in `backend/data/` stay unchanged. Subscription charges and goal contributions are rebuilt from transactions and goals. Essential and ignored subscription flags are restored. Paycheck obligation names are not stored, so the backup keeps the obligation total.
 
 | Dataset | Columns |
 | --- | --- |
@@ -1596,7 +1595,7 @@ File names look like `finance-export-2026-10-30.xlsx`. Dates are ISO (`YYYY-MM-D
 | action_metric_weights | metric, weight |
 | action_catalog | action_id, action_type, title, impact_score, urgency_score, confidence_score, effort_score |
 
-Ask AI chat, feature-interest signups, and theme or sidebar preferences are not part of the backup.
+Ask AI chat and theme or sidebar preferences are not part of the backup.
 
 ## API Endpoint Summary
 

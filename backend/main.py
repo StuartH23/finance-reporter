@@ -18,7 +18,6 @@ from routers import (
     chat,
     demo,
     export,
-    feature_interest,
     goals,
     insights,
     ledger,
@@ -99,9 +98,6 @@ app.include_router(actions.router, prefix="/api", dependencies=protected_route_d
 app.include_router(budget.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(goals.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(categories.router, prefix="/api")
-app.include_router(
-    feature_interest.router, prefix="/api", dependencies=protected_route_dependencies
-)
 app.include_router(subscriptions.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(chat.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(analyst.router, prefix="/api", dependencies=protected_route_dependencies)

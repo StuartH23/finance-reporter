@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from .data_paths import local_data_csv, resolve_data_csv
+
 TRANSFER_CATEGORIES: set[str] = {
     "Credit Card Payments",
     "Venmo Transfers",
     "Personal Transfers",
     "Investments",
 }
-
-CATEGORIES_PATH = Path(__file__).resolve().parent.parent / "data" / "categories.csv"
 
 
 def _read_category_frame(path: str | Path) -> pd.DataFrame:
@@ -34,11 +34,12 @@ def load_categories(path: str) -> list[tuple[str, re.Pattern | None]]:
 
 
 def load_category_rules() -> list[dict[str, str]]:
-    """Return saved category keyword rules in file order."""
-    if not CATEGORIES_PATH.exists():
+    """Return category keyword rules, preferring the local override."""
+    path = resolve_data_csv("categories.csv")
+    if not path.exists():
         return []
     try:
-        frame = _read_category_frame(CATEGORIES_PATH)
+        frame = _read_category_frame(path)
     except pd.errors.EmptyDataError:
         return []
     if "category" not in frame.columns or "keywords" not in frame.columns:
@@ -50,10 +51,10 @@ def load_category_rules() -> list[dict[str, str]]:
 
 
 def save_category_rules(rules: list[dict[str, str]]) -> None:
-    """Replace the saved category keyword rules."""
+    """Replace category keyword rules in the gitignored local override."""
+    path = local_data_csv("categories.csv")
     frame = pd.DataFrame(rules, columns=["category", "keywords"])
-    CATEGORIES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(CATEGORIES_PATH, index=False)
+    frame.to_csv(path, index=False)
 
 
 def categorize(description: str, rules: list[tuple[str, re.Pattern | None]]) -> str:

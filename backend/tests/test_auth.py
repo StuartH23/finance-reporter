@@ -80,7 +80,7 @@ def test_health_and_reference_categories_stay_public_in_cognito_mode(monkeypatch
     assert categories.status_code == 200
 
 
-def test_public_write_routes_require_auth_in_cognito_mode(monkeypatch):
+def test_budget_update_requires_auth_in_cognito_mode(monkeypatch):
     _clear_auth_env(monkeypatch)
     monkeypatch.setenv("AUTH_MODE", "cognito")
     monkeypatch.setenv("COGNITO_REGION", "us-east-1")
@@ -88,10 +88,7 @@ def test_public_write_routes_require_auth_in_cognito_mode(monkeypatch):
     monkeypatch.setenv("COGNITO_APP_CLIENT_ID", "example-client")
     client = TestClient(app)
 
-    response = client.post(
-        "/api/feature-interest",
-        json={"email": "user@example.com", "features": ["Goal Buckets"]},
-    )
+    response = client.put("/api/budget", json={"budget": {"Groceries": 100}})
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Missing bearer token."

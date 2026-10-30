@@ -197,7 +197,8 @@ DOCUMENT_KEYS = frozenset({"version", "exported_at", *DATASET_NAMES})
 RESTORE_WARNINGS: tuple[str, ...] = (
     "Restore replaces transactions, goals, the saved paycheck plan, "
     "subscription preferences, and action feedback in this session.",
-    "Restore replaces the monthly budgets and category keyword rules saved for this app.",
+    "Restore replaces monthly budgets and category keyword rules in the local data folder. "
+    "Example files shipped with the app are left unchanged.",
     "Subscription lists, subscription charges, and goal progress are rebuilt "
     "from transactions and goals. Essential and ignored flags are restored.",
 )

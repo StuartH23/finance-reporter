@@ -28,7 +28,6 @@ import {
   savePaycheckPlan,
   setAccessTokenProvider,
   submitActionFeedback,
-  submitFeatureInterest,
   updateBudget,
   updateSubscriptionPreferences,
   uploadFiles,
@@ -146,9 +145,6 @@ function sampleBody(url: string): unknown {
   }
   if (url.includes('/upload')) {
     return { files: [], total_transactions: 0, pnl_transactions: 0, transfer_transactions: 0 }
-  }
-  if (url.includes('/feature-interest')) {
-    return { status: 'saved', total_signups: 1, feature_counts: { 'Goal Buckets': 1 } }
   }
   return {}
 }
@@ -348,20 +344,6 @@ describe('API client', () => {
     expect(lastUrl).toBe('/api/upload')
     expect(lastOptions?.method).toBe('POST')
     expect(lastOptions?.body).toBeInstanceOf(FormData)
-  })
-
-  it('submitFeatureInterest calls POST /api/feature-interest with JSON body', async () => {
-    await submitFeatureInterest({
-      email: 'user@example.com',
-      features: ['Goal Buckets'],
-    })
-    expect(lastUrl).toBe('/api/feature-interest')
-    expect(lastOptions?.method).toBe('POST')
-    expect(lastOptions?.headers).toEqual({ 'Content-Type': 'application/json' })
-    expect(JSON.parse(lastOptions?.body as string)).toEqual({
-      email: 'user@example.com',
-      features: ['Goal Buckets'],
-    })
   })
 
   it('updateSubscriptionPreferences calls POST with JSON body', async () => {

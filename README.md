@@ -116,11 +116,21 @@ cd frontend && npm test
 cd frontend && npm run lint && npm run typecheck
 ```
 
+## Your own budget and categories
+
+The files in `backend/data/` are generic examples safe to keep in a public repo. To use your own monthly targets or merchant keywords, add either file below. CSV files in that folder are gitignored:
+
+- `backend/data/local/budget.csv`
+- `backend/data/local/categories.csv`
+
+Use the same columns as the examples (`category,monthly_budget` and `category,keywords`). The app reads a local file when it exists. Budget edits and backup restores write `backend/data/local/budget.csv` and `backend/data/local/categories.csv`, so the shared examples stay unchanged.
+
 ## Known Constraints
 
 - Data/session state is in-memory in the backend process
 - Restarting the backend clears uploaded session data
 - PDF parsing is currently optimized for Chase statement layout
+- Public demo analyst questions are capped per connecting client and by a daily paid-model limit (`DEMO_CLIENT_RATE_LIMIT`, `DEMO_CLIENT_RATE_WINDOW_SECONDS`, `DEMO_DAILY_MODEL_CAP`)
 
 ## Documentation
 
