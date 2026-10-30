@@ -2,7 +2,7 @@
 
 ## Overview
 
-Decoupled **React + Vite frontend** (TypeScript) and **FastAPI backend** (Python 3.13+). The original Streamlit code is preserved in `deprecated/streamlit-app/`.
+Decoupled **React + Vite frontend** (TypeScript) and **FastAPI backend** (Python 3.13+).
 
 ---
 
@@ -66,8 +66,6 @@ pnl-reporter/
 │       │   └── Budget.tsx          # Quick check + budget editor
 │       └── __tests__/
 │           └── client.test.ts      # API client tests
-└── deprecated/
-    └── streamlit-app/              # Original code for reference/revert
 ```
 
 ---
