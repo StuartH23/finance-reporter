@@ -80,14 +80,14 @@ export async function getLedger(): Promise<LedgerResponse> {
 }
 
 export interface LedgerTransactionOptions {
-  granularity?: 'year' | 'month' | 'quarter'
-  period?: string
-  category?: string
-  type?: 'income' | 'spending' | 'transfer'
-  sourceFile?: string
-  search?: string
-  sort?: 'date' | 'description' | 'amount' | 'category' | 'source_file'
-  direction?: 'asc' | 'desc'
+  granularity?: 'year' | 'month' | 'quarter' | undefined
+  period?: string | undefined
+  category?: string | undefined
+  type?: 'income' | 'spending' | 'transfer' | undefined
+  sourceFile?: string | undefined
+  search?: string | undefined
+  sort?: 'date' | 'description' | 'amount' | 'category' | 'source_file' | undefined
+  direction?: 'asc' | 'desc' | undefined
 }
 
 function ledgerTransactionParams(options?: LedgerTransactionOptions) {
@@ -218,7 +218,7 @@ export async function getYearlyPnl(): Promise<YearlyPnlResponse> {
 }
 
 export async function getCategoryBreakdown(options?: {
-  year?: number
+  year?: number | undefined
 }): Promise<CategoryBreakdownResponse> {
   const params = new URLSearchParams()
   if (options?.year !== undefined) params.set('year', String(options.year))
@@ -227,9 +227,9 @@ export async function getCategoryBreakdown(options?: {
 }
 
 export async function getCashFlow(options?: {
-  granularity?: 'year' | 'month' | 'quarter'
-  groupBy?: 'category' | 'merchant'
-  period?: string
+  granularity?: 'year' | 'month' | 'quarter' | undefined
+  groupBy?: 'category' | 'merchant' | undefined
+  period?: string | undefined
 }): Promise<CashFlowResponse> {
   const params = new URLSearchParams()
   if (options?.granularity) params.set('granularity', options.granularity)

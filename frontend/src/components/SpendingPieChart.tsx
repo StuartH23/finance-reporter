@@ -82,7 +82,7 @@ function hashCategory(category: string) {
 
 function colorForCategory(category: string) {
   if (category === 'Other') return OTHER_COLOR
-  return CATEGORY_COLORS[hashCategory(category) % CATEGORY_COLORS.length]
+  return CATEGORY_COLORS[hashCategory(category) % CATEGORY_COLORS.length] ?? OTHER_COLOR
 }
 
 function summarizeSpending(chartItems: SpendingChartItem[]) {
@@ -112,6 +112,7 @@ function summarizeSpending(chartItems: SpendingChartItem[]) {
 
   slices.sort((a, b) => b.total - a.total)
   const topCategory = slices[0]
+  if (!topCategory) return null
 
   const otherBreakdown = small
     .map((item) => ({

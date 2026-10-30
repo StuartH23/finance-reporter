@@ -330,9 +330,9 @@ export interface NextBestActionFeedbackResponse {
 // Feature interest
 export interface FeatureInterestRequest {
   email: string
-  name?: string
+  name?: string | undefined
   features: string[]
-  notes?: string
+  notes?: string | undefined
 }
 
 export interface FeatureInterestResponse {

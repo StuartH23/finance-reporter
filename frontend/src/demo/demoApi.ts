@@ -610,14 +610,16 @@ function buildDemoCashFlow(searchParams: URLSearchParams): CashFlowResponse {
     return left < right ? 1 : -1
   })
 
-  const selectedPeriod = period ?? availablePeriodKeys[0]
-  const periodRows = withPeriod.filter((tx) => tx.periodKey === selectedPeriod)
-  if (!periodRows.length) {
+  const selectedPeriod = period ?? availablePeriodKeys[0] ?? null
+  const periodRows = selectedPeriod
+    ? withPeriod.filter((tx) => tx.periodKey === selectedPeriod)
+    : []
+  if (!selectedPeriod || !periodRows.length) {
     return {
       granularity,
       group_by: groupBy,
       period_key: selectedPeriod,
-      period_label: periodLabel(selectedPeriod, granularity),
+      period_label: selectedPeriod ? periodLabel(selectedPeriod, granularity) : null,
       available_periods: availablePeriodKeys.map((key) => ({
         key,
         label: periodLabel(key, granularity),
@@ -966,7 +968,7 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
 
   if (method === 'PUT' && pathname === '/budget') {
     const parsed = parseBody(options)
-    const budgetInput = (parsed.budget as Record<string, number>) ?? {}
+    const budgetInput = (parsed.budget as Record<string, number> | undefined) ?? {}
     demoState.budget.budget = demoState.budget.budget.map((item) => ({
       ...item,
       monthly_budget: Math.max(0, Math.round(budgetInput[item.category] ?? item.monthly_budget)),
@@ -1015,11 +1017,11 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   }
 
   if (method === 'PUT' && pathname.startsWith('/goals/')) {
-    const goalId = pathname.split('/')[2]
+    const goalId = pathname.split('/')[2] ?? ''
     const parsed = parseBody(options)
     const idx = demoState.goals.findIndex((goal) => goal.id === goalId)
-    if (idx >= 0) {
-      const existing = demoState.goals[idx]
+    const existing = idx >= 0 ? demoState.goals[idx] : undefined
+    if (existing) {
       const targetAmount = Number(parsed.target_amount ?? existing.target_amount)
       const contributed = existing.contributed_amount
       const updated: Goal = {
@@ -1065,28 +1067,31 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   }
 
   if (method === 'POST' && pathname.endsWith('/preferences')) {
-    const streamId = pathname.split('/')[2]
+    const streamId = pathname.split('/')[2] ?? ''
     const parsed = parseBody(options)
     const idx = demoState.subscriptions.findIndex((sub) => sub.stream_id === streamId)
     if (idx >= 0) {
       const current = demoState.subscriptions[idx]
-      demoState.subscriptions[idx] = {
-        ...current,
-        essential: typeof parsed.essential === 'boolean' ? parsed.essential : current.essential,
-        ignored: typeof parsed.ignored === 'boolean' ? parsed.ignored : current.ignored,
+      if (current) {
+        const updated: SubscriptionItem = {
+          ...current,
+          essential: typeof parsed.essential === 'boolean' ? parsed.essential : current.essential,
+          ignored: typeof parsed.ignored === 'boolean' ? parsed.ignored : current.ignored,
+        }
+        demoState.subscriptions[idx] = updated
+        const response: SubscriptionPreferenceResponse = {
+          status: 'ok',
+          stream_id: streamId,
+          essential: updated.essential,
+          ignored: updated.ignored,
+        }
+        return response as T
       }
-      const response: SubscriptionPreferenceResponse = {
-        status: 'ok',
-        stream_id: streamId,
-        essential: demoState.subscriptions[idx].essential,
-        ignored: demoState.subscriptions[idx].ignored,
-      }
-      return response as T
     }
   }
 
   if (method === 'GET' && pathname.endsWith('/cancel-info')) {
-    const streamId = pathname.split('/')[2]
+    const streamId = pathname.split('/')[2] ?? ''
     const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
     if (!sub) {
       // Mirror the real backend contract — unknown stream IDs 404.
@@ -1115,7 +1120,7 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   }
 
   if (method === 'POST' && pathname.endsWith('/review')) {
-    const streamId = pathname.split('/')[2]
+    const streamId = pathname.split('/')[2] ?? ''
     const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
     if (!sub) throw new Error('API error: 404 Not Found')
     if (!sub.price_increase && !sub.is_new_recurring) {
@@ -1147,7 +1152,7 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
   }
 
   if (method === 'POST' && pathname.startsWith('/actions/') && pathname.endsWith('/feedback')) {
-    const actionId = pathname.split('/')[2]
+    const actionId = pathname.split('/')[2] ?? ''
     const parsed = parseBody(options)
     const outcome =
       (parsed.outcome as 'completed' | 'dismissed' | 'snoozed' | undefined) ?? 'dismissed'
@@ -1159,8 +1164,9 @@ export function getDemoResponse<T>(path: string, options?: RequestInit): T | nul
       status: 'ok',
       action_id: actionId,
       outcome,
-      snooze_until:
-        outcome === 'snoozed' ? new Date(Date.now() + 2 * 86400000).toISOString() : undefined,
+      ...(outcome === 'snoozed'
+        ? { snooze_until: new Date(Date.now() + 2 * 86400000).toISOString() }
+        : {}),
     }
     return response as T
   }

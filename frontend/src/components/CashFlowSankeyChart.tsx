@@ -21,7 +21,7 @@ function colorForNode(node: CashFlowNode, expenseIndex: number) {
   if (node.type === 'income') return '#2db978'
   if (node.type === 'savings') return '#4ab8d2'
   if (node.type === 'shortfall') return '#f08a2f'
-  return EXPENSE_COLORS[expenseIndex % EXPENSE_COLORS.length]
+  return EXPENSE_COLORS[expenseIndex % EXPENSE_COLORS.length] ?? '#f3c44d'
 }
 
 export interface CashFlowSegmentSelection {
@@ -33,7 +33,7 @@ export interface CashFlowSegmentSelection {
 }
 
 interface CashFlowSankeyChartProps {
-  data?: CashFlowResponse
+  data?: CashFlowResponse | undefined
   granularity: CashFlowGranularity
   groupBy: CashFlowGroupBy
   period: string
@@ -62,6 +62,8 @@ function CashFlowTooltip({ active, payload }: CashFlowTooltipProps) {
   if (!active || !payload?.length) return null
 
   const entry = payload[0]
+  if (!entry) return null
+
   const linkPayload = entry.payload
   const sourceName = linkPayload?.source?.label ?? linkPayload?.source?.name
   const targetName = linkPayload?.target?.label ?? linkPayload?.target?.name

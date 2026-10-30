@@ -9,7 +9,7 @@ function fmt(n: number) {
 }
 
 interface PnlTableProps {
-  monthlyData?: MonthlyPnlResponse
+  monthlyData?: MonthlyPnlResponse | undefined
   onActiveYearChange?: (year: number | null) => void
 }
 

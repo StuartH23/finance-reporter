@@ -2,8 +2,8 @@ import type { LedgerResponse, MonthlyPnlResponse } from '../api/types'
 
 interface DashboardCommandHeaderProps {
   demoModeEnabled: boolean
-  ledgerData?: LedgerResponse
-  monthlyData?: MonthlyPnlResponse
+  ledgerData?: LedgerResponse | undefined
+  monthlyData?: MonthlyPnlResponse | undefined
   canUpload?: boolean
   onUploadStatements: () => void
 }

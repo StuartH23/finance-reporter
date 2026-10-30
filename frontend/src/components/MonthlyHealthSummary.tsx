@@ -35,7 +35,7 @@ function healthTone(latest?: MonthlyPnl) {
 export default function MonthlyHealthSummary({
   monthlyData,
 }: {
-  monthlyData?: MonthlyPnlResponse
+  monthlyData?: MonthlyPnlResponse | undefined
 }) {
   const months = sortedMonths(monthlyData?.months ?? [])
   const latest = months.at(-1)

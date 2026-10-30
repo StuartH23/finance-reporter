@@ -14,8 +14,8 @@ type TokenResponse = {
 
 export type AuthTokens = {
   accessToken: string
-  idToken?: string
-  refreshToken?: string
+  idToken?: string | undefined
+  refreshToken?: string | undefined
   expiresAt: number
   tokenType: string
 }

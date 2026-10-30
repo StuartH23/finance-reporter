@@ -19,7 +19,7 @@ interface TransactionListProps {
   title?: string
   granularity?: CashFlowGranularity
   period?: string | null
-  periodLabel?: string | null
+  periodLabel?: string | null | undefined
   category?: string | null
 }
 
