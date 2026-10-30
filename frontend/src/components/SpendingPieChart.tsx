@@ -71,6 +71,11 @@ interface SpendingTooltipProps {
   }>
 }
 
+function readSliceShare(payload: unknown): number | undefined {
+  if (typeof payload !== 'object' || payload === null || !('share' in payload)) return undefined
+  return typeof payload.share === 'number' ? payload.share : undefined
+}
+
 function hashCategory(category: string) {
   let hash = 0
   for (let i = 0; i < category.length; i += 1) {
@@ -82,7 +87,7 @@ function hashCategory(category: string) {
 
 function colorForCategory(category: string) {
   if (category === 'Other') return OTHER_COLOR
-  return CATEGORY_COLORS[hashCategory(category) % CATEGORY_COLORS.length]
+  return CATEGORY_COLORS[hashCategory(category) % CATEGORY_COLORS.length] ?? OTHER_COLOR
 }
 
 function summarizeSpending(chartItems: SpendingChartItem[]) {
@@ -112,6 +117,7 @@ function summarizeSpending(chartItems: SpendingChartItem[]) {
 
   slices.sort((a, b) => b.total - a.total)
   const topCategory = slices[0]
+  if (!topCategory) return null
 
   const otherBreakdown = small
     .map((item) => ({
@@ -221,9 +227,7 @@ function SpendingPieChart({ showBreakdownTable = true, year }: SpendingPieChartP
 
   const renderPrimaryLabels = (props: PieLabelRenderProps & { category?: string }) => {
     const category = props.category ?? ''
-    const share = Number(
-      (props.payload as { share?: number } | undefined)?.share ?? props.percent ?? 0,
-    )
+    const share = Number(readSliceShare(props.payload) ?? props.percent ?? 0)
     if (!shouldRenderLabel(share)) return null
     const text = `${category} ${pct(share)}`
     const width = profileWidth || 680

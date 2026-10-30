@@ -90,17 +90,22 @@ function sourceFiles(): SourceFile[] {
 function tokenHex(name: string): string {
   const match = tokensCss.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})\\b`))
 
-  if (!match) {
+  const hex = match?.[1]
+  if (!hex) {
     throw new Error(`Missing hex token ${name}`)
   }
 
-  return match[1]
+  return hex
 }
 
 function relativeLuminance(hex: string): number {
-  const [red, green, blue] = [1, 3, 5]
-    .map((index) => Number.parseInt(hex.slice(index, index + 2), 16) / 255)
-    .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
+  const channel = (index: number) => {
+    const value = Number.parseInt(hex.slice(index, index + 2), 16) / 255
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  }
+  const red = channel(1)
+  const green = channel(3)
+  const blue = channel(5)
 
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue
 }
@@ -171,7 +176,8 @@ describe('style architecture guardrails', () => {
       .filter(({ rel }) => rel.startsWith('styles/components/') && rel.endsWith('.css'))
       .flatMap(({ rel, text }) =>
         [...text.matchAll(/border-radius:\s*([^;]+);/g)]
-          .map((match) => match[1].trim())
+          .map((match) => (match[1] ?? '').trim())
+          .filter((value) => value.length > 0)
           .filter((value) =>
             value
               .split(/\s+/)

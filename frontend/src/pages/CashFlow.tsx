@@ -17,6 +17,7 @@ import EmptyState from '../components/primitives/EmptyState'
 import PageHeader from '../components/primitives/PageHeader'
 import SpendingPieChart from '../components/SpendingPieChart'
 import TransactionList from '../components/TransactionList'
+import { isCashFlowGranularity } from '../utils/guards'
 
 function formatCurrency(value: number) {
   const prefix = value < 0 ? '-' : ''
@@ -52,22 +53,31 @@ function buildCashFlowVerdict(
   periodLabel: string | null,
 ): string {
   const spendingGroups = groups.filter((g) => g.amount > 0).sort((a, b) => b.amount - a.amount)
-  if (spendingGroups.length === 0) {
+  const top = spendingGroups[0]
+  if (!top) {
     return 'Cash flow is ready once spending data is available.'
   }
   const period = periodLabel ?? 'this period'
   if (spendingGroups.length === 1) {
-    const pct = totalExpenses > 0 ? Math.round((spendingGroups[0].amount / totalExpenses) * 100) : 0
-    return `Most spending in ${period} went to ${spendingGroups[0].label} - ${pct}% of outflows.`
+    const pct = totalExpenses > 0 ? Math.round((top.amount / totalExpenses) * 100) : 0
+    return `Most spending in ${period} went to ${top.label} - ${pct}% of outflows.`
   }
-  const top = spendingGroups[0]
   const second = spendingGroups[1]
+  if (!second) {
+    return `Most spending in ${period} went to ${top.label}.`
+  }
   const combined = top.amount + second.amount
   const pct = totalExpenses > 0 ? Math.round((combined / totalExpenses) * 100) : 0
   return `Most spending in ${period} went to ${top.label} and ${second.label} - together ${pct}% of outflows.`
 }
 
-function KpiStrip({ data, previous }: { data?: CashFlowResponse; previous?: CashFlowResponse }) {
+function KpiStrip({
+  data,
+  previous,
+}: {
+  data?: CashFlowResponse | undefined
+  previous?: CashFlowResponse | undefined
+}) {
   const savingsRate = data?.totals.income ? (data.totals.net / data.totals.income) * 100 : 0
   const previousSavingsRate = previous?.totals.income
     ? (previous.totals.net / previous.totals.income) * 100
@@ -141,7 +151,7 @@ function PeriodControls({
   onGranularityChange,
   onPeriodChange,
 }: {
-  data?: CashFlowResponse
+  data?: CashFlowResponse | undefined
   granularity: CashFlowGranularity
   period: string
   onGranularityChange: (granularity: CashFlowGranularity) => void
@@ -153,7 +163,9 @@ function PeriodControls({
         <span>Scope</span>
         <select
           value={granularity}
-          onChange={(event) => onGranularityChange(event.target.value as CashFlowGranularity)}
+          onChange={(event) => {
+            if (isCashFlowGranularity(event.target.value)) onGranularityChange(event.target.value)
+          }}
         >
           <option value="month">Month</option>
           <option value="quarter">Quarter</option>
@@ -175,7 +187,7 @@ function PeriodControls({
   )
 }
 
-function CashFlowWaterfall({ data }: { data?: CashFlowResponse }) {
+function CashFlowWaterfall({ data }: { data?: CashFlowResponse | undefined }) {
   const income = data?.totals.income ?? 0
   const expenses = data?.totals.expenses ?? 0
   const net = data?.totals.net ?? 0
@@ -220,8 +232,8 @@ function WhereCashWentTable({
   selection,
   onSelect,
 }: {
-  data?: CashFlowResponse
-  previous?: CashFlowResponse
+  data?: CashFlowResponse | undefined
+  previous?: CashFlowResponse | undefined
   selection: CashFlowSegmentSelection | null
   onSelect: (selection: CashFlowSegmentSelection) => void
 }) {
@@ -296,8 +308,8 @@ function SelectedSegmentPanel({
   selection,
   onClear,
 }: {
-  group?: CashFlowGroup
-  previousGroup?: CashFlowGroup
+  group?: CashFlowGroup | undefined
+  previousGroup?: CashFlowGroup | undefined
   totalExpenses: number
   selection: CashFlowSegmentSelection | null
   onClear: () => void

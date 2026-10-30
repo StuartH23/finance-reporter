@@ -14,7 +14,7 @@ function pctChange(current: number, previous: number) {
   return ((current - previous) / Math.abs(previous)) * 100
 }
 
-function DashboardKpis({ monthlyData }: { monthlyData?: MonthlyPnlResponse }) {
+function DashboardKpis({ monthlyData }: { monthlyData?: MonthlyPnlResponse | undefined }) {
   const sortedMonths = [...(monthlyData?.months ?? [])].sort((a, b) => {
     const da = toMonthDate(a.month_str)
     const db = toMonthDate(b.month_str)

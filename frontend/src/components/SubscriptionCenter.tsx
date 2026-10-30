@@ -180,7 +180,9 @@ function reviewVerdictClass(verdict: SubscriptionReviewResponse['verdict']): str
 }
 
 function latestMonthHeroLabel(summary: SubscriptionSummary): string {
-  const [year, month] = summary.latest_month_label.split('-').map(Number)
+  const [yearPart, monthPart] = summary.latest_month_label.split('-')
+  const year = Number(yearPart)
+  const month = Number(monthPart)
   const date = new Date(year, (month || 1) - 1, 1)
   const monthName = Number.isNaN(date.getTime())
     ? summary.latest_month_label

@@ -11,6 +11,10 @@ export function getGuestDemoMode(): boolean {
   return getDemoMode() && window.localStorage.getItem(GUEST_MODE_KEY) === 'true'
 }
 
+export function isDemoModeChangeEvent(event: Event): event is CustomEvent<boolean> {
+  return event instanceof CustomEvent && typeof event.detail === 'boolean'
+}
+
 export function setDemoMode(enabled: boolean): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(DEMO_MODE_KEY, enabled ? 'true' : 'false')

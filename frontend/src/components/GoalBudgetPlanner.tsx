@@ -11,6 +11,7 @@ import {
 import { queryKeys } from '../api/queryKeys'
 import type { Goal, PaycheckObligation, PaycheckPlanResponse } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
+import { isPaycheckMode } from '../utils/guards'
 import EmptyState from './primitives/EmptyState'
 import MoneyInput from './primitives/MoneyInput'
 
@@ -54,7 +55,7 @@ function rebalanceGoalAllocations(
 
   const weights = currentTotal > 0 ? source.map((row) => row.currentCents) : source.map(() => 1)
   const weightTotal = weights.reduce((sum, value) => sum + value, 0)
-  const raw = source.map((_, idx) => (targetCents * weights[idx]) / weightTotal)
+  const raw = source.map((_, idx) => (targetCents * (weights[idx] ?? 0)) / weightTotal)
   const allocated = raw.map((value) => Math.floor(value))
   let remainder = targetCents - allocated.reduce((sum, value) => sum + value, 0)
 
@@ -64,13 +65,17 @@ function rebalanceGoalAllocations(
 
   for (const row of fractions) {
     if (remainder <= 0) break
-    allocated[row.idx] += 1
+    allocated[row.idx] = (allocated[row.idx] ?? 0) + 1
     remainder -= 1
   }
 
   return allocations.map((item, idx) => {
-    const recommendedAmount = fromCents(allocated[idx])
-    const remainingAfter = fromCents(Math.max(0, source[idx].remainingBeforeCents - allocated[idx]))
+    const allocatedCents = allocated[idx] ?? 0
+    const sourceRow = source[idx]
+    const recommendedAmount = fromCents(allocatedCents)
+    const remainingAfter = fromCents(
+      Math.max(0, (sourceRow?.remainingBeforeCents ?? 0) - allocatedCents),
+    )
     const required = item.required_per_paycheck
     return {
       ...item,
@@ -440,7 +445,9 @@ function GoalBudgetPlanner() {
             <select
               className="text-input"
               value={mode}
-              onChange={(e) => setMode(e.target.value as 'balanced' | 'aggressive_savings')}
+              onChange={(e) => {
+                if (isPaycheckMode(e.target.value)) setMode(e.target.value)
+              }}
             >
               <option value="balanced">Balanced</option>
               <option value="aggressive_savings">Aggressive savings</option>
@@ -455,8 +462,10 @@ function GoalBudgetPlanner() {
               className="text-input obligation-name-input"
               value={item.name}
               onChange={(e) => {
+                const current = obligations[idx]
+                if (!current) return
                 const next = [...obligations]
-                next[idx] = { ...next[idx], name: e.target.value }
+                next[idx] = { ...current, name: e.target.value }
                 setObligations(next)
               }}
               placeholder="Rent"
@@ -464,8 +473,10 @@ function GoalBudgetPlanner() {
             <MoneyInput
               value={item.amount}
               onValueChange={(value) => {
+                const current = obligations[idx]
+                if (!current) return
                 const next = [...obligations]
-                next[idx] = { ...next[idx], amount: value ?? 0 }
+                next[idx] = { ...current, amount: value ?? 0 }
                 setObligations(next)
               }}
               className="text-input obligation-amount-input"

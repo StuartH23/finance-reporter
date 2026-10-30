@@ -1,4 +1,37 @@
+type SchemaParser<T> = {
+  safeParse: (data: unknown) => { success: true; data: T } | { success: false }
+}
+
 import { getDemoResponse } from '../demo/demoApi'
+import {
+  analystChatResponseSchema,
+  budgetListResponseSchema,
+  budgetUpdateResponseSchema,
+  budgetVsActualResponseSchema,
+  cancelInfoResponseSchema,
+  cashFlowResponseSchema,
+  categoryBreakdownResponseSchema,
+  categoryUpdateResponseSchema,
+  chatResponseSchema,
+  featureInterestResponseSchema,
+  goalListResponseSchema,
+  goalUpsertResponseSchema,
+  insightsResponseSchema,
+  ledgerResponseSchema,
+  monthlyPnlResponseSchema,
+  nextBestActionFeedbackResponseSchema,
+  nextBestActionFeedResponseSchema,
+  paycheckPlanResponseSchema,
+  paycheckPlanSaveResponseSchema,
+  savedPaycheckPlanResponseSchema,
+  subscriptionAlertsResponseSchema,
+  subscriptionListResponseSchema,
+  subscriptionPreferenceResponseSchema,
+  subscriptionReviewResponseSchema,
+  transferResponseSchema,
+  uploadResponseSchema,
+  yearlyPnlResponseSchema,
+} from './schemas'
 import type {
   AnalystChatRequest,
   AnalystChatResponse,
@@ -8,6 +41,9 @@ import type {
   CancelInfoResponse,
   CashFlowResponse,
   CategoryBreakdownResponse,
+  CategoryUpdateResponse,
+  ChatMessage,
+  ChatResponse,
   FeatureInterestRequest,
   FeatureInterestResponse,
   GoalListResponse,
@@ -26,6 +62,7 @@ import type {
   SubscriptionListResponse,
   SubscriptionPreferenceResponse,
   SubscriptionReviewResponse,
+  TransactionId,
   TransferResponse,
   UploadResponse,
   YearlyPnlResponse,
@@ -52,13 +89,31 @@ async function withAuthHeader(options?: RequestInit): Promise<RequestInit | unde
   return { ...options, headers }
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const demoResponse = getDemoResponse<T>(path, options)
-  if (demoResponse !== null) return demoResponse
+function parseApiPayload<T>(path: string, schema: SchemaParser<T>, payload: unknown): T {
+  const parsed = schema.safeParse(payload)
+  if (!parsed.success) {
+    throw new Error(`API response did not match the expected shape for ${path}.`)
+  }
+  return parsed.data
+}
+
+async function request<T>(
+  path: string,
+  schema: SchemaParser<T>,
+  options?: RequestInit,
+): Promise<T> {
+  const demoResponse = getDemoResponse(path, options)
+  if (demoResponse !== null) return parseApiPayload(path, schema, demoResponse)
 
   const res = await fetch(`${BASE}${path}`, await withAuthHeader(options))
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
-  return res.json() as Promise<T>
+  let payload: unknown
+  try {
+    payload = await res.json()
+  } catch {
+    throw new Error(`API response did not match the expected shape for ${path}.`)
+  }
+  return parseApiPayload(path, schema, payload)
 }
 
 async function requestBlob(path: string, options?: RequestInit): Promise<Response> {
@@ -72,22 +127,22 @@ export async function uploadFiles(files: FileList | File[]): Promise<UploadRespo
   for (const file of files) {
     form.append('files', file)
   }
-  return request<UploadResponse>('/upload', { method: 'POST', body: form })
+  return request('/upload', uploadResponseSchema, { method: 'POST', body: form })
 }
 
 export async function getLedger(): Promise<LedgerResponse> {
-  return request<LedgerResponse>('/ledger')
+  return request('/ledger', ledgerResponseSchema)
 }
 
 export interface LedgerTransactionOptions {
-  granularity?: 'year' | 'month' | 'quarter'
-  period?: string
-  category?: string
-  type?: 'income' | 'spending' | 'transfer'
-  sourceFile?: string
-  search?: string
-  sort?: 'date' | 'description' | 'amount' | 'category' | 'source_file'
-  direction?: 'asc' | 'desc'
+  granularity?: 'year' | 'month' | 'quarter' | undefined
+  period?: string | undefined
+  category?: string | undefined
+  type?: 'income' | 'spending' | 'transfer' | undefined
+  sourceFile?: string | undefined
+  search?: string | undefined
+  sort?: 'date' | 'description' | 'amount' | 'category' | 'source_file' | undefined
+  direction?: 'asc' | 'desc' | undefined
 }
 
 function ledgerTransactionParams(options?: LedgerTransactionOptions) {
@@ -107,7 +162,7 @@ export async function getLedgerTransactions(
   options?: LedgerTransactionOptions,
 ): Promise<LedgerResponse> {
   const qs = ledgerTransactionParams(options).toString()
-  return request<LedgerResponse>(`/ledger/transactions${qs ? `?${qs}` : ''}`)
+  return request(`/ledger/transactions${qs ? `?${qs}` : ''}`, ledgerResponseSchema)
 }
 
 export function ledgerTransactionsExportUrl(
@@ -134,18 +189,22 @@ export async function exportLedgerTransactions(
 }
 
 export async function updateTransactionCategory(
-  transactionId: string,
+  transactionId: TransactionId,
   category: string,
-): Promise<{ id: string; category: string; category_edited: boolean }> {
-  return request(`/ledger/transactions/${encodeURIComponent(transactionId)}/category`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category }),
-  })
+): Promise<CategoryUpdateResponse> {
+  return request(
+    `/ledger/transactions/${encodeURIComponent(transactionId)}/category`,
+    categoryUpdateResponseSchema,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category }),
+    },
+  )
 }
 
 export async function getTransfers(): Promise<TransferResponse> {
-  return request<TransferResponse>('/ledger/transfers')
+  return request('/ledger/transfers', transferResponseSchema)
 }
 
 export async function getSubscriptions(options?: {
@@ -172,7 +231,7 @@ export async function getSubscriptions(options?: {
   if (options?.page !== undefined) params.set('page', String(options.page))
   if (options?.pageSize !== undefined) params.set('page_size', String(options.pageSize))
   const qs = params.toString()
-  return request<SubscriptionListResponse>(`/subscriptions${qs ? `?${qs}` : ''}`)
+  return request(`/subscriptions${qs ? `?${qs}` : ''}`, subscriptionListResponseSchema)
 }
 
 export async function getSubscriptionAlerts(options?: {
@@ -185,14 +244,14 @@ export async function getSubscriptionAlerts(options?: {
     params.set('include_missed', String(options.includeMissed))
   }
   const qs = params.toString()
-  return request<SubscriptionAlertsResponse>(`/subscriptions/alerts${qs ? `?${qs}` : ''}`)
+  return request(`/subscriptions/alerts${qs ? `?${qs}` : ''}`, subscriptionAlertsResponseSchema)
 }
 
 export async function updateSubscriptionPreferences(
   streamId: string,
   update: { essential?: boolean; ignored?: boolean },
 ): Promise<SubscriptionPreferenceResponse> {
-  return request<SubscriptionPreferenceResponse>(`/subscriptions/${streamId}/preferences`, {
+  return request(`/subscriptions/${streamId}/preferences`, subscriptionPreferenceResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(update),
@@ -200,43 +259,43 @@ export async function updateSubscriptionPreferences(
 }
 
 export async function getCancelInfo(streamId: string): Promise<CancelInfoResponse> {
-  return request<CancelInfoResponse>(`/subscriptions/${streamId}/cancel-info`)
+  return request(`/subscriptions/${streamId}/cancel-info`, cancelInfoResponseSchema)
 }
 
 export async function reviewSubscription(streamId: string): Promise<SubscriptionReviewResponse> {
-  return request<SubscriptionReviewResponse>(`/subscriptions/${streamId}/review`, {
+  return request(`/subscriptions/${streamId}/review`, subscriptionReviewResponseSchema, {
     method: 'POST',
   })
 }
 
 export async function getMonthlyPnl(): Promise<MonthlyPnlResponse> {
-  return request<MonthlyPnlResponse>('/pnl/monthly')
+  return request('/pnl/monthly', monthlyPnlResponseSchema)
 }
 
 export async function getYearlyPnl(): Promise<YearlyPnlResponse> {
-  return request<YearlyPnlResponse>('/pnl/yearly')
+  return request('/pnl/yearly', yearlyPnlResponseSchema)
 }
 
 export async function getCategoryBreakdown(options?: {
-  year?: number
+  year?: number | undefined
 }): Promise<CategoryBreakdownResponse> {
   const params = new URLSearchParams()
   if (options?.year !== undefined) params.set('year', String(options.year))
   const qs = params.toString()
-  return request<CategoryBreakdownResponse>(`/pnl/categories${qs ? `?${qs}` : ''}`)
+  return request(`/pnl/categories${qs ? `?${qs}` : ''}`, categoryBreakdownResponseSchema)
 }
 
 export async function getCashFlow(options?: {
-  granularity?: 'year' | 'month' | 'quarter'
-  groupBy?: 'category' | 'merchant'
-  period?: string
+  granularity?: 'year' | 'month' | 'quarter' | undefined
+  groupBy?: 'category' | 'merchant' | undefined
+  period?: string | undefined
 }): Promise<CashFlowResponse> {
   const params = new URLSearchParams()
   if (options?.granularity) params.set('granularity', options.granularity)
   if (options?.groupBy) params.set('group_by', options.groupBy)
   if (options?.period) params.set('period', options.period)
   const qs = params.toString()
-  return request<CashFlowResponse>(`/cashflow${qs ? `?${qs}` : ''}`)
+  return request(`/cashflow${qs ? `?${qs}` : ''}`, cashFlowResponseSchema)
 }
 
 export async function getInsights(options?: {
@@ -251,15 +310,15 @@ export async function getInsights(options?: {
     params.set('confidence_threshold', String(options.confidenceThreshold))
   }
   const qs = params.toString()
-  return request<InsightsResponse>(`/insights${qs ? `?${qs}` : ''}`)
+  return request(`/insights${qs ? `?${qs}` : ''}`, insightsResponseSchema)
 }
 
 export async function getBudget(): Promise<BudgetListResponse> {
-  return request<BudgetListResponse>('/budget')
+  return request('/budget', budgetListResponseSchema)
 }
 
 export async function updateBudget(budget: Record<string, number>): Promise<BudgetUpdateResponse> {
-  return request<BudgetUpdateResponse>('/budget', {
+  return request('/budget', budgetUpdateResponseSchema, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ budget }),
@@ -267,11 +326,11 @@ export async function updateBudget(budget: Record<string, number>): Promise<Budg
 }
 
 export async function getBudgetVsActual(): Promise<BudgetVsActualResponse> {
-  return request<BudgetVsActualResponse>('/budget/vs-actual')
+  return request('/budget/vs-actual', budgetVsActualResponseSchema)
 }
 
 export async function getGoals(): Promise<GoalListResponse> {
-  return request<GoalListResponse>('/goals')
+  return request('/goals', goalListResponseSchema)
 }
 
 export async function createGoal(payload: {
@@ -282,7 +341,7 @@ export async function createGoal(payload: {
   category: string
   status: string
 }): Promise<GoalUpsertResponse> {
-  return request<GoalUpsertResponse>('/goals', {
+  return request('/goals', goalUpsertResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -300,7 +359,7 @@ export async function updateGoal(
     status: string
   },
 ): Promise<GoalUpsertResponse> {
-  return request<GoalUpsertResponse>(`/goals/${goalId}`, {
+  return request(`/goals/${goalId}`, goalUpsertResponseSchema, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -310,7 +369,7 @@ export async function updateGoal(
 export async function recommendPaycheckPlan(
   payload: PaycheckPlanRequest,
 ): Promise<PaycheckPlanResponse> {
-  return request<PaycheckPlanResponse>('/goals/paycheck-plan', {
+  return request('/goals/paycheck-plan', paycheckPlanResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -320,7 +379,7 @@ export async function recommendPaycheckPlan(
 export async function savePaycheckPlan(
   payload: PaycheckPlanSaveRequest,
 ): Promise<PaycheckPlanSaveResponse> {
-  return request<PaycheckPlanSaveResponse>('/goals/paycheck-plan/save', {
+  return request('/goals/paycheck-plan/save', paycheckPlanSaveResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -328,18 +387,18 @@ export async function savePaycheckPlan(
 }
 
 export async function getSavedPaycheckPlan(): Promise<SavedPaycheckPlanResponse> {
-  return request<SavedPaycheckPlanResponse>('/goals/paycheck-plan/saved')
+  return request('/goals/paycheck-plan/saved', savedPaycheckPlanResponseSchema)
 }
 
 export async function getNextBestActionFeed(): Promise<NextBestActionFeedResponse> {
-  return request<NextBestActionFeedResponse>('/actions/feed')
+  return request('/actions/feed', nextBestActionFeedResponseSchema)
 }
 
 export async function submitActionFeedback(
   actionId: string,
   payload: { outcome: 'completed' | 'dismissed' | 'snoozed'; snoozeDays?: number },
 ): Promise<NextBestActionFeedbackResponse> {
-  return request<NextBestActionFeedbackResponse>(`/actions/${actionId}/feedback`, {
+  return request(`/actions/${actionId}/feedback`, nextBestActionFeedbackResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -349,11 +408,10 @@ export async function submitActionFeedback(
   })
 }
 
-export type ChatMessage = { role: 'user' | 'assistant'; content: string }
-export type ChatResponse = { reply: string; tool_calls: string[] }
+export type { ChatMessage, ChatResponse }
 
 export async function sendChat(messages: ChatMessage[]): Promise<ChatResponse> {
-  return request<ChatResponse>('/chat', {
+  return request('/chat', chatResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages }),
@@ -363,7 +421,7 @@ export async function sendChat(messages: ChatMessage[]): Promise<ChatResponse> {
 export async function submitFeatureInterest(
   data: FeatureInterestRequest,
 ): Promise<FeatureInterestResponse> {
-  return request<FeatureInterestResponse>('/feature-interest', {
+  return request('/feature-interest', featureInterestResponseSchema, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -381,19 +439,16 @@ export class AnalystRateLimitError extends Error {
 
 export async function postAnalystChat(payload: AnalystChatRequest): Promise<AnalystChatResponse> {
   const isDemoChat = Boolean(payload.demo_ledger_csv)
-  const init = isDemoChat
-    ? {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        credentials: 'include' as const,
-      }
-    : await withAuthHeader({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-  const res = await fetch(`${BASE}${isDemoChat ? '/demo/analyst/chat' : '/analyst/chat'}`, init)
+  const path = isDemoChat ? '/demo/analyst/chat' : '/analyst/chat'
+  const demoCredentials: RequestCredentials = 'include'
+  const init: RequestInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    ...(isDemoChat ? { credentials: demoCredentials } : {}),
+  }
+  const authed = isDemoChat ? init : await withAuthHeader(init)
+  const res = await fetch(`${BASE}${path}`, authed)
   if (res.status === 429) {
     const retryAfter = Number.parseInt(res.headers.get('Retry-After') ?? '1800', 10)
     throw new AnalystRateLimitError(Number.isFinite(retryAfter) ? retryAfter : 1800)
@@ -401,7 +456,13 @@ export async function postAnalystChat(payload: AnalystChatRequest): Promise<Anal
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`)
   }
-  return (await res.json()) as AnalystChatResponse
+  let body: unknown
+  try {
+    body = await res.json()
+  } catch {
+    throw new Error(`API response did not match the expected shape for ${path}.`)
+  }
+  return parseApiPayload(path, analystChatResponseSchema, body)
 }
 
 export type DemoTransaction = {

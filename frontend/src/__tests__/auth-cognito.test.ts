@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { completeCognitoSignIn, normalizeAuthReturnPath } from '../auth/cognito'
+import { completeCognitoSignIn, loadTokens, normalizeAuthReturnPath } from '../auth/cognito'
 
 const originalWindow = globalThis.window
 
@@ -50,6 +50,20 @@ describe('Cognito return paths', () => {
     expect(normalizeAuthReturnPath('//example.com/budget')).toBe('/')
     expect(normalizeAuthReturnPath('/auth/callback?code=test')).toBe('/')
     expect(normalizeAuthReturnPath('')).toBe('/')
+  })
+
+  it('drops corrupted stored tokens instead of throwing', () => {
+    installWindow()
+    window.sessionStorage.setItem('finance-reporter.auth.tokens', '{not-json')
+    expect(loadTokens()).toBeNull()
+    expect(window.sessionStorage.getItem('finance-reporter.auth.tokens')).toBeNull()
+
+    window.sessionStorage.setItem(
+      'finance-reporter.auth.tokens',
+      JSON.stringify({ accessToken: 12 }),
+    )
+    expect(loadTokens()).toBeNull()
+    expect(window.sessionStorage.getItem('finance-reporter.auth.tokens')).toBeNull()
   })
 
   it('surfaces oauth callback errors directly', async () => {

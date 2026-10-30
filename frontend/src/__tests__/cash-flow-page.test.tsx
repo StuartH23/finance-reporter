@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { queryKeys } from '../api/queryKeys'
+import { transactionIdSchema } from '../api/schemas'
 import type { CashFlowResponse, LedgerResponse, SubscriptionListResponse } from '../api/types'
 import CashFlow from '../pages/CashFlow'
 
@@ -49,7 +50,7 @@ const previousCashFlow: CashFlowResponse = {
 const ledger: LedgerResponse = {
   transactions: [
     {
-      id: 'tx-1',
+      id: transactionIdSchema.parse('tx-1'),
       date: '2026-03-01',
       description: 'Payroll',
       amount: 5000,
@@ -57,7 +58,7 @@ const ledger: LedgerResponse = {
       source_file: 'demo.csv',
     },
     {
-      id: 'tx-2',
+      id: transactionIdSchema.parse('tx-2'),
       date: '2026-03-03',
       description: 'Rent',
       amount: -1800,

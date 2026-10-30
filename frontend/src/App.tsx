@@ -7,7 +7,7 @@ import { type AppNavItem, getNavGroups, getNavItems } from './appNavigation'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import AuthRequiredScreen from './components/AuthRequiredScreen'
 import { getDemoTransactions, resetDemoState } from './demo/demoApi'
-import { getDemoMode, setDemoMode } from './demo/mode'
+import { getDemoMode, isDemoModeChangeEvent, setDemoMode } from './demo/mode'
 import { GuestFeatureProvider, useGuestFeature } from './guest/GuestFeatureProvider'
 import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
@@ -182,8 +182,8 @@ function AppShell() {
 
   useEffect(() => {
     const onDemoModeChanged = (event: Event) => {
-      const custom = event as CustomEvent<boolean>
-      setDemoModeEnabled(Boolean(custom.detail))
+      if (!isDemoModeChangeEvent(event)) return
+      setDemoModeEnabled(event.detail)
       queryClient.clear()
     }
     window.addEventListener('demo-mode-changed', onDemoModeChanged)
@@ -228,6 +228,7 @@ function AppShell() {
 
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
+      if (!first || !last) return
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault()
         last.focus()

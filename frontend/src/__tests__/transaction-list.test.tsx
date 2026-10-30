@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { queryKeys } from '../api/queryKeys'
+import { transactionIdSchema } from '../api/schemas'
 import type { LedgerResponse } from '../api/types'
 import TransactionList from '../components/TransactionList'
 
@@ -13,7 +14,7 @@ describe('transaction list', () => {
     const ledger: LedgerResponse = {
       transactions: [
         {
-          id: 'tx-1',
+          id: transactionIdSchema.parse('tx-1'),
           date: '2026-03-04',
           description: longMerchant,
           amount: -42.5,

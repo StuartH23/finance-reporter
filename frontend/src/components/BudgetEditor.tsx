@@ -68,6 +68,7 @@ function monthKeyFromDate(dateStr: string) {
 
 function monthEndFromKey(monthKey: string) {
   const [yearStr, monthStr] = monthKey.split('-')
+  if (!yearStr || !monthStr) return `${monthKey}-31`
   const year = Number.parseInt(yearStr, 10)
   const month = Number.parseInt(monthStr, 10)
   if (Number.isNaN(year) || Number.isNaN(month)) return `${monthKey}-31`
@@ -144,6 +145,7 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
 
     const minDate = spendingDates[0]
     const maxDate = spendingDates[spendingDates.length - 1]
+    if (!minDate || !maxDate) return []
     const monthKeys = [...new Set(spendingDates.map(monthKeyFromDate))]
 
     return monthKeys
@@ -154,8 +156,9 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
 
   useEffect(() => {
     if (availableMonthKeys.length === 0) return
-    if (!selectedMonthKey || !availableMonthKeys.includes(selectedMonthKey)) {
-      onSelectedMonthKeyChange(availableMonthKeys[0])
+    const latestMonthKey = availableMonthKeys[0]
+    if ((!selectedMonthKey || !availableMonthKeys.includes(selectedMonthKey)) && latestMonthKey) {
+      onSelectedMonthKeyChange(latestMonthKey)
     }
   }, [availableMonthKeys, selectedMonthKey, onSelectedMonthKeyChange])
 
@@ -335,10 +338,12 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
   })
 
   const handleChange = (idx: number, value: string) => {
+    const current = items[idx]
+    if (!current) return
     const updated = [...items]
     const parsed = Number.parseInt(value, 10)
     updated[idx] = {
-      ...updated[idx],
+      ...current,
       monthly_budget: Number.isNaN(parsed) ? 0 : Math.max(0, parsed),
     }
     setItems(updated)
@@ -389,11 +394,12 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
 
   const applySuggestionToRow = (idx: number) => {
     const item = items[idx]
+    if (!item) return
     const suggestion = recommendedBudgetByCategory[item.category]
     if (!suggestion) return
 
     const updated = [...items]
-    updated[idx] = { ...updated[idx], monthly_budget: suggestion }
+    updated[idx] = { ...item, monthly_budget: suggestion }
     setItems(updated)
     setSaved(false)
     setSuggestionStatus(null)
@@ -417,16 +423,18 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
 
     const sumWeights = weights.reduce((sum, v) => sum + (v > 0 ? v : 0), 0)
     const fallbackWeight = sumWeights <= 0
-    const raw = bucketCategories.map((_, idx) =>
-      fallbackWeight
+    const raw = bucketCategories.map((_, idx) => {
+      const weight = weights[idx] ?? 0
+      return fallbackWeight
         ? targetTotal / bucketCategories.length
-        : (targetTotal * weights[idx]) / sumWeights,
-    )
+        : (targetTotal * weight) / sumWeights
+    })
 
     const rounded = raw.map((n) => Math.round(n))
     const diff = Math.round(targetTotal) - rounded.reduce((sum, n) => sum + n, 0)
     if (rounded.length > 0) {
-      rounded[rounded.length - 1] += diff
+      const lastIndex = rounded.length - 1
+      rounded[lastIndex] = (rounded[lastIndex] ?? 0) + diff
     }
 
     const out: Record<string, number> = {}
@@ -721,49 +729,51 @@ function BudgetEditor({ selectedMonthKey, onSelectedMonthKeyChange }: BudgetEdit
               </tr>
             </thead>
             <tbody>
-              {items.map((item, idx) => (
-                <tr key={item.category}>
-                  <td>{item.category}</td>
-                  <td className="u-text-right">
-                    <MoneyInput
-                      min={0}
-                      digits={0}
-                      value={item.monthly_budget}
-                      onValueChange={(value) => handleChange(idx, String(value ?? 0))}
-                      className="numeric-input"
-                      aria-label={`${item.category} monthly budget`}
-                    />
-                  </td>
-                  <td className="u-text-right">
-                    {recommendedBudgetByCategory[item.category] ? (
-                      <>
-                        <div className="suggested-cell">
-                          <span className="amount">
-                            {fmt(recommendedBudgetByCategory[item.category])}
-                          </span>
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            onClick={() => applySuggestionToRow(idx)}
-                          >
-                            Use
-                          </button>
-                        </div>
-                        <div className="budget-hint u-text-right">
-                          {selectedMonthSpentByCategory[item.category] &&
-                          averageSpentByCategory[item.category]
-                            ? `Blended: ${monthLabelFromKey(selectedMonthKey ?? '')} ${fmt(selectedMonthSpentByCategory[item.category])} + avg/month ${fmt(averageSpentByCategory[item.category])}`
-                            : selectedMonthSpentByCategory[item.category]
-                              ? `${monthLabelFromKey(selectedMonthKey ?? '')} from uploads`
-                              : `Avg/month from uploads (${monthsOfData || 'few'} month${monthsOfData === 1 ? '' : 's'})`}
-                        </div>
-                      </>
-                    ) : (
-                      <span className="muted-placeholder">--</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {items.map((item, idx) => {
+                const recommended = recommendedBudgetByCategory[item.category]
+                const monthSpent = selectedMonthSpentByCategory[item.category]
+                const averageSpent = averageSpentByCategory[item.category]
+                return (
+                  <tr key={item.category}>
+                    <td>{item.category}</td>
+                    <td className="u-text-right">
+                      <MoneyInput
+                        min={0}
+                        digits={0}
+                        value={item.monthly_budget}
+                        onValueChange={(value) => handleChange(idx, String(value ?? 0))}
+                        className="numeric-input"
+                        aria-label={`${item.category} monthly budget`}
+                      />
+                    </td>
+                    <td className="u-text-right">
+                      {recommended ? (
+                        <>
+                          <div className="suggested-cell">
+                            <span className="amount">{fmt(recommended)}</span>
+                            <button
+                              type="button"
+                              className="ghost-button"
+                              onClick={() => applySuggestionToRow(idx)}
+                            >
+                              Use
+                            </button>
+                          </div>
+                          <div className="budget-hint u-text-right">
+                            {monthSpent && averageSpent
+                              ? `Blended: ${monthLabelFromKey(selectedMonthKey ?? '')} ${fmt(monthSpent)} + avg/month ${fmt(averageSpent)}`
+                              : monthSpent
+                                ? `${monthLabelFromKey(selectedMonthKey ?? '')} from uploads`
+                                : `Avg/month from uploads (${monthsOfData || 'few'} month${monthsOfData === 1 ? '' : 's'})`}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="muted-placeholder">--</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           <p className="budget-hint">
