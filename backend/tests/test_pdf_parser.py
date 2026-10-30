@@ -138,9 +138,7 @@ def test_pass1_preparses_credit_card_rows_after_table_header():
 
     rows = _pass1_classify_lines(line_map, orphan_amounts=[])
 
-    assert rows == {
-        12: {"Date": "4/8", "Description": "Restaurant", "Amount": "-48.50"}
-    }
+    assert rows == {12: {"Date": "4/8", "Description": "Restaurant", "Amount": "-48.50"}}
 
 
 def test_pass1_carries_credit_card_table_state_across_pages():
@@ -173,9 +171,7 @@ def test_pass1_carries_credit_card_table_state_across_pages():
 
     assert first_rows == {}
     assert in_table is True
-    assert second_rows == {
-        8: {"Date": "4/9", "Description": "Coffee", "Amount": "-6.25"}
-    }
+    assert second_rows == {8: {"Date": "4/9", "Description": "Coffee", "Amount": "-6.25"}}
 
 
 def test_pass1_resets_credit_card_table_state_on_summary_line():
@@ -237,9 +233,7 @@ def test_pass1_keeps_credit_card_transaction_with_summary_word():
 
     rows = _pass1_classify_lines(line_map, orphan_amounts=[])
 
-    assert rows == {
-        12: {"Date": "4/10", "Description": "Balance Transfer", "Amount": "50.00"}
-    }
+    assert rows == {12: {"Date": "4/10", "Description": "Balance Transfer", "Amount": "50.00"}}
 
 
 def test_pass1_ignores_unparseable_credit_card_table_lines():

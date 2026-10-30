@@ -194,10 +194,12 @@ def _review_cache_key(session_id: str | None, sub: dict) -> str:
 
 
 def _build_review_prompt(sub: dict) -> str:
-    history_lines = "\n".join(
-        f"- {c['date']}, ${float(c['amount']):.2f}"
-        for c in sub.get("charge_history", [])[-6:]
-    ) or "(none)"
+    history_lines = (
+        "\n".join(
+            f"- {c['date']}, ${float(c['amount']):.2f}" for c in sub.get("charge_history", [])[-6:]
+        )
+        or "(none)"
+    )
     return (
         "You review a single recurring charge from a personal-finance app and decide "
         "whether it looks legitimate, deserves user review, or shows a price-concern signal.\n\n"
@@ -216,7 +218,8 @@ def _build_review_prompt(sub: dict) -> str:
         "Rules:\n"
         '- "price_concern" if there is a clear price increase from baseline.\n'
         '- "review_needed" if the charge is new (3 or fewer occurrences) and may be unfamiliar.\n'
-        '- "likely_authorized" if the charge has been stable for several months at the same amount.\n'
+        '- "likely_authorized" if the charge has been stable for several months '
+        "at the same amount.\n"
         "- evidence: 1-3 short bullets citing concrete dates/amounts.\n"
         "- Do not include anything outside the JSON object."
     )
@@ -263,9 +266,7 @@ def _call_review_model(prompt: str) -> dict:
     except anthropic.RateLimitError as exc:
         raise HTTPException(status_code=503, detail="Upstream model rate limit.") from exc
     except anthropic.APIStatusError as exc:
-        raise HTTPException(
-            status_code=502, detail=f"Upstream model error: {exc.message}"
-        ) from exc
+        raise HTTPException(status_code=502, detail=f"Upstream model error: {exc.message}") from exc
     except anthropic.APIConnectionError as exc:
         raise HTTPException(status_code=502, detail="Could not reach model API.") from exc
 
@@ -311,9 +312,7 @@ def review_subscription(
     raw = _call_review_model(prompt)
     coerced = _coerce_review(raw)
     if coerced["reason"] == _REVIEW_FALLBACK_REASON:
-        logger.warning(
-            "Subscription review fell back to review_needed for stream %s", stream_id
-        )
+        logger.warning("Subscription review fell back to review_needed for stream %s", stream_id)
     _review_cache[cache_key] = coerced
     return {**coerced, "stream_id": stream_id, "cached": False}
 

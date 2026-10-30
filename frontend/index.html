@@ -10,16 +10,19 @@
 
 <body>
   <script>
-    (function () {
+    (() => {
+      let theme = 'dark';
       try {
-        var stored = window.localStorage.getItem('pnl-reporter.theme');
-        var theme = (stored === 'dark' || stored === 'light')
-          ? stored
-          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-        document.documentElement.dataset.theme = theme;
+        const stored = window.localStorage.getItem('pnl-reporter.theme');
+        if (stored === 'dark' || stored === 'light') {
+          theme = stored;
+        } else if (window.matchMedia?.('(prefers-color-scheme: light)')?.matches) {
+          theme = 'light';
+        }
       } catch (_) {
-        document.documentElement.dataset.theme = 'dark';
+        theme = 'dark';
       }
+      document.documentElement.dataset.theme = theme;
     })();
   </script>
   <div id="root"></div>

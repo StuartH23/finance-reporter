@@ -54,14 +54,8 @@ def test_process_pdf_discover_statement_fixture():
     assert len(result) == 25
     amounts_by_description = dict(zip(result["description"], result["amount"]))
     assert amounts_by_description["DIRECTPAY FULL BALANCE"] == 840.04
-    assert (
-        amounts_by_description["SMITHS-FUEL #9207 SARATOGA SPRIUT Gasoline"]
-        == -65.05
-    )
-    assert (
-        amounts_by_description["SWIG SARATOGA SPRINGS SARATOGA Restaurants"]
-        == -10.06
-    )
+    assert amounts_by_description["SMITHS-FUEL #9207 SARATOGA SPRIUT Gasoline"] == -65.05
+    assert amounts_by_description["SWIG SARATOGA SPRINGS SARATOGA Restaurants"] == -10.06
 
 
 def test_process_csv_credit_card_statement_uses_charge_and_payment_when_amount_is_zero():
