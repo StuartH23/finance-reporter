@@ -164,7 +164,9 @@ def clear_session(session_id: str, request: Request | None = None) -> None:
         _session_category_overrides[session_id].clear()
 
 
-def get_category_overrides(session_id: str | None, request: Request | None = None) -> dict[str, str]:
+def get_category_overrides(
+    session_id: str | None, request: Request | None = None
+) -> dict[str, str]:
     """Return session-scoped one-row category overrides."""
     _prune_expired_sessions()
     if not session_id:
@@ -312,7 +314,8 @@ async def upload_files(
     for staged in staged_ledgers:
         count = len(staged)
         staged["transaction_id"] = [
-            f"{sid}:{index}" for index in range(next_transaction_index, next_transaction_index + count)
+            f"{sid}:{index}"
+            for index in range(next_transaction_index, next_transaction_index + count)
         ]
         next_transaction_index += count
     _sessions[sid].extend(staged_ledgers)
