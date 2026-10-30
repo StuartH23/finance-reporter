@@ -395,21 +395,6 @@ export const nextBestActionFeedbackResponseSchema = z.object({
 })
 export type NextBestActionFeedbackResponse = z.infer<typeof nextBestActionFeedbackResponseSchema>
 
-export const featureInterestRequestSchema = z.object({
-  email: z.string(),
-  name: z.string().optional(),
-  features: z.array(z.string()),
-  notes: z.string().optional(),
-})
-export type FeatureInterestRequest = z.infer<typeof featureInterestRequestSchema>
-
-export const featureInterestResponseSchema = z.object({
-  status: z.string(),
-  total_signups: z.number(),
-  feature_counts: z.record(z.string(), z.number()),
-})
-export type FeatureInterestResponse = z.infer<typeof featureInterestResponseSchema>
-
 export const categoryRuleSchema = z.object({
   category: z.string(),
   keywords: z.string(),

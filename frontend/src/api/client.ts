@@ -13,7 +13,6 @@ import {
   categoryBreakdownResponseSchema,
   categoryUpdateResponseSchema,
   chatResponseSchema,
-  featureInterestResponseSchema,
   goalListResponseSchema,
   goalUpsertResponseSchema,
   insightsResponseSchema,
@@ -44,8 +43,6 @@ import type {
   CategoryUpdateResponse,
   ChatMessage,
   ChatResponse,
-  FeatureInterestRequest,
-  FeatureInterestResponse,
   GoalListResponse,
   GoalUpsertResponse,
   InsightsResponse,
@@ -415,16 +412,6 @@ export async function sendChat(messages: ChatMessage[]): Promise<ChatResponse> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages }),
-  })
-}
-
-export async function submitFeatureInterest(
-  data: FeatureInterestRequest,
-): Promise<FeatureInterestResponse> {
-  return request('/feature-interest', featureInterestResponseSchema, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
   })
 }
 

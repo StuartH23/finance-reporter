@@ -114,11 +114,10 @@ Create one Cognito User Pool and one public web app client.
    and will not survive scale-out. For a user-facing MVP, add Postgres ownership keyed by
    Cognito `sub`.
 
-2. Feature-interest signup writes to a local CSV.
+2. Feature-interest signup was removed.
 
-   `backend/routers/feature_interest.py` appends to `backend/data/feature_interest.csv`.
-   In a container this is ephemeral. Move this to Postgres, DynamoDB, S3, or disable the
-   endpoint before relying on it.
+   This is a single-user tool. The signup endpoint and form are gone, and the app
+   no longer writes `feature_interest.csv`.
 
 3. File upload limits are undefined.
 

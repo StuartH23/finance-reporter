@@ -14,7 +14,7 @@ function PrivacyNotice({
   return (
     <div className={className}>
       <h2>Privacy Notice</h2>
-      <p className="privacy-notice-updated">Last updated: March 21, 2026</p>
+      <p className="privacy-notice-updated">Last updated: October 30, 2026</p>
       <p className="privacy-notice-intro">
         This tool is for budgeting help and organization, not financial, legal, or tax advice.
       </p>
@@ -50,9 +50,7 @@ function PrivacyNotice({
       <div className="privacy-notice-section">
         <h3>3. Data written to disk by this app</h3>
         <p>
-          Budget settings are saved to <code>backend/data/budget.csv</code>. Feature interest
-          signups are saved to <code>backend/data/feature_interest.csv</code> and include email,
-          optional name, selected features, optional notes, and timestamp.
+          Budget settings are saved to <code>backend/data/budget.csv</code>.
         </p>
       </div>
 
