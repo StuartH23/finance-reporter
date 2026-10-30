@@ -50,7 +50,9 @@ function PrivacyNotice({
       <div className="privacy-notice-section">
         <h3>3. Data written to disk by this app</h3>
         <p>
-          Budget settings are saved to <code>backend/data/budget.csv</code>.
+          Budget edits are saved to <code>backend/data/local/budget.csv</code>. The file{' '}
+          <code>backend/data/budget.csv</code> is a generic example used only when that local file
+          is absent.
         </p>
       </div>
 

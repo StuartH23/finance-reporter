@@ -16,8 +16,9 @@ pnl-reporter/
 │   ├── schemas.py                  # Pydantic request/response models
 │   ├── requirements.txt            # Python dependencies
 │   ├── data/
-│   │   ├── categories.csv          # Category regex rules
-│   │   └── budget.csv              # Monthly budget targets
+│   │   ├── categories.csv          # Example category rules
+│   │   ├── budget.csv              # Example monthly targets
+│   │   └── local/                  # Gitignored personal overrides
 │   ├── sdk/                        # Reusable core library
 │   │   ├── __init__.py             # Public exports
 │   │   ├── pdf_parser.py           # Chase PDF word-coordinate parser

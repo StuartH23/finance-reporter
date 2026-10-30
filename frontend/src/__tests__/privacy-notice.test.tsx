@@ -28,6 +28,7 @@ describe('privacy copy', () => {
     expect(html).toContain('1. File uploads (/api/upload)')
     expect(html).toContain('2. Session data in memory')
     expect(html).toContain('3. Data written to disk by this app')
+    expect(html).toContain('backend/data/local/budget.csv')
     expect(html).toContain('backend/data/budget.csv')
     expect(html).not.toContain('feature_interest.csv')
     expect(html).toContain('session_id')

@@ -19,6 +19,7 @@ from sdk import (
     load_categories,
 )
 from sdk.csv_handler import guess_columns, normalize_statement_amounts
+from sdk.data_paths import resolve_data_csv
 from sdk.pdf_parser import (
     PdfParseError,
     encryption_failure,
@@ -272,11 +273,7 @@ async def upload_files(
 
     sid = _ensure_session(session_id, response, request)
 
-    categories = load_categories(
-        str(
-            __import__("pathlib").Path(__file__).resolve().parent.parent / "data" / "categories.csv"
-        )
-    )
+    categories = load_categories(str(resolve_data_csv("categories.csv")))
 
     results = []
     staged_ledgers: list[pd.DataFrame] = []
