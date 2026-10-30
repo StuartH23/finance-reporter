@@ -1,26 +1,25 @@
 """Budget loading and comparison."""
 
-from pathlib import Path
-
 import pandas as pd
 
+from .data_paths import local_data_csv, resolve_data_csv
 from .semantics import is_budgetable_spending, resolve_semantic_type
-
-BUDGET_PATH = Path(__file__).resolve().parent.parent / "data" / "budget.csv"
 
 
 def load_budget() -> dict[str, float]:
     """Load monthly budget targets from CSV. Returns {category: amount}."""
-    if not BUDGET_PATH.exists():
+    path = resolve_data_csv("budget.csv")
+    if not path.exists():
         return {}
-    df = pd.read_csv(BUDGET_PATH)
+    df = pd.read_csv(path)
     return dict(zip(df["category"], df["monthly_budget"]))
 
 
 def save_budget(budget: dict[str, float]) -> None:
-    """Save monthly budget targets to CSV."""
+    """Save monthly budget targets to the gitignored local override."""
+    path = local_data_csv("budget.csv")
     df = pd.DataFrame([{"category": k, "monthly_budget": v} for k, v in budget.items()])
-    df.to_csv(BUDGET_PATH, index=False)
+    df.to_csv(path, index=False)
 
 
 def budget_vs_actual(pnl_ledger: pd.DataFrame, budget: dict[str, float]) -> pd.DataFrame:

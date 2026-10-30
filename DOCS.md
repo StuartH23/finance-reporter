@@ -2,7 +2,7 @@
 
 ## Overview
 
-Decoupled **React + Vite frontend** (TypeScript) and **FastAPI backend** (Python 3.13+). The original Streamlit code is preserved in `deprecated/streamlit-app/`.
+Decoupled **React + Vite frontend** (TypeScript) and **FastAPI backend** (Python 3.13+).
 
 ---
 
@@ -16,8 +16,9 @@ pnl-reporter/
 │   ├── schemas.py                  # Pydantic request/response models
 │   ├── requirements.txt            # Python dependencies
 │   ├── data/
-│   │   ├── categories.csv          # Category regex rules
-│   │   └── budget.csv              # Monthly budget targets
+│   │   ├── categories.csv          # Example category rules
+│   │   ├── budget.csv              # Example monthly targets
+│   │   └── local/                  # Gitignored personal overrides
 │   ├── sdk/                        # Reusable core library
 │   │   ├── __init__.py             # Public exports
 │   │   ├── pdf_parser.py           # Chase PDF word-coordinate parser
@@ -66,8 +67,6 @@ pnl-reporter/
 │       │   └── Budget.tsx          # Quick check + budget editor
 │       └── __tests__/
 │           └── client.test.ts      # API client tests
-└── deprecated/
-    └── streamlit-app/              # Original code for reference/revert
 ```
 
 ---

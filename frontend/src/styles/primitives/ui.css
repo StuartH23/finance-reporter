@@ -408,18 +408,6 @@
     color: var(--text-muted);
   }
 
-  .signup-helper {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    margin-bottom: 0.72rem;
-  }
-
-  .feature-signup-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.74rem;
-  }
-
   .feature-form-grid {
     display: grid;
     gap: 0.64rem;
@@ -463,54 +451,11 @@
     padding: 0.32rem 0.42rem;
   }
 
-  .feature-checkboxes {
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .feature-option {
-    display: flex;
-    gap: 0.58rem;
-    align-items: flex-start;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 0.54rem 0.62rem;
-    background: linear-gradient(135deg, var(--card-grad-from), var(--card-grad-to)), var(--surface);
-    transition: border-color 0.15s ease;
-  }
-
-  .feature-option:hover {
-    border-color: var(--border-strong);
-  }
-
-  .feature-option input {
-    margin-top: 0.14rem;
-  }
-
-  .feature-option span {
-    display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
-  }
-
-  .feature-option small {
-    color: var(--text-muted);
-  }
-
   .feature-actions {
     display: flex;
     align-items: center;
     gap: 0.65rem;
     flex-wrap: wrap;
-  }
-  .feature-meta {
-    color: var(--text-muted);
-    font-size: 0.74rem;
-  }
-
-  .form-success {
-    color: var(--green-text-soft);
-    font-size: 0.76rem;
   }
 }
 

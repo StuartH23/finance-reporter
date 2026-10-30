@@ -23,9 +23,10 @@ def test_get_categories_returns_list():
 
 def test_get_categories_missing_file(tmp_path, monkeypatch):
     """When categories.csv doesn't exist, should return empty list, not crash."""
-    import routers.categories as cat_mod
+    import sdk.data_paths as data_paths
 
-    monkeypatch.setattr(cat_mod, "CATEGORIES_PATH", tmp_path / "nonexistent.csv")
+    monkeypatch.setattr(data_paths, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(data_paths, "LOCAL_DIR", tmp_path / "local")
     response = client.get("/api/categories")
     assert response.status_code == 200
     assert response.json() == {"categories": []}

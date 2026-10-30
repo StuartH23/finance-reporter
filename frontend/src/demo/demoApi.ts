@@ -489,7 +489,6 @@ function createInitialState() {
     subscriptions,
     actions,
     savedPlan,
-    featureInterestCount: 42,
   }
 }
 
@@ -1237,21 +1236,6 @@ function demoRoutes(): DemoRoute[] {
           total_transactions: listedFiles.length * 6,
           pnl_transactions: listedFiles.length * 5,
           transfer_transactions: listedFiles.length,
-        }
-      },
-    },
-    {
-      method: 'POST',
-      match: (pathname) => pathname === '/feature-interest',
-      respond: () => {
-        demoState.featureInterestCount += 1
-        return {
-          status: 'ok',
-          total_signups: demoState.featureInterestCount,
-          feature_counts: {
-            'Rollover Budgets': 18,
-            'Goal Buckets': 22,
-          },
         }
       },
     },

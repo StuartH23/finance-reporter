@@ -24,12 +24,13 @@ describe('privacy copy', () => {
   it('shows architecture-specific privacy notice sections', () => {
     const html = renderToStaticMarkup(<PrivacyNotice />)
 
-    expect(html).toContain('Last updated: March 21, 2026')
+    expect(html).toContain('Last updated: October 30, 2026')
     expect(html).toContain('1. File uploads (/api/upload)')
     expect(html).toContain('2. Session data in memory')
     expect(html).toContain('3. Data written to disk by this app')
+    expect(html).toContain('backend/data/local/budget.csv')
     expect(html).toContain('backend/data/budget.csv')
-    expect(html).toContain('backend/data/feature_interest.csv')
+    expect(html).not.toContain('feature_interest.csv')
     expect(html).toContain('session_id')
     expect(html).toContain('5. Scope note')
   })

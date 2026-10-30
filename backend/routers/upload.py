@@ -15,9 +15,15 @@ from sdk import (
     TRANSFER_CATEGORIES,
     build_ledger,
     categorize,
-    guess_columns,
     infer_year,
     load_categories,
+)
+from sdk.csv_handler import guess_columns, normalize_statement_amounts
+from sdk.data_paths import resolve_data_csv
+from sdk.pdf_parser import (
+    PdfParseError,
+    encryption_failure,
+    failure_for_unparsed_pdf,
     parse_pdf_words_to_df,
 )
 
@@ -254,7 +260,7 @@ def ensure_session_id(
     return _ensure_session(session_id, response, request)
 
 
-@router.post("/upload", response_model=UploadResponse)
+@router.post("/upload", response_model=UploadResponse, response_model_exclude_none=True)
 async def upload_files(
     request: Request,
     response: Response,
@@ -267,11 +273,7 @@ async def upload_files(
 
     sid = _ensure_session(session_id, response, request)
 
-    categories = load_categories(
-        str(
-            __import__("pathlib").Path(__file__).resolve().parent.parent / "data" / "categories.csv"
-        )
-    )
+    categories = load_categories(str(resolve_data_csv("categories.csv")))
 
     results = []
     staged_ledgers: list[pd.DataFrame] = []
@@ -295,10 +297,21 @@ async def upload_files(
             )
         filename = uploaded.filename or "unknown"
 
-        if filename.lower().endswith(".pdf"):
-            ledger_df = _process_pdf(content, filename)
-        else:
-            ledger_df = _process_csv(content)
+        try:
+            if filename.lower().endswith(".pdf"):
+                ledger_df = _process_pdf(content, filename)
+            else:
+                ledger_df = _process_csv(content, filename)
+        except PdfParseError as exc:
+            results.append(
+                {
+                    "file": filename,
+                    "status": "error",
+                    "transactions": 0,
+                    "message": exc.message,
+                }
+            )
+            continue
 
         if ledger_df is None or ledger_df.empty:
             results.append({"file": filename, "status": "error", "transactions": 0})
@@ -332,20 +345,51 @@ async def upload_files(
     }
 
 
-def _process_pdf(content: bytes, filename: str) -> pd.DataFrame | None:
-    """Parse a PDF and return a ledger DataFrame."""
-    with pdfplumber.open(io.BytesIO(content)) as pdf:
-        if len(pdf.pages) > MAX_PDF_PAGES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"{filename} exceeds the {MAX_PDF_PAGES} page PDF limit.",
-            )
-        all_text = "\n".join((page.extract_text() or "") for page in pdf.pages)
-    year = infer_year(all_text, filename)
+def _open_failure(exc: Exception) -> PdfParseError | None:
+    if isinstance(exc, PdfParseError):
+        return exc
+    return encryption_failure(exc)
 
-    df, _ = parse_pdf_words_to_df(content, filename=filename, year_override=year)
+
+def _process_pdf(content: bytes, filename: str) -> pd.DataFrame:
+    """Parse a PDF and return a ledger DataFrame.
+
+    Raises PdfParseError with a user-facing reason when the file cannot be read.
+    """
+    try:
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            if len(pdf.pages) > MAX_PDF_PAGES:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"{filename} exceeds the {MAX_PDF_PAGES} page PDF limit.",
+                )
+            page_texts: list[str] = []
+            word_count = 0
+            for page in pdf.pages:
+                page_texts.append(page.extract_text() or "")
+                word_count += len(page.extract_words() or [])
+            all_text = "\n".join(page_texts)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        failure = _open_failure(exc)
+        if failure is None:
+            raise
+        raise failure from exc
+
+    year = infer_year(all_text, filename)
+    try:
+        df, _ = parse_pdf_words_to_df(content, filename=filename, year_override=year)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        failure = _open_failure(exc)
+        if failure is None:
+            raise
+        raise failure from exc
+
     if df is None or df.empty:
-        return None
+        raise failure_for_unparsed_pdf(all_text, word_count)
 
     return build_ledger(
         df=df,
@@ -358,7 +402,7 @@ def _process_pdf(content: bytes, filename: str) -> pd.DataFrame | None:
     )
 
 
-def _process_csv(content: bytes) -> pd.DataFrame | None:
+def _process_csv(content: bytes, filename: str = "") -> pd.DataFrame | None:
     """Parse a CSV with auto-detected columns and return a ledger DataFrame."""
     try:
         df = pd.read_csv(io.BytesIO(content))
@@ -371,6 +415,7 @@ def _process_csv(content: bytes) -> pd.DataFrame | None:
     if not guess.amount and not guess.debit and not guess.credit:
         return None
 
+    df = normalize_statement_amounts(df, guess, filename)
     return build_ledger(
         df=df,
         date_col=guess.date,

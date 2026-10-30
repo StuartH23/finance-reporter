@@ -77,7 +77,6 @@ Guest mode is not an authenticated user. It is read-only demo mode with sample d
 - no personal uploads
 - no backend finance API calls
 - no budget/goal/subscription/action writes
-- no feature-interest signup writes
 - no persistence beyond local browser demo state
 
 Guests must sign in with email or Google before uploading statements or saving changes.

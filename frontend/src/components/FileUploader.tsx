@@ -2,9 +2,32 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { uploadFiles } from '../api/client'
-import type { UploadResponse } from '../api/types'
+import type { FileResult, UploadResponse } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
 import PrivacyNotice from './PrivacyNotice'
+
+export function uploadFileStatusText(file: FileResult): string {
+  if (file.status === 'ok') {
+    return `${file.transactions} transactions`
+  }
+  if (typeof file.message === 'string' && file.message.length > 0) {
+    return file.message
+  }
+  return 'Failed'
+}
+
+export function UploadResultList({ files }: { files: FileResult[] }) {
+  return (
+    <div className="upload-results-list">
+      {files.map((file) => (
+        <div key={file.file} className={`upload-result ${file.status}`}>
+          <span>{file.file}</span>
+          <span>{uploadFileStatusText(file)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 interface FileUploaderProps {
   openRequest?: number
@@ -246,14 +269,7 @@ function FileUploader({ openRequest = 0 }: FileUploaderProps) {
 
           {results && (
             <div className="upload-results" aria-live="polite">
-              <div className="upload-results-list">
-                {results.files.map((f) => (
-                  <div key={f.file} className={`upload-result ${f.status}`}>
-                    <span>{f.file}</span>
-                    <span>{f.status === 'ok' ? `${f.transactions} transactions` : 'Failed'}</span>
-                  </div>
-                ))}
-              </div>
+              <UploadResultList files={results.files} />
               <div className="upload-summary">
                 {results.total_transactions} total &middot; {results.pnl_transactions} P&L &middot;{' '}
                 {results.transfer_transactions} transfers

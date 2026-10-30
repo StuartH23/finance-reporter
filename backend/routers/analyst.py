@@ -1,18 +1,19 @@
 """Financial analyst chat endpoint backed by Claude Haiku 4.5.
 
-Requires ANTHROPIC_API_KEY in the environment. Rate-limited to 5 requests per
-30 minutes per session_id cookie (applies to guest and signed-in users alike).
+Requires ANTHROPIC_API_KEY in the environment. Signed-in chat is limited to
+5 requests per 30 minutes per session. Expired entries are removed from the
+in-memory store. Unauthenticated demo chat uses a separate per-client limit
+and a daily cap; see routers.model_limits.
 """
 
 import os
-import time
-from collections import deque
 
 import anthropic
 import pandas as pd
 from fastapi import APIRouter, Cookie, Header, HTTPException, Request, Response
 
 from auth import get_auth_settings
+from routers.model_limits import consume_rate_limit
 from routers.upload import ensure_session_id, get_session_ledger
 from schemas import AnalystChatRequest, AnalystChatResponse
 
@@ -110,8 +111,6 @@ If the request cannot be completed with the available data:
 - Focus on clarity and decision-making
 - No fluff, no generic advice"""
 
-_rate_limits: dict[str, deque[float]] = {}
-
 
 def _is_authenticated(authorization: str | None) -> bool:
     """Return True if the request carries a valid auth token or auth is disabled."""
@@ -139,19 +138,12 @@ def _is_authenticated(authorization: str | None) -> bool:
 
 def _check_rate_limit(session_id: str) -> None:
     """Raise 429 if the session has exceeded RATE_LIMIT_MAX within the window."""
-    now = time.time()
-    bucket = _rate_limits.setdefault(session_id, deque())
-    cutoff = now - RATE_LIMIT_WINDOW_SECONDS
-    while bucket and bucket[0] < cutoff:
-        bucket.popleft()
-    if len(bucket) >= RATE_LIMIT_MAX:
-        retry_after = max(1, int(bucket[0] + RATE_LIMIT_WINDOW_SECONDS - now))
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit reached (5 questions per 30 min).",
-            headers={"Retry-After": str(retry_after)},
-        )
-    bucket.append(now)
+    consume_rate_limit(
+        f"session:{session_id}",
+        max_hits=RATE_LIMIT_MAX,
+        window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+        detail="Rate limit reached (5 questions per 30 min).",
+    )
 
 
 def _evenly_spaced_years(years: list[int], count: int) -> list[int]:

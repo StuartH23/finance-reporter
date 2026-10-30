@@ -6,6 +6,7 @@ from collections import defaultdict
 
 import pandas as pd
 import pdfplumber
+from pdfminer.pdfdocument import PDFEncryptionError
 
 from .year_detection import infer_year
 
@@ -464,3 +465,61 @@ def parse_pdf_words_to_df(
         return None, detected_year
 
     return pd.DataFrame(result_rows), detected_year
+
+
+class PdfParseError(Exception):
+    """A statement PDF could not be parsed, with a reason safe to show the user."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+PDF_FAILURE_MESSAGES = {
+    "encrypted": (
+        "This PDF is encrypted or password-protected. "
+        "Remove the password, or upload a CSV export instead."
+    ),
+    "scanned": (
+        "This PDF looks like a scanned image with no text layer. "
+        "Upload a CSV, or a statement PDF that has selectable text."
+    ),
+    "no_transactions": (
+        "No transactions were found in this statement. "
+        "The file opened, but it does not contain transaction rows this parser can read."
+    ),
+    "unsupported": (
+        "This bank or statement format is not supported yet. "
+        "Chase and Discover statement PDFs are supported; export a CSV for other banks."
+    ),
+}
+
+_SUPPORTED_STATEMENT_RE = re.compile(
+    r"\b(?:chase|jpmorgan|discover)\b|transaction\s+detail",
+    re.IGNORECASE,
+)
+
+
+def encryption_failure(exc: BaseException) -> PdfParseError | None:
+    """Return an encrypted-PDF error when pdfminer rejected the password."""
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, PDFEncryptionError):
+            return PdfParseError("encrypted", PDF_FAILURE_MESSAGES["encrypted"])
+        current = current.__cause__
+    return None
+
+
+def failure_for_unparsed_pdf(text: str, word_count: int) -> PdfParseError:
+    """Explain why the existing parser returned no transactions."""
+    stripped = text.strip()
+    if word_count == 0 and not stripped:
+        code = "scanned"
+    elif _SUPPORTED_STATEMENT_RE.search(stripped):
+        code = "no_transactions"
+    else:
+        code = "unsupported"
+    return PdfParseError(code, PDF_FAILURE_MESSAGES[code])

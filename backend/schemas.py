@@ -13,6 +13,7 @@ class FileResult(BaseModel):
     file: str
     status: str
     transactions: int
+    message: str | None = None
 
 
 class UploadResponse(BaseModel):
@@ -453,22 +454,6 @@ class PaycheckPlanSaveResponse(BaseModel):
 class SavedPaycheckPlanResponse(BaseModel):
     status: str
     plan: dict
-
-
-# --- Feature interest ---
-
-
-class FeatureInterestRequest(BaseModel):
-    email: str
-    name: str | None = None
-    features: list[str]
-    notes: str | None = None
-
-
-class FeatureInterestResponse(BaseModel):
-    status: str
-    total_signups: int
-    feature_counts: dict[str, int]
 
 
 # --- Categories ---
