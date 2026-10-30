@@ -255,15 +255,22 @@ def test_category_overrides_are_session_isolated():
         json={"category": "Coffee Shops"},
     )
 
-    assert client_a.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
-        "category"
-    ] == "Coffee Shops"
-    assert client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
-        "id"
-    ] == row_b["id"]
-    assert client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
-        "category"
-    ] != "Coffee Shops"
+    assert (
+        client_a.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
+            "category"
+        ]
+        == "Coffee Shops"
+    )
+    assert (
+        client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0]["id"]
+        == row_b["id"]
+    )
+    assert (
+        client_b.get("/api/ledger/transactions?period=2026-03").json()["transactions"][0][
+            "category"
+        ]
+        != "Coffee Shops"
+    )
 
 
 def test_ledger_transactions_export_matches_filtered_rows_csv_and_xlsx():

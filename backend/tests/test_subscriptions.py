@@ -263,9 +263,7 @@ def test_subscriptions_endpoint_returns_summary_unaffected_by_filters_and_pagina
         b"2026-02-14,UTILITY SUB,-20.00\n"
         b"2026-03-16,UTILITY SUB,-30.00\n"
     )
-    upload_resp = client.post(
-        "/api/upload", files=[("files", ("summary.csv", csv, "text/csv"))]
-    )
+    upload_resp = client.post("/api/upload", files=[("files", ("summary.csv", csv, "text/csv"))])
     assert upload_resp.status_code == 200
 
     full = client.get("/api/subscriptions").json()
@@ -275,9 +273,7 @@ def test_subscriptions_endpoint_returns_summary_unaffected_by_filters_and_pagina
     assert full_summary["latest_month_label"] == "2026-03"
 
     # Apply a filter that shrinks the visible list and paginate to 1 item.
-    filtered = client.get(
-        "/api/subscriptions?filter_increased=true&page=1&page_size=1"
-    ).json()
+    filtered = client.get("/api/subscriptions?filter_increased=true&page=1&page_size=1").json()
     assert len(filtered["subscriptions"]) <= 1
     # Summary still reflects the full unfiltered set
     assert filtered["summary"] == full_summary

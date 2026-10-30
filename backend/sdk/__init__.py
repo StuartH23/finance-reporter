@@ -11,9 +11,9 @@ from .categories import TRANSFER_CATEGORIES, categorize, load_categories
 from .csv_handler import ColumnGuess, guess_columns
 from .goals import build_paycheck_plan, compute_goal_progress, what_changed_lines
 from .insights import build_insights
-from .merchant_directory import lookup_cancel_info
 from .ledger import build_ledger, clean_amount, summarize
 from .ledger_scope import scoped_ledger
+from .merchant_directory import lookup_cancel_info
 from .next_actions import (
     apply_action_feedback,
     default_personalization_state,

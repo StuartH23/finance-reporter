@@ -54,7 +54,7 @@ From repo root:
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 cd ..
 
 # Frontend
@@ -105,8 +105,8 @@ The parser auto-detects common column names.
 ## Quality Checks
 
 ```bash
-# Backend tests
-cd backend && .venv/bin/pytest -q
+# Backend lint + tests
+cd backend && .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/pytest -q
 
 # Frontend tests
 cd frontend && npm test
