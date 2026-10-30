@@ -15,11 +15,11 @@ from sdk import (
     TRANSFER_CATEGORIES,
     build_ledger,
     categorize,
-    guess_columns,
     infer_year,
     load_categories,
     parse_pdf_words_to_df,
 )
+from sdk.csv_handler import guess_columns, normalize_statement_amounts
 
 router = APIRouter(tags=["upload"])
 
@@ -298,7 +298,7 @@ async def upload_files(
         if filename.lower().endswith(".pdf"):
             ledger_df = _process_pdf(content, filename)
         else:
-            ledger_df = _process_csv(content)
+            ledger_df = _process_csv(content, filename)
 
         if ledger_df is None or ledger_df.empty:
             results.append({"file": filename, "status": "error", "transactions": 0})
@@ -358,7 +358,7 @@ def _process_pdf(content: bytes, filename: str) -> pd.DataFrame | None:
     )
 
 
-def _process_csv(content: bytes) -> pd.DataFrame | None:
+def _process_csv(content: bytes, filename: str = "") -> pd.DataFrame | None:
     """Parse a CSV with auto-detected columns and return a ledger DataFrame."""
     try:
         df = pd.read_csv(io.BytesIO(content))
@@ -371,6 +371,7 @@ def _process_csv(content: bytes) -> pd.DataFrame | None:
     if not guess.amount and not guess.debit and not guess.credit:
         return None
 
+    df = normalize_statement_amounts(df, guess, filename)
     return build_ledger(
         df=df,
         date_col=guess.date,

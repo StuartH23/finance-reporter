@@ -144,3 +144,78 @@ def test_oversized_upload_does_not_replace_existing_ledger(monkeypatch):
     ledger = client.get("/api/ledger").json()
     assert ledger["count"] == 1
     assert ledger["transactions"][0]["description"] == "Existing"
+
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+
+def test_bank_csv_fixture_keeps_spending_negative_and_income_positive():
+    """A checking export already uses ledger signs and must not be flipped."""
+    result = _process_csv(
+        (FIXTURES / "bank_statement.csv").read_bytes(),
+        "bank_statement.csv",
+    )
+
+    assert result is not None
+    assert result["description"].tolist() == ["Payroll Deposit", "Grocery Store", "Gas Station"]
+    assert result["amount"].tolist() == pytest.approx([2500.00, -84.20, -40.00])
+
+
+def test_card_csv_fixture_makes_purchases_expenses_and_payments_income():
+    """Card exports often store charges as positive numbers."""
+    result = _process_csv(
+        (FIXTURES / "card_statement.csv").read_bytes(),
+        "card_statement.csv",
+    )
+
+    assert result is not None
+    assert result["amount"].tolist() == pytest.approx([-54.18, -31.40, 200.00, 18.50])
+
+
+def test_card_filename_flips_positive_charges_without_a_payment_row():
+    csv_content = (
+        b"Date,Description,Amount\n2025-04-01,Grocery Store,12.00\n2025-04-02,Coffee Shop,4.50\n"
+    )
+
+    result = _process_csv(csv_content, "visa-credit-card.csv")
+
+    assert result is not None
+    assert result["amount"].tolist() == pytest.approx([-12.00, -4.50])
+
+
+def test_positive_amounts_without_card_signals_stay_positive():
+    csv_content = (
+        b"Date,Description,Amount\n2025-04-01,Grocery Store,12.00\n2025-04-02,Coffee Shop,4.50\n"
+    )
+
+    result = _process_csv(csv_content, "payroll.csv")
+
+    assert result is not None
+    assert result["amount"].tolist() == pytest.approx([12.00, 4.50])
+
+
+def test_unsigned_card_type_column_signs_charges_and_payments():
+    csv_content = (
+        b"Date,Description,Type,Amount\n"
+        b"2025-03-01,Grocery Store,Sale,22.00\n"
+        b"2025-03-02,Payment Thank You,Payment,100.00\n"
+        b"2025-03-03,Store Refund,Return,8.00\n"
+    )
+
+    result = _process_csv(csv_content, "credit-card.csv")
+
+    assert result is not None
+    assert result["amount"].tolist() == pytest.approx([-22.00, 100.00, 8.00])
+
+
+def test_already_signed_card_type_column_is_not_flipped_again():
+    csv_content = (
+        b"Date,Description,Type,Amount\n"
+        b"2025-03-01,Grocery Store,Sale,-22.00\n"
+        b"2025-03-02,Payment Thank You,Payment,100.00\n"
+    )
+
+    result = _process_csv(csv_content, "credit-card-export.csv")
+
+    assert result is not None
+    assert result["amount"].tolist() == pytest.approx([-22.00, 100.00])
