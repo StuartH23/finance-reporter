@@ -1,0 +1,146 @@
+@layer pages {
+  .export-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .export-section h2 {
+    margin-bottom: var(--space-2);
+  }
+
+  .export-note,
+  .export-warning,
+  .export-error,
+  .export-success {
+    font-size: var(--font-small);
+    margin: 0 0 var(--space-3);
+  }
+
+  .export-note,
+  .export-warning {
+    color: var(--text-secondary);
+  }
+
+  .export-error {
+    color: var(--chart-negative);
+  }
+
+  .export-success {
+    color: var(--chart-positive);
+  }
+
+  .export-choices,
+  .export-categories {
+    border: 0;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+  }
+
+  .export-choices legend,
+  .export-categories legend {
+    font-size: var(--font-small);
+    font-weight: var(--weight-semibold);
+    margin-bottom: var(--space-2);
+  }
+
+  .export-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .export-choice {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-start;
+    flex: 1 1 180px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    background: var(--surface);
+  }
+
+  .export-choice span {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .export-choice small {
+    color: var(--text-muted);
+  }
+
+  .export-dates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .export-category-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-2);
+    max-height: 240px;
+    overflow: auto;
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .export-category {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .export-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: end;
+  }
+
+  .export-preview {
+    margin-top: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .export-preview h3 {
+    margin: 0;
+  }
+
+  .export-counts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .export-counts li {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .export-counts span {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+  }
+
+  .export-warning-list {
+    margin: 0;
+    padding-left: var(--space-4);
+    color: var(--text-secondary);
+    font-size: var(--font-small);
+  }
+}

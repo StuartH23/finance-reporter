@@ -1565,6 +1565,39 @@ function Budget({ ledgerVersion }: BudgetPageProps) {
 
 ---
 
+## Data export
+
+`GET /api/export?format=xlsx|zip|json` downloads everything saved for this account.
+
+- `xlsx`: one sheet per data type
+- `zip`: one UTF-8 CSV per data type, plus `backup.json`
+- `json`: the same backup document
+
+File names look like `finance-export-2026-10-30.xlsx`. Dates are ISO (`YYYY-MM-DD`, `YYYY-MM`, or ISO-8601 timestamps). Amounts are numbers, not currency text. Booleans are `true` or `false`.
+
+`GET /api/ledger/transactions/export` still exports the filtered transaction list as CSV or XLSX. Optional `start_date` and `end_date` (`YYYY-MM-DD`) and repeated `categories` narrow that file. `all_dates=true` exports every transaction instead of only the latest month. `category` still filters to one category. The download name includes the range, or the period, and today's date.
+
+`POST /api/export/preview` checks a JSON backup and returns row counts. `POST /api/export/restore` replaces saved data only after that preview. Subscription charges and goal contributions are rebuilt from transactions and goals. Essential and ignored subscription flags are restored. Paycheck obligation names are not stored, so the backup keeps the obligation total.
+
+| Dataset | Columns |
+| --- | --- |
+| transactions | id, date, description, amount, category, source_file, category_edited |
+| budgets | category, monthly_budget |
+| category_rules | category, keywords |
+| subscriptions | stream_id, merchant, dominant_category, cadence, amount, baseline_amount, expected_amount, last_paid_amount, confidence, active, ignored, essential, manually_managed, price_increase, cancellation_candidate, negotiation_opportunity, is_new_recurring, missed_expected_charge, charge_count, trend, last_charge_date, next_expected_charge_date, next_due_date, status_group, payment_state |
+| subscription_charges | stream_id, date, amount |
+| goals | id, name, target_amount, target_date, priority, category, status, created_at, updated_at, contributed_amount, remaining_amount, progress_pct |
+| goal_contributions | goal_id, month, amount |
+| paycheck_plan | paycheck_amount, allocation_mode, fixed_obligations_total, needs, goals_amount, discretionary, safety_buffer_reserved, minimum_emergency_buffer, saved_at |
+| paycheck_allocations | goal_id, name, category, priority, target_date, recommended_amount, remaining_after_allocation, required_per_paycheck, feasible |
+| action_feedback | action_id, status, action_type, updated_at, cooldown_until, snooze_until |
+| action_history | action_id, action_type, outcome, at |
+| action_type_bias | action_type, bias |
+| action_metric_weights | metric, weight |
+| action_catalog | action_id, action_type, title, impact_score, urgency_score, confidence_score, effort_score |
+
+Ask AI chat, feature-interest signups, and theme or sidebar preferences are not part of the backup.
+
 ## API Endpoint Summary
 
 | Method | Path | Description |
@@ -1580,6 +1613,10 @@ function Budget({ ledgerVersion }: BudgetPageProps) {
 | `GET` | `/api/budget/vs-actual` | Budget vs actual spending comparison |
 | `GET` | `/api/budget/quick-check` | Current month budget status |
 | `GET` | `/api/categories` | List all category rules |
+| `GET` | `/api/ledger/transactions/export` | Download filtered transactions as CSV or XLSX |
+| `GET` | `/api/export` | Download a full xlsx, zip, or JSON backup |
+| `POST` | `/api/export/preview` | Preview a JSON backup without changing data |
+| `POST` | `/api/export/restore` | Restore a previewed JSON backup |
 | `GET` | `/api/health` | Health check |
 
 ---

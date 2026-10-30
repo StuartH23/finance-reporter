@@ -1,7 +1,7 @@
 export type AppNavItem = {
   to: string
   label: string
-  icon: 'dashboard' | 'cashflow' | 'budget' | 'goals' | 'subscriptions' | 'chat'
+  icon: 'dashboard' | 'cashflow' | 'budget' | 'goals' | 'subscriptions' | 'chat' | 'export'
 }
 
 export type AppNavGroup = {
@@ -28,6 +28,10 @@ const navGroups: AppNavGroup[] = [
   {
     label: null,
     items: [{ to: '/chat', label: 'Ask AI', icon: 'chat' }],
+  },
+  {
+    label: 'Data',
+    items: [{ to: '/export', label: 'Export', icon: 'export' }],
   },
 ]
 

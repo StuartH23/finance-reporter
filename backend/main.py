@@ -17,6 +17,7 @@ from routers import (
     categories,
     chat,
     demo,
+    export,
     feature_interest,
     goals,
     insights,
@@ -105,6 +106,7 @@ app.include_router(subscriptions.router, prefix="/api", dependencies=protected_r
 app.include_router(chat.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(analyst.router, prefix="/api", dependencies=protected_route_dependencies)
 app.include_router(demo.router, prefix="/api")
+app.include_router(export.router, prefix="/api", dependencies=protected_route_dependencies)
 
 
 @app.get("/api/health", response_model=HealthResponse)

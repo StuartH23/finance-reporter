@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard'
 const Budget = lazy(() => import('./pages/Budget'))
 const CashFlow = lazy(() => import('./pages/CashFlow'))
 const Chat = lazy(() => import('./pages/Chat'))
+const ExportData = lazy(() => import('./pages/Export'))
 const Goals = lazy(() => import('./pages/Goals'))
 const Subscriptions = lazy(() => import('./pages/Subscriptions'))
 const FileUploader = lazy(() => import('./components/FileUploader'))
@@ -116,6 +117,16 @@ function NavIcon({ icon }: { icon: AppNavItem['icon'] }) {
         <path d="M4 6h16v10H7l-3 3V6z" />
         <path d="M8 10h8" />
         <path d="M8 13h5" />
+      </svg>
+    )
+  }
+
+  if (icon === 'export') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4v10" />
+        <path d="m8 10 4 4 4-4" />
+        <path d="M5 19h14" />
       </svg>
     )
   }
@@ -421,6 +432,7 @@ function AppShell() {
               <Route path="/subscriptions" element={<Subscriptions />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/goals" element={<Goals />} />
+              <Route path="/export" element={<ExportData />} />
             </Routes>
           </Suspense>
         </main>

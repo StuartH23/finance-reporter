@@ -3,8 +3,10 @@
  * the correct URL and method, and propagates errors correctly.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { parseBackupText } from '../api/backup'
 import {
   createGoal,
+  exportFullBackup,
   exportLedgerTransactions,
   getBudget,
   getCashFlow,
@@ -19,7 +21,9 @@ import {
   getSubscriptions,
   getTransfers,
   getYearlyPnl,
+  previewBackup,
   recommendPaycheckPlan,
+  restoreBackup,
   reviewSubscription,
   savePaycheckPlan,
   setAccessTokenProvider,
@@ -152,11 +156,14 @@ function sampleBody(url: string): unknown {
 function fakeFetch(url: string | URL | Request, options?: RequestInit): Promise<Response> {
   lastUrl = String(url)
   lastOptions = options
-  if (lastUrl.includes('/ledger/transactions/export')) {
+  if (lastUrl.includes('/ledger/transactions/export') || lastUrl.includes('/api/export?')) {
+    const filename = lastUrl.includes('/api/export?')
+      ? 'finance-export-2026-10-30.zip'
+      : 'transactions.csv'
     return Promise.resolve(
       new Response(new Blob(['id,date\n']), {
         status: 200,
-        headers: { 'Content-Disposition': 'attachment; filename="transactions.csv"' },
+        headers: { 'Content-Disposition': `attachment; filename="${filename}"` },
       }),
     )
   }
@@ -420,6 +427,81 @@ describe('API client', () => {
     )
     expect(headers.get('Authorization')).toBe('Bearer test-access-token')
     expect(result.filename).toBe('transactions.csv')
+  })
+
+  it('downloads a full backup and filters transactions by date and category', async () => {
+    const full = await exportFullBackup('zip')
+    expect(lastUrl).toBe('/api/export?format=zip')
+    expect(full.filename).toBe('finance-export-2026-10-30.zip')
+
+    await exportLedgerTransactions({
+      allDates: true,
+      startDate: '2026-02-01',
+      endDate: '2026-02-28',
+      categories: ['Meals', 'Dining Out'],
+      format: 'csv',
+    })
+    expect(lastUrl).toBe(
+      '/api/ledger/transactions/export?all_dates=true&start_date=2026-02-01&end_date=2026-02-28&categories=Meals&categories=Dining+Out&format=csv',
+    )
+  })
+
+  it('previews a backup before restoring it', async () => {
+    const backup = parseBackupText(
+      JSON.stringify({
+        version: 1,
+        exported_at: '2026-10-30T00:00:00Z',
+        transactions: [],
+        budgets: [],
+        category_rules: [],
+        subscriptions: [],
+        subscription_charges: [],
+        goals: [],
+        goal_contributions: [],
+        paycheck_plan: [],
+        paycheck_allocations: [],
+        action_feedback: [],
+        action_history: [],
+        action_type_bias: [],
+        action_metric_weights: [],
+        action_catalog: [],
+      }),
+    )
+    const counts = {
+      transactions: 0,
+      budgets: 0,
+      category_rules: 0,
+      subscriptions: 0,
+      subscription_charges: 0,
+      goals: 0,
+      goal_contributions: 0,
+      paycheck_plan: 0,
+      paycheck_allocations: 0,
+      action_feedback: 0,
+      action_history: 0,
+      action_type_bias: 0,
+      action_metric_weights: 0,
+      action_catalog: 0,
+    }
+    globalThis.fetch = (url, options) => {
+      lastUrl = String(url)
+      lastOptions = options
+      const path = lastUrl
+      const body = path.endsWith('/export/restore')
+        ? { status: 'restored', version: 1, counts }
+        : { version: 1, exported_at: '2026-10-30T00:00:00Z', counts, warnings: ['Check first.'] }
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))
+    }
+
+    const summary = await previewBackup(backup)
+    expect(lastUrl).toBe('/api/export/preview')
+    expect(lastOptions?.method).toBe('POST')
+    expect(summary.counts.transactions).toBe(0)
+    expect(summary.warnings).toEqual(['Check first.'])
+
+    const restored = await restoreBackup(backup)
+    expect(lastUrl).toBe('/api/export/restore')
+    expect(restored.status).toBe('restored')
   })
 
   it('serves guest demo reads locally without calling fetch', async () => {

@@ -19,6 +19,7 @@ A full-stack personal finance analysis app that converts raw bank statements int
 - Goal budgeting planner
 - Subscription center workflow
 - Insight panel and personalized next-best-action feed
+- Full data export (Excel workbook, CSV zip, or JSON backup) and JSON restore
 
 ## Architecture
 

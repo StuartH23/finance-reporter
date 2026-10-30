@@ -4,6 +4,15 @@ type SchemaParser<T> = {
 
 import { getDemoResponse } from '../demo/demoApi'
 import {
+  type BackupDocument,
+  type BackupPreview,
+  type BackupRestoreResponse,
+  backupPreviewSchema,
+  backupRestoreSchema,
+  type FullExportFormat,
+  readApiError,
+} from './backup'
+import {
   analystChatResponseSchema,
   budgetListResponseSchema,
   budgetUpdateResponseSchema,
@@ -138,6 +147,10 @@ export interface LedgerTransactionOptions {
   granularity?: 'year' | 'month' | 'quarter' | undefined
   period?: string | undefined
   category?: string | undefined
+  categories?: readonly string[] | undefined
+  startDate?: string | undefined
+  endDate?: string | undefined
+  allDates?: boolean | undefined
   type?: 'income' | 'spending' | 'transfer' | undefined
   sourceFile?: string | undefined
   search?: string | undefined
@@ -149,7 +162,13 @@ function ledgerTransactionParams(options?: LedgerTransactionOptions) {
   const params = new URLSearchParams()
   if (options?.granularity) params.set('granularity', options.granularity)
   if (options?.period) params.set('period', options.period)
+  if (options?.allDates) params.set('all_dates', 'true')
+  if (options?.startDate) params.set('start_date', options.startDate)
+  if (options?.endDate) params.set('end_date', options.endDate)
   if (options?.category) params.set('category', options.category)
+  for (const category of options?.categories ?? []) {
+    if (category) params.append('categories', category)
+  }
   if (options?.type) params.set('type', options.type)
   if (options?.sourceFile) params.set('source_file', options.sourceFile)
   if (options?.search) params.set('search', options.search)
@@ -181,11 +200,64 @@ export async function exportLedgerTransactions(
   params.set('format', options?.format ?? 'csv')
   const qs = params.toString()
   const res = await requestBlob(`/ledger/transactions/export${qs ? `?${qs}` : ''}`)
-  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const extension = options?.format === 'xlsx' ? 'xlsx' : 'csv'
+  return {
+    blob: await res.blob(),
+    filename: filenameFromDisposition(res, `transactions.${extension}`),
+  }
+}
+
+export async function exportFullBackup(
+  format: FullExportFormat,
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await requestBlob(`/export?format=${format}`)
+  return {
+    blob: await res.blob(),
+    filename: filenameFromDisposition(res, `finance-export.${format}`),
+  }
+}
+
+async function requestBackup<T>(
+  path: string,
+  schema: SchemaParser<T>,
+  body: BackupDocument,
+): Promise<T> {
+  const demoResponse = getDemoResponse(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+  if (demoResponse !== null) return parseApiPayload(path, schema, demoResponse)
+
+  const res = await fetch(
+    `${BASE}${path}`,
+    await withAuthHeader({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  )
+  if (!res.ok) throw new Error(await readApiError(res))
+  let payload: unknown
+  try {
+    payload = await res.json()
+  } catch {
+    throw new Error(`API response did not match the expected shape for ${path}.`)
+  }
+  return parseApiPayload(path, schema, payload)
+}
+
+export async function previewBackup(backup: BackupDocument): Promise<BackupPreview> {
+  return requestBackup('/export/preview', backupPreviewSchema, backup)
+}
+
+export async function restoreBackup(backup: BackupDocument): Promise<BackupRestoreResponse> {
+  return requestBackup('/export/restore', backupRestoreSchema, backup)
+}
+
+function filenameFromDisposition(response: Response, fallback: string): string {
+  const disposition = response.headers.get('Content-Disposition') ?? ''
   const filenameMatch = disposition.match(/filename="?([^";]+)"?/)
-  const filename =
-    filenameMatch?.[1] ?? `transactions-export.${options?.format === 'xlsx' ? 'xlsx' : 'csv'}`
-  return { blob: await res.blob(), filename }
+  return filenameMatch?.[1] ?? fallback
 }
 
 export async function updateTransactionCategory(

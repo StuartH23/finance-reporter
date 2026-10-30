@@ -19,7 +19,11 @@ def load_budget() -> dict[str, float]:
 
 def save_budget(budget: dict[str, float]) -> None:
     """Save monthly budget targets to CSV."""
-    df = pd.DataFrame([{"category": k, "monthly_budget": v} for k, v in budget.items()])
+    df = pd.DataFrame(
+        [{"category": k, "monthly_budget": v} for k, v in budget.items()],
+        columns=["category", "monthly_budget"],
+    )
+    BUDGET_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(BUDGET_PATH, index=False)
 
 

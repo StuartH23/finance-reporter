@@ -1,23 +1,14 @@
 """Category management endpoints."""
 
-from pathlib import Path
-
-import pandas as pd
 from fastapi import APIRouter
 
 from schemas import CategoriesResponse
+from sdk.categories import load_category_rules
 
 router = APIRouter(tags=["categories"])
-
-CATEGORIES_PATH = Path(__file__).resolve().parent.parent / "data" / "categories.csv"
 
 
 @router.get("/categories", response_model=CategoriesResponse)
 def get_categories():
     """Return all category rules."""
-    if not CATEGORIES_PATH.exists():
-        return {"categories": []}
-    df = pd.read_csv(CATEGORIES_PATH).fillna("")
-    return {
-        "categories": df.to_dict(orient="records"),
-    }
+    return {"categories": load_category_rules()}
