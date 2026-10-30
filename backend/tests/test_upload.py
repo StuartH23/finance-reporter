@@ -7,10 +7,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
 from fastapi.testclient import TestClient
+from pdfminer.pdfdocument import PDFPasswordIncorrect
 
 from main import app
 from routers import upload as upload_router
 from routers.upload import _process_csv, _process_pdf, _session_cookie_options
+from sdk.pdf_parser import PDF_FAILURE_MESSAGES, PdfParseError
 
 
 def test_process_csv_empty_bytes():
@@ -206,6 +208,90 @@ def test_unsigned_card_type_column_signs_charges_and_payments():
 
     assert result is not None
     assert result["amount"].tolist() == pytest.approx([-22.00, 100.00, 8.00])
+
+
+def _simple_pdf(text: str) -> bytes:
+    safe = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    stream = f"BT /F1 12 Tf 72 700 Td ({safe}) Tj ET\n".encode() if text else b""
+    objects = {
+        1: b"<< /Type /Catalog /Pages 2 0 R >>",
+        2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        3: (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>"
+        ),
+        4: b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"endstream",
+        5: b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    }
+    out = bytearray(b"%PDF-1.4\n")
+    offsets: dict[int, int] = {}
+    for num in range(1, 6):
+        offsets[num] = len(out)
+        out += f"{num} 0 obj\n".encode() + objects[num] + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 6\n0000000000 65535 f \n"
+    for num in range(1, 6):
+        out += f"{offsets[num]:010d} 00000 n \n".encode()
+    out += f"trailer << /Size 6 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return bytes(out)
+
+
+def test_scanned_pdf_reports_missing_text_layer():
+    with pytest.raises(PdfParseError) as caught:
+        _process_pdf(_simple_pdf(""), "scan.pdf")
+
+    assert caught.value.code == "scanned"
+    assert caught.value.message == PDF_FAILURE_MESSAGES["scanned"]
+
+
+def test_unsupported_pdf_reports_unknown_format():
+    with pytest.raises(PdfParseError) as caught:
+        _process_pdf(_simple_pdf("City Water Utility invoice total due"), "water.pdf")
+
+    assert caught.value.code == "unsupported"
+    assert "not supported" in caught.value.message
+
+
+def test_supported_statement_without_rows_reports_no_transactions():
+    text = "Chase checking Transaction Detail this page has no transaction rows"
+    with pytest.raises(PdfParseError) as caught:
+        _process_pdf(_simple_pdf(text), "chase.pdf")
+
+    assert caught.value.code == "no_transactions"
+    assert "No transactions were found" in caught.value.message
+
+
+def test_encrypted_pdf_reports_password_protection(monkeypatch):
+    def _open(*_args, **_kwargs):
+        raise PDFPasswordIncorrect
+
+    monkeypatch.setattr(upload_router.pdfplumber, "open", _open)
+
+    with pytest.raises(PdfParseError) as caught:
+        _process_pdf(b"%PDF-1.4", "locked.pdf")
+
+    assert caught.value.code == "encrypted"
+    assert "password-protected" in caught.value.message
+
+
+def test_upload_includes_pdf_failure_reason():
+    client = TestClient(app)
+    response = client.post(
+        "/api/upload",
+        files=[("files", ("scan.pdf", _simple_pdf(""), "application/pdf"))],
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["files"] == [
+        {
+            "file": "scan.pdf",
+            "status": "error",
+            "transactions": 0,
+            "message": PDF_FAILURE_MESSAGES["scanned"],
+        }
+    ]
+    assert body["total_transactions"] == 0
 
 
 def test_already_signed_card_type_column_is_not_flipped_again():

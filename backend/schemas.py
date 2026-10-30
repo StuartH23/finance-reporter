@@ -13,6 +13,7 @@ class FileResult(BaseModel):
     file: str
     status: str
     transactions: int
+    message: str | None = None
 
 
 class UploadResponse(BaseModel):

@@ -18,6 +18,7 @@ export const fileResultSchema = z.object({
   file: z.string(),
   status: z.enum(['ok', 'error']),
   transactions: z.number(),
+  message: z.string().nullish(),
 })
 export type FileResult = z.infer<typeof fileResultSchema>
 
