@@ -120,6 +120,7 @@ cd frontend && npm run lint && npm run typecheck
 - Data/session state is in-memory in the backend process
 - Restarting the backend clears uploaded session data
 - PDF parsing is currently optimized for Chase statement layout
+- Public demo analyst questions are capped per connecting client and by a daily paid-model limit (`DEMO_CLIENT_RATE_LIMIT`, `DEMO_CLIENT_RATE_WINDOW_SECONDS`, `DEMO_DAILY_MODEL_CAP`)
 
 ## Documentation
 

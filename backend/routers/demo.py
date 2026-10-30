@@ -11,7 +11,8 @@ import pandas as pd
 from fastapi import APIRouter, Cookie, Request, Response
 from pydantic import BaseModel
 
-from routers.analyst import _check_rate_limit, build_analyst_response
+from routers.analyst import build_analyst_response
+from routers.model_limits import client_host, consume_demo_model_call
 from routers.upload import _sessions, clear_session, ensure_session_id, get_session_ledger
 from schemas import AnalystChatRequest, AnalystChatResponse
 
@@ -81,5 +82,5 @@ def demo_analyst_chat(
     if ledger.empty and not req.demo_ledger_csv:
         return AnalystChatResponse(content="Load the demo data first, then ask a question.")
 
-    _check_rate_limit(sid)
+    consume_demo_model_call(client_host(request))
     return build_analyst_response(req, ledger)
