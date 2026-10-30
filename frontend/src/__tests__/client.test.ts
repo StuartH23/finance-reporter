@@ -34,31 +34,148 @@ let lastUrl: string
 let lastOptions: RequestInit | undefined
 const originalWindow = globalThis.window
 
-function fakeFetch(url: string | URL | Request, options?: RequestInit) {
-  lastUrl = String(url)
-  lastOptions = options
-  return Promise.resolve({
-    ok: true,
-    headers: new Headers({ 'Content-Disposition': 'attachment; filename="transactions.csv"' }),
-    blob: () => Promise.resolve(new Blob(['id,date\n'])),
-    json: () => Promise.resolve({ mock: true }),
-  } as Response)
+const emptyLedger = { transactions: [], count: 0 }
+const sampleGoal = {
+  id: 'goal-1',
+  name: 'Emergency Fund',
+  target_amount: 1000,
+  target_date: '2026-12-31',
+  priority: 1,
+  category: 'emergency',
+  status: 'active',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  contributed_amount: 0,
+  remaining_amount: 1000,
+  progress_pct: 0,
+  contribution_history: [],
+}
+const samplePlan = {
+  paycheck_amount: 2000,
+  allocation_mode: 'balanced',
+  fixed_obligations_total: 1000,
+  needs: 1000,
+  goals: 550,
+  discretionary: 300,
+  safety_buffer_reserved: 150,
+  goal_allocations: [],
+  warnings: [],
+  explanations: [],
+  what_changed: [],
 }
 
-function failingFetch() {
-  return Promise.resolve({
-    ok: false,
-    status: 500,
-    statusText: 'Internal Server Error',
-    json: () => Promise.resolve({}),
-  } as Response)
+function sampleBody(url: string): unknown {
+  if (url.includes('/ledger/transfers')) return { ...emptyLedger, summary: [] }
+  if (url.includes('/ledger')) return emptyLedger
+  if (url.includes('/subscriptions/alerts')) return { alerts: [], count: 0 }
+  if (url.includes('/preferences')) {
+    return { status: 'ok', stream_id: 'abc123', essential: false, ignored: true }
+  }
+  if (url.includes('/cancel-info')) {
+    return { stream_id: 'abc123', merchant: 'Netflix', found: false }
+  }
+  if (url.includes('/review')) {
+    return {
+      stream_id: 'abc123',
+      verdict: 'review_needed',
+      reason: 'Short history',
+      evidence: [],
+      cached: false,
+    }
+  }
+  if (url.includes('/subscriptions')) {
+    return {
+      subscriptions: [],
+      count: 0,
+      summary: {
+        monthly_run_rate: 0,
+        annual_run_rate: 0,
+        active_count: 0,
+        latest_month_total: 0,
+        latest_month_label: '2026-03',
+        latest_month_is_complete: false,
+      },
+    }
+  }
+  if (url.includes('/pnl/monthly')) return { months: [] }
+  if (url.includes('/pnl/yearly')) return { years: [] }
+  if (url.includes('/pnl/categories')) return { categories: [], spending_chart: [] }
+  if (url.includes('/cashflow')) {
+    return {
+      granularity: 'quarter',
+      group_by: 'merchant',
+      period_key: '2026-Q1',
+      period_label: '2026 Q1',
+      available_periods: [],
+      totals: { income: 0, expenses: 0, net: 0 },
+      nodes: [],
+      links: [],
+      groups: [],
+      transaction_count: 0,
+    }
+  }
+  if (url.includes('/insights')) {
+    return {
+      generated_at: '2026-03-01T00:00:00Z',
+      locale: 'en-US',
+      currency: 'USD',
+      insights: [],
+      digest: [],
+      suppressed: 0,
+    }
+  }
+  if (url.includes('/budget/vs-actual')) return { comparison: [], summary: {} }
+  if (url.includes('/budget'))
+    return url.includes('PUT') ? { status: 'ok', categories: 1 } : { budget: [] }
+  if (url.includes('/goals/paycheck-plan/saved')) return { status: 'empty', plan: {} }
+  if (url.includes('/goals/paycheck-plan/save')) return { status: 'ok', plan: {} }
+  if (url.includes('/goals/paycheck-plan')) return samplePlan
+  if (url.includes('/goals'))
+    return url.includes('POST') || url.includes('PUT')
+      ? { status: 'ok', goal: sampleGoal }
+      : { goals: [], count: 0 }
+  if (url.includes('/actions/feed')) {
+    return { feed_date: '2026-03-01', count: 0, actionable_data_exists: false, actions: [] }
+  }
+  if (url.includes('/feedback')) {
+    return { status: 'ok', action_id: 'action1', outcome: 'snoozed' }
+  }
+  if (url.includes('/upload')) {
+    return { files: [], total_transactions: 0, pnl_transactions: 0, transfer_transactions: 0 }
+  }
+  if (url.includes('/feature-interest')) {
+    return { status: 'saved', total_signups: 1, feature_counts: { 'Goal Buckets': 1 } }
+  }
+  return {}
+}
+
+function fakeFetch(url: string | URL | Request, options?: RequestInit): Promise<Response> {
+  lastUrl = String(url)
+  lastOptions = options
+  if (lastUrl.includes('/ledger/transactions/export')) {
+    return Promise.resolve(
+      new Response(new Blob(['id,date\n']), {
+        status: 200,
+        headers: { 'Content-Disposition': 'attachment; filename="transactions.csv"' },
+      }),
+    )
+  }
+  const method = (options?.method ?? 'GET').toUpperCase()
+  const body = sampleBody(`${method} ${lastUrl}`)
+  return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))
+}
+
+function failingFetch(): Promise<Response> {
+  return Promise.resolve(
+    new Response(JSON.stringify({}), { status: 500, statusText: 'Internal Server Error' }),
+  )
 }
 
 beforeEach(() => {
   lastUrl = ''
   lastOptions = undefined
   setAccessTokenProvider(null)
-  globalThis.fetch = fakeFetch as unknown as typeof fetch
+  globalThis.fetch = fakeFetch
 })
 
 afterEach(() => {
@@ -266,8 +383,14 @@ describe('API client', () => {
   })
 
   it('throws on non-ok response', async () => {
-    globalThis.fetch = failingFetch as unknown as typeof fetch
+    globalThis.fetch = failingFetch
     await expect(getLedger()).rejects.toThrow('API error: 500 Internal Server Error')
+  })
+
+  it('rejects a malformed ledger response instead of returning it', async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(new Response(JSON.stringify({ transactions: 'nope' }), { status: 200 }))
+    await expect(getLedger()).rejects.toThrow('API response did not match the expected shape')
   })
 
   it('adds a bearer token when an access token provider is configured', async () => {
@@ -301,9 +424,9 @@ describe('API client', () => {
 
   it('serves guest demo reads locally without calling fetch', async () => {
     installGuestDemoWindow()
-    globalThis.fetch = (() => {
+    globalThis.fetch = () => {
       throw new Error('fetch should not be called for guest demo reads')
-    }) as unknown as typeof fetch
+    }
 
     const ledger = await getLedger()
 
@@ -313,9 +436,9 @@ describe('API client', () => {
 
   it('serves guest demo subscriptions with an unfiltered summary', async () => {
     installGuestDemoWindow()
-    globalThis.fetch = (() => {
+    globalThis.fetch = () => {
       throw new Error('fetch should not be called for guest demo reads')
-    }) as unknown as typeof fetch
+    }
 
     const full = await getSubscriptions({ status: 'all' })
     const filtered = await getSubscriptions({

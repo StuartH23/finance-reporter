@@ -11,6 +11,7 @@ import {
 import { queryKeys } from '../api/queryKeys'
 import type { Goal, PaycheckObligation, PaycheckPlanResponse } from '../api/types'
 import { useGuestFeature } from '../guest/GuestFeatureProvider'
+import { isPaycheckMode } from '../utils/guards'
 import EmptyState from './primitives/EmptyState'
 import MoneyInput from './primitives/MoneyInput'
 
@@ -444,7 +445,9 @@ function GoalBudgetPlanner() {
             <select
               className="text-input"
               value={mode}
-              onChange={(e) => setMode(e.target.value as 'balanced' | 'aggressive_savings')}
+              onChange={(e) => {
+                if (isPaycheckMode(e.target.value)) setMode(e.target.value)
+              }}
             >
               <option value="balanced">Balanced</option>
               <option value="aggressive_savings">Aggressive savings</option>

@@ -1,32 +1,20 @@
+import { z } from 'zod'
 import type {
   BudgetComparison,
   BudgetListResponse,
-  BudgetUpdateResponse,
   BudgetVsActualResponse,
-  CancelInfoResponse,
   CashFlowResponse,
   CategoryBreakdownResponse,
-  FeatureInterestResponse,
   Goal,
-  GoalListResponse,
-  GoalUpsertResponse,
   InsightsResponse,
-  LedgerResponse,
   MonthlyPnlResponse,
   NextBestAction,
-  NextBestActionFeedbackResponse,
-  NextBestActionFeedResponse,
   PaycheckPlanResponse,
-  PaycheckPlanSaveResponse,
   SavedPaycheckPlanResponse,
   SubscriptionAlertsResponse,
   SubscriptionItem,
   SubscriptionListResponse,
-  SubscriptionPreferenceResponse,
-  SubscriptionReviewResponse,
   SubscriptionSummary,
-  TransferResponse,
-  UploadResponse,
   YearlyPnlResponse,
 } from '../api/types'
 import { normalizeMerchantLabel } from '../utils/merchant'
@@ -40,16 +28,55 @@ const TRANSFER_CATEGORIES = new Set([
 ])
 
 function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
+  return structuredClone(value)
 }
+
+const jsonObjectSchema = z.record(z.string(), z.unknown())
+const numberRecordSchema = z.record(z.string(), z.number())
+const nullableStringSchema = z.union([z.string(), z.null()])
+const actionOutcomeSchema = z.enum(['completed', 'dismissed', 'snoozed'])
 
 function parseBody(options?: RequestInit): Record<string, unknown> {
   if (!options?.body || typeof options.body !== 'string') return {}
   try {
-    return JSON.parse(options.body) as Record<string, unknown>
+    const parsed = jsonObjectSchema.safeParse(JSON.parse(options.body))
+    return parsed.success ? parsed.data : {}
   } catch {
     return {}
   }
+}
+
+function readNumberRecord(value: unknown): Record<string, number> {
+  const parsed = numberRecordSchema.safeParse(value)
+  return parsed.success ? parsed.data : {}
+}
+
+function readString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) {
+    return Number(value)
+  }
+  return fallback
+}
+
+function readNullableString(value: unknown, fallback: string | null): string | null {
+  if (value === undefined) return fallback
+  const parsed = nullableStringSchema.safeParse(value)
+  return parsed.success ? parsed.data : fallback
+}
+
+function readOutcome(value: unknown): 'completed' | 'dismissed' | 'snoozed' {
+  const parsed = actionOutcomeSchema.safeParse(value)
+  return parsed.success ? parsed.data : 'dismissed'
+}
+
+function fileNameFromEntry(entry: FormDataEntryValue): string {
+  if (entry instanceof File && entry.name) return entry.name
+  return 'statement.csv'
 }
 
 function nowIso() {
@@ -525,7 +552,7 @@ function buildBudgetVsActual(): BudgetVsActualResponse {
   }
 }
 
-function buildTransfers(): TransferResponse {
+function buildTransfers() {
   const transfers = demoState.transactions.filter((tx) => TRANSFER_CATEGORIES.has(tx.category))
   const summaryMap = new Map<string, { category: string; total: number; transactions: number }>()
 
@@ -919,288 +946,330 @@ function guestWriteBlocked(method: string, pathname: string) {
   return method !== 'GET' && !(method === 'POST' && pathname === '/goals/paycheck-plan')
 }
 
-export function getDemoResponse<T>(path: string, options?: RequestInit): T | null {
-  if (!getDemoMode()) return null
+type DemoContext = {
+  url: URL
+  pathname: string
+  options?: RequestInit | undefined
+}
 
-  const url = new URL(path, 'http://demo.local')
-  const method: string = (options?.method ?? 'GET').toUpperCase()
-  const pathname = url.pathname
+type DemoRoute = {
+  method: string
+  match: (pathname: string) => boolean
+  respond: (ctx: DemoContext) => unknown
+}
 
-  if (guestWriteBlocked(method, pathname)) {
-    throw new Error(guestReadOnlyMessage(pathname))
-  }
-
-  if (method === 'GET' && pathname === '/ledger') {
-    const response: LedgerResponse = {
-      transactions: clone(demoState.transactions),
-      count: demoState.transactions.length,
-    }
-    return response as T
-  }
-
-  if (method === 'GET' && pathname === '/ledger/transfers') {
-    return buildTransfers() as T
-  }
-
-  if (method === 'GET' && pathname === '/pnl/monthly') {
-    return clone(demoState.monthly) as T
-  }
-
-  if (method === 'GET' && pathname === '/pnl/yearly') {
-    return clone(demoState.yearly) as T
-  }
-
-  if (method === 'GET' && pathname === '/pnl/categories') {
-    return clone(demoState.categories) as T
-  }
-
-  if (method === 'GET' && pathname === '/cashflow') {
-    return buildDemoCashFlow(url.searchParams) as T
-  }
-
-  if (method === 'GET' && pathname === '/insights') {
-    return clone(demoState.insights) as T
-  }
-
-  if (method === 'GET' && pathname === '/budget') {
-    return clone(demoState.budget) as T
-  }
-
-  if (method === 'PUT' && pathname === '/budget') {
-    const parsed = parseBody(options)
-    const budgetInput = (parsed.budget as Record<string, number> | undefined) ?? {}
-    demoState.budget.budget = demoState.budget.budget.map((item) => ({
-      ...item,
-      monthly_budget: Math.max(0, Math.round(budgetInput[item.category] ?? item.monthly_budget)),
-    }))
-
-    const response: BudgetUpdateResponse = {
-      status: 'ok',
-      categories: demoState.budget.budget.length,
-    }
-    return response as T
-  }
-
-  if (method === 'GET' && pathname === '/budget/vs-actual') {
-    return buildBudgetVsActual() as T
-  }
-
-  if (method === 'GET' && pathname === '/goals') {
-    const response: GoalListResponse = {
-      goals: clone(demoState.goals),
-      count: demoState.goals.length,
-    }
-    return response as T
-  }
-
-  if (method === 'POST' && pathname === '/goals') {
-    const parsed = parseBody(options)
-    const goal: Goal = {
-      id: `goal-${Math.floor(Math.random() * 100000)}`,
-      name: String(parsed.name ?? 'New Goal'),
-      target_amount: Number(parsed.target_amount ?? 1000),
-      target_date: (parsed.target_date as string | null | undefined) ?? null,
-      priority: Number(parsed.priority ?? 3),
-      category: String(parsed.category ?? 'savings'),
-      status: String(parsed.status ?? 'active'),
-      created_at: nowIso(),
-      updated_at: nowIso(),
-      contributed_amount: 0,
-      remaining_amount: Number(parsed.target_amount ?? 1000),
-      progress_pct: 0,
-      contribution_history: [],
-    }
-    demoState.goals = [goal, ...demoState.goals]
-
-    const response: GoalUpsertResponse = { status: 'ok', goal: clone(goal) }
-    return response as T
-  }
-
-  if (method === 'PUT' && pathname.startsWith('/goals/')) {
-    const goalId = pathname.split('/')[2] ?? ''
-    const parsed = parseBody(options)
-    const idx = demoState.goals.findIndex((goal) => goal.id === goalId)
-    const existing = idx >= 0 ? demoState.goals[idx] : undefined
-    if (existing) {
-      const targetAmount = Number(parsed.target_amount ?? existing.target_amount)
-      const contributed = existing.contributed_amount
-      const updated: Goal = {
-        ...existing,
-        name: String(parsed.name ?? existing.name),
-        target_amount: targetAmount,
-        target_date: (parsed.target_date as string | null | undefined) ?? existing.target_date,
-        priority: Number(parsed.priority ?? existing.priority),
-        category: String(parsed.category ?? existing.category),
-        status: String(parsed.status ?? existing.status),
-        updated_at: nowIso(),
-        remaining_amount: Math.max(0, targetAmount - contributed),
-        progress_pct: targetAmount > 0 ? Math.min(100, (contributed / targetAmount) * 100) : 0,
-      }
-      demoState.goals[idx] = updated
-
-      const response: GoalUpsertResponse = { status: 'ok', goal: clone(updated) }
-      return response as T
-    }
-  }
-
-  if (method === 'POST' && pathname === '/goals/paycheck-plan') {
-    return buildPaycheckPlan() as T
-  }
-
-  if (method === 'POST' && pathname === '/goals/paycheck-plan/save') {
-    const parsed = parseBody(options)
-    demoState.savedPlan = { status: 'ok', plan: parsed }
-    const response: PaycheckPlanSaveResponse = { status: 'ok', plan: clone(parsed) }
-    return response as T
-  }
-
-  if (method === 'GET' && pathname === '/goals/paycheck-plan/saved') {
-    return clone(demoState.savedPlan) as T
-  }
-
-  if (method === 'GET' && pathname === '/subscriptions') {
-    return buildSubscriptionsList(url.searchParams) as T
-  }
-
-  if (method === 'GET' && pathname === '/subscriptions/alerts') {
-    return buildSubscriptionAlerts(url.searchParams) as T
-  }
-
-  if (method === 'POST' && pathname.endsWith('/preferences')) {
-    const streamId = pathname.split('/')[2] ?? ''
-    const parsed = parseBody(options)
-    const idx = demoState.subscriptions.findIndex((sub) => sub.stream_id === streamId)
-    if (idx >= 0) {
-      const current = demoState.subscriptions[idx]
-      if (current) {
+function demoRoutes(): DemoRoute[] {
+  return [
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/ledger',
+      respond: () => ({
+        transactions: clone(demoState.transactions),
+        count: demoState.transactions.length,
+      }),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/ledger/transfers',
+      respond: () => buildTransfers(),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/pnl/monthly',
+      respond: () => clone(demoState.monthly),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/pnl/yearly',
+      respond: () => clone(demoState.yearly),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/pnl/categories',
+      respond: () => clone(demoState.categories),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/cashflow',
+      respond: ({ url }) => buildDemoCashFlow(url.searchParams),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/insights',
+      respond: () => clone(demoState.insights),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/budget',
+      respond: () => clone(demoState.budget),
+    },
+    {
+      method: 'PUT',
+      match: (pathname) => pathname === '/budget',
+      respond: ({ options }) => {
+        const parsed = parseBody(options)
+        const budgetInput = readNumberRecord(parsed.budget)
+        demoState.budget.budget = demoState.budget.budget.map((item) => ({
+          ...item,
+          monthly_budget: Math.max(
+            0,
+            Math.round(budgetInput[item.category] ?? item.monthly_budget),
+          ),
+        }))
+        return {
+          status: 'ok',
+          categories: demoState.budget.budget.length,
+        }
+      },
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/budget/vs-actual',
+      respond: () => buildBudgetVsActual(),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/goals',
+      respond: () => ({
+        goals: clone(demoState.goals),
+        count: demoState.goals.length,
+      }),
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname === '/goals',
+      respond: ({ options }) => {
+        const parsed = parseBody(options)
+        const targetAmount = readNumber(parsed.target_amount, 1000)
+        const goal: Goal = {
+          id: `goal-${Math.floor(Math.random() * 100000)}`,
+          name: readString(parsed.name, 'New Goal'),
+          target_amount: targetAmount,
+          target_date: readNullableString(parsed.target_date, null),
+          priority: readNumber(parsed.priority, 3),
+          category: readString(parsed.category, 'savings'),
+          status: readString(parsed.status, 'active'),
+          created_at: nowIso(),
+          updated_at: nowIso(),
+          contributed_amount: 0,
+          remaining_amount: targetAmount,
+          progress_pct: 0,
+          contribution_history: [],
+        }
+        demoState.goals = [goal, ...demoState.goals]
+        return { status: 'ok', goal: clone(goal) }
+      },
+    },
+    {
+      method: 'PUT',
+      match: (pathname) => pathname.startsWith('/goals/'),
+      respond: ({ pathname, options }) => {
+        const goalId = pathname.split('/')[2] ?? ''
+        const parsed = parseBody(options)
+        const idx = demoState.goals.findIndex((goal) => goal.id === goalId)
+        const existing = idx >= 0 ? demoState.goals[idx] : undefined
+        if (!existing) return null
+        const targetAmount = readNumber(parsed.target_amount, existing.target_amount)
+        const contributed = existing.contributed_amount
+        const updated: Goal = {
+          ...existing,
+          name: readString(parsed.name, existing.name),
+          target_amount: targetAmount,
+          target_date: readNullableString(parsed.target_date, existing.target_date),
+          priority: readNumber(parsed.priority, existing.priority),
+          category: readString(parsed.category, existing.category),
+          status: readString(parsed.status, existing.status),
+          updated_at: nowIso(),
+          remaining_amount: Math.max(0, targetAmount - contributed),
+          progress_pct: targetAmount > 0 ? Math.min(100, (contributed / targetAmount) * 100) : 0,
+        }
+        demoState.goals[idx] = updated
+        return { status: 'ok', goal: clone(updated) }
+      },
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname === '/goals/paycheck-plan',
+      respond: () => buildPaycheckPlan(),
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname === '/goals/paycheck-plan/save',
+      respond: ({ options }) => {
+        const parsed = parseBody(options)
+        demoState.savedPlan = { status: 'ok', plan: parsed }
+        return { status: 'ok', plan: clone(parsed) }
+      },
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/goals/paycheck-plan/saved',
+      respond: () => clone(demoState.savedPlan),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/subscriptions',
+      respond: ({ url }) => buildSubscriptionsList(url.searchParams),
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/subscriptions/alerts',
+      respond: ({ url }) => buildSubscriptionAlerts(url.searchParams),
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname.endsWith('/preferences'),
+      respond: ({ pathname, options }) => {
+        const streamId = pathname.split('/')[2] ?? ''
+        const parsed = parseBody(options)
+        const idx = demoState.subscriptions.findIndex((sub) => sub.stream_id === streamId)
+        const current = idx >= 0 ? demoState.subscriptions[idx] : undefined
+        if (!current) return null
         const updated: SubscriptionItem = {
           ...current,
           essential: typeof parsed.essential === 'boolean' ? parsed.essential : current.essential,
           ignored: typeof parsed.ignored === 'boolean' ? parsed.ignored : current.ignored,
         }
         demoState.subscriptions[idx] = updated
-        const response: SubscriptionPreferenceResponse = {
+        return {
           status: 'ok',
           stream_id: streamId,
           essential: updated.essential,
           ignored: updated.ignored,
         }
-        return response as T
-      }
-    }
-  }
-
-  if (method === 'GET' && pathname.endsWith('/cancel-info')) {
-    const streamId = pathname.split('/')[2] ?? ''
-    const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
-    if (!sub) {
-      // Mirror the real backend contract — unknown stream IDs 404.
-      throw new Error('API error: 404 Not Found')
-    }
-    const merchantUpper = sub.merchant.toUpperCase()
-    if (merchantUpper.includes('NETFLIX')) {
-      const found: CancelInfoResponse = {
-        stream_id: streamId,
-        merchant: sub.merchant,
-        found: true,
-        display_name: 'Netflix',
-        cancel_url: 'https://www.netflix.com/cancelplan',
-        support_url: 'https://help.netflix.com/contactus',
-        phone: null,
-        notes: null,
-      }
-      return found as T
-    }
-    const fallback: CancelInfoResponse = {
-      stream_id: streamId,
-      merchant: sub.merchant,
-      found: false,
-    }
-    return fallback as T
-  }
-
-  if (method === 'POST' && pathname.endsWith('/review')) {
-    const streamId = pathname.split('/')[2] ?? ''
-    const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
-    if (!sub) throw new Error('API error: 404 Not Found')
-    if (!sub.price_increase && !sub.is_new_recurring) {
-      throw new Error('API error: 409 Conflict')
-    }
-    const response: SubscriptionReviewResponse = {
-      stream_id: streamId,
-      verdict: sub.price_increase ? 'price_concern' : 'review_needed',
-      reason: sub.price_increase
-        ? `${sub.merchant} is above its previous baseline, so it is worth confirming the change.`
-        : `${sub.merchant} has only a short recurring history, so it is worth reviewing once.`,
-      evidence: sub.charge_history
-        .slice(-3)
-        .map((charge) => `${charge.date}: $${charge.amount.toFixed(2)}`),
-      cached: false,
-    }
-    return response as T
-  }
-
-  if (method === 'GET' && pathname === '/actions/feed') {
-    const actions = feedActions()
-    const response: NextBestActionFeedResponse = {
-      feed_date: nowIso().slice(0, 10),
-      count: actions.length,
-      actionable_data_exists: true,
-      actions: clone(actions),
-    }
-    return response as T
-  }
-
-  if (method === 'POST' && pathname.startsWith('/actions/') && pathname.endsWith('/feedback')) {
-    const actionId = pathname.split('/')[2] ?? ''
-    const parsed = parseBody(options)
-    const outcome =
-      (parsed.outcome as 'completed' | 'dismissed' | 'snoozed' | undefined) ?? 'dismissed'
-    demoState.actions = demoState.actions.map((action) =>
-      action.action_id === actionId ? { ...action, state: outcome } : action,
-    )
-
-    const response: NextBestActionFeedbackResponse = {
-      status: 'ok',
-      action_id: actionId,
-      outcome,
-      ...(outcome === 'snoozed'
-        ? { snooze_until: new Date(Date.now() + 2 * 86400000).toISOString() }
-        : {}),
-    }
-    return response as T
-  }
-
-  if (method === 'POST' && pathname === '/upload') {
-    let files: string[] = []
-    if (options?.body instanceof FormData) {
-      files = options.body
-        .getAll('files')
-        .map((entry) => String((entry as File).name ?? 'statement.csv'))
-    }
-
-    const listedFiles = files.length ? files : ['demo_statement.csv']
-    const response: UploadResponse = {
-      files: listedFiles.map((file) => ({ file, status: 'ok', transactions: 6 })),
-      total_transactions: listedFiles.length * 6,
-      pnl_transactions: listedFiles.length * 5,
-      transfer_transactions: listedFiles.length,
-    }
-    return response as T
-  }
-
-  if (method === 'POST' && pathname === '/feature-interest') {
-    demoState.featureInterestCount += 1
-    const response: FeatureInterestResponse = {
-      status: 'ok',
-      total_signups: demoState.featureInterestCount,
-      feature_counts: {
-        'Rollover Budgets': 18,
-        'Goal Buckets': 22,
       },
-    }
-    return response as T
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname.endsWith('/cancel-info'),
+      respond: ({ pathname }) => {
+        const streamId = pathname.split('/')[2] ?? ''
+        const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
+        if (!sub) {
+          throw new Error('API error: 404 Not Found')
+        }
+        if (sub.merchant.toUpperCase().includes('NETFLIX')) {
+          return {
+            stream_id: streamId,
+            merchant: sub.merchant,
+            found: true,
+            display_name: 'Netflix',
+            cancel_url: 'https://www.netflix.com/cancelplan',
+            support_url: 'https://help.netflix.com/contactus',
+            phone: null,
+            notes: null,
+          }
+        }
+        return {
+          stream_id: streamId,
+          merchant: sub.merchant,
+          found: false,
+        }
+      },
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname.endsWith('/review'),
+      respond: ({ pathname }) => {
+        const streamId = pathname.split('/')[2] ?? ''
+        const sub = demoState.subscriptions.find((item) => item.stream_id === streamId)
+        if (!sub) throw new Error('API error: 404 Not Found')
+        if (!sub.price_increase && !sub.is_new_recurring) {
+          throw new Error('API error: 409 Conflict')
+        }
+        return {
+          stream_id: streamId,
+          verdict: sub.price_increase ? 'price_concern' : 'review_needed',
+          reason: sub.price_increase
+            ? `${sub.merchant} is above its previous baseline, so it is worth confirming the change.`
+            : `${sub.merchant} has only a short recurring history, so it is worth reviewing once.`,
+          evidence: sub.charge_history
+            .slice(-3)
+            .map((charge) => `${charge.date}: $${charge.amount.toFixed(2)}`),
+          cached: false,
+        }
+      },
+    },
+    {
+      method: 'GET',
+      match: (pathname) => pathname === '/actions/feed',
+      respond: () => {
+        const actions = feedActions()
+        return {
+          feed_date: nowIso().slice(0, 10),
+          count: actions.length,
+          actionable_data_exists: true,
+          actions: clone(actions),
+        }
+      },
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname.startsWith('/actions/') && pathname.endsWith('/feedback'),
+      respond: ({ pathname, options }) => {
+        const actionId = pathname.split('/')[2] ?? ''
+        const parsed = parseBody(options)
+        const outcome = readOutcome(parsed.outcome)
+        demoState.actions = demoState.actions.map((action) =>
+          action.action_id === actionId ? { ...action, state: outcome } : action,
+        )
+        return {
+          status: 'ok',
+          action_id: actionId,
+          outcome,
+          ...(outcome === 'snoozed'
+            ? { snooze_until: new Date(Date.now() + 2 * 86400000).toISOString() }
+            : {}),
+        }
+      },
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname === '/upload',
+      respond: ({ options }) => {
+        const files =
+          options?.body instanceof FormData
+            ? options.body.getAll('files').map((entry) => fileNameFromEntry(entry))
+            : []
+        const listedFiles = files.length ? files : ['demo_statement.csv']
+        return {
+          files: listedFiles.map((file) => ({ file, status: 'ok', transactions: 6 })),
+          total_transactions: listedFiles.length * 6,
+          pnl_transactions: listedFiles.length * 5,
+          transfer_transactions: listedFiles.length,
+        }
+      },
+    },
+    {
+      method: 'POST',
+      match: (pathname) => pathname === '/feature-interest',
+      respond: () => {
+        demoState.featureInterestCount += 1
+        return {
+          status: 'ok',
+          total_signups: demoState.featureInterestCount,
+          feature_counts: {
+            'Rollover Budgets': 18,
+            'Goal Buckets': 22,
+          },
+        }
+      },
+    },
+  ]
+}
+
+export function getDemoResponse(path: string, options?: RequestInit): unknown | null {
+  if (!getDemoMode()) return null
+
+  const url = new URL(path, 'http://demo.local')
+  const method = (options?.method ?? 'GET').toUpperCase()
+  const pathname = url.pathname
+
+  if (guestWriteBlocked(method, pathname)) {
+    throw new Error(guestReadOnlyMessage(pathname))
   }
 
-  return null
+  const route = demoRoutes().find((entry) => entry.method === method && entry.match(pathname))
+  if (!route) return null
+  return route.respond({ url, pathname, options })
 }

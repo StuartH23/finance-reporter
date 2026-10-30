@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { AnalystRateLimitError, postAnalystChat } from '../api/client'
+import { readStoredAnalystMessages } from '../api/schemas'
 import type { AnalystMessage } from '../api/types'
 import { getDemoLedgerCsv } from '../demo/demoApi'
 import { getDemoMode } from '../demo/mode'
@@ -10,13 +11,7 @@ const STORAGE_KEY = 'analyst-history'
 function loadStoredMessages(): AnalystMessage[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as AnalystMessage[]
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
-    )
+    return readStoredAnalystMessages(window.sessionStorage.getItem(STORAGE_KEY))
   } catch {
     return []
   }

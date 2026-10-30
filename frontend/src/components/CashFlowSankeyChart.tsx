@@ -6,6 +6,7 @@ import type {
   CashFlowNode,
   CashFlowResponse,
 } from '../api/types'
+import { isCashFlowGranularity, isCashFlowGroupBy } from '../utils/guards'
 import EmptyState from './primitives/EmptyState'
 
 const EXPENSE_COLORS = ['#f3c44d', '#f29f4a', '#e97a5f', '#dd5f93', '#9b82f2', '#5a9ef6', '#49c9ae']
@@ -15,6 +16,50 @@ function formatCurrency(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+function readNodeFields(value: unknown): {
+  type: string | undefined
+  group_key: string | null | undefined
+  label: string | undefined
+  name: string | undefined
+  color: string | undefined
+} | null {
+  if (!isRecord(value)) return null
+  const groupKey = value.group_key
+  return {
+    type: readOptionalString(value, 'type'),
+    group_key: typeof groupKey === 'string' || groupKey === null ? groupKey : undefined,
+    label: readOptionalString(value, 'label'),
+    name: readOptionalString(value, 'name'),
+    color: readOptionalString(value, 'color'),
+  }
+}
+
+function readSankeyClick(value: unknown): {
+  payload: NonNullable<ReturnType<typeof readNodeFields>>
+  target: ReturnType<typeof readNodeFields>
+} | null {
+  if (!isRecord(value)) return null
+  const payload = readNodeFields(value.payload)
+  if (!payload) return null
+  const payloadRecord = value.payload
+  const target = isRecord(payloadRecord) ? readNodeFields(payloadRecord.target) : null
+  return { payload, target }
+}
+
+function readNodePaint(payload: unknown): { color: string | undefined; name: string | undefined } {
+  const node = readNodeFields(payload)
+  return { color: node?.color, name: node?.name }
 }
 
 function colorForNode(node: CashFlowNode, expenseIndex: number) {
@@ -135,10 +180,10 @@ function CashFlowSankeyChart({
   }, [data])
 
   const handlePickNode = (payload: {
-    type?: string
-    group_key?: string | null
-    label?: string
-    name?: string
+    type?: string | undefined
+    group_key?: string | null | undefined
+    label?: string | undefined
+    name?: string | undefined
   }) => {
     if (payload.type !== 'expense' || !payload.group_key) {
       onSegmentSelect?.(null)
@@ -157,22 +202,14 @@ function CashFlowSankeyChart({
   const handleSankeyClick = (item: unknown, elementType: 'node' | 'link') => {
     if (!onSegmentSelect) return
 
-    const typed = item as {
-      payload?: {
-        target?: { type?: string; group_key?: string | null; label?: string; name?: string }
-        type?: string
-        group_key?: string | null
-        label?: string
-        name?: string
-      }
-    }
+    const typed = readSankeyClick(item)
 
-    if (elementType === 'node' && typed.payload) {
+    if (elementType === 'node' && typed?.payload) {
       handlePickNode(typed.payload)
       return
     }
-    if (elementType === 'link' && typed.payload?.target) {
-      handlePickNode(typed.payload.target)
+    if (elementType === 'link' && typed?.target) {
+      handlePickNode(typed.target)
       return
     }
     onSegmentSelect(null)
@@ -191,7 +228,9 @@ function CashFlowSankeyChart({
             <select
               value={granularity}
               onChange={(event) => {
-                onGranularityChange(event.target.value as CashFlowGranularity)
+                if (isCashFlowGranularity(event.target.value)) {
+                  onGranularityChange(event.target.value)
+                }
                 onSegmentSelect?.(null)
               }}
             >
@@ -205,7 +244,9 @@ function CashFlowSankeyChart({
             <select
               value={groupBy}
               onChange={(event) => {
-                onGroupByChange(event.target.value as CashFlowGroupBy)
+                if (isCashFlowGroupBy(event.target.value)) {
+                  onGroupByChange(event.target.value)
+                }
                 onSegmentSelect?.(null)
               }}
             >
@@ -242,7 +283,7 @@ function CashFlowSankeyChart({
               nodeWidth={14}
               sort
               node={({ x, y, width, height, payload }) => {
-                const typedPayload = payload as unknown as { color?: string; name?: string }
+                const typedPayload = readNodePaint(payload)
                 return (
                   <g>
                     <rect

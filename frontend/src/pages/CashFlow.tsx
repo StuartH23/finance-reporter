@@ -17,6 +17,7 @@ import EmptyState from '../components/primitives/EmptyState'
 import PageHeader from '../components/primitives/PageHeader'
 import SpendingPieChart from '../components/SpendingPieChart'
 import TransactionList from '../components/TransactionList'
+import { isCashFlowGranularity } from '../utils/guards'
 
 function formatCurrency(value: number) {
   const prefix = value < 0 ? '-' : ''
@@ -162,7 +163,9 @@ function PeriodControls({
         <span>Scope</span>
         <select
           value={granularity}
-          onChange={(event) => onGranularityChange(event.target.value as CashFlowGranularity)}
+          onChange={(event) => {
+            if (isCashFlowGranularity(event.target.value)) onGranularityChange(event.target.value)
+          }}
         >
           <option value="month">Month</option>
           <option value="quarter">Quarter</option>

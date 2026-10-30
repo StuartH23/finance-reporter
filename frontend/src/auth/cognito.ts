@@ -1,32 +1,46 @@
+import { z } from 'zod'
+
 const TOKEN_STORAGE_KEY = 'finance-reporter.auth.tokens'
 const PKCE_VERIFIER_KEY = 'finance-reporter.auth.pkce.verifier'
 const AUTH_STATE_KEY = 'finance-reporter.auth.state'
 const RETURN_PATH_KEY = 'finance-reporter.auth.return_path'
 const TOKEN_TIMEOUT_MS = 10_000
 
-type TokenResponse = {
-  access_token: string
-  id_token?: string
-  refresh_token?: string
-  expires_in: number
-  token_type: string
-}
+const tokenResponseSchema = z.object({
+  access_token: z.string(),
+  id_token: z.string().optional(),
+  refresh_token: z.string().optional(),
+  expires_in: z.number(),
+  token_type: z.string(),
+})
+type TokenResponse = z.infer<typeof tokenResponseSchema>
 
-export type AuthTokens = {
-  accessToken: string
-  idToken?: string | undefined
-  refreshToken?: string | undefined
-  expiresAt: number
-  tokenType: string
-}
+const storedTokensSchema = z.object({
+  accessToken: z.string(),
+  idToken: z.string().optional(),
+  refreshToken: z.string().optional(),
+  expiresAt: z.number(),
+  tokenType: z.string(),
+})
+export type AuthTokens = z.infer<typeof storedTokensSchema>
 
-export type AuthClaims = {
-  sub?: string
-  email?: string
-  name?: string
-  given_name?: string
-  family_name?: string
-}
+const authClaimsSchema = z
+  .object({
+    sub: z.string().optional(),
+    email: z.string().optional(),
+    name: z.string().optional(),
+    given_name: z.string().optional(),
+    family_name: z.string().optional(),
+  })
+  .passthrough()
+export type AuthClaims = z.infer<typeof authClaimsSchema>
+
+const oauthErrorSchema = z
+  .object({
+    error: z.string().optional(),
+    error_description: z.string().optional(),
+  })
+  .passthrough()
 
 export type CognitoConfig = {
   domain: string
@@ -171,7 +185,12 @@ export function loadTokens(): AuthTokens | null {
   const raw = storage()?.getItem(TOKEN_STORAGE_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as AuthTokens
+    const parsed = storedTokensSchema.safeParse(JSON.parse(raw))
+    if (!parsed.success) {
+      clearTokens()
+      return null
+    }
+    return parsed.data
   } catch {
     clearTokens()
     return null
@@ -212,8 +231,12 @@ async function requestTokens(body: URLSearchParams) {
     const text = await response.text()
     if (text) {
       try {
-        const parsed = JSON.parse(text) as { error?: string; error_description?: string }
-        detail = parsed.error_description || parsed.error || text
+        const parsed = oauthErrorSchema.safeParse(JSON.parse(text))
+        if (parsed.success) {
+          detail = parsed.data.error_description || parsed.data.error || text
+        } else {
+          detail = text
+        }
       } catch {
         detail = text
       }
@@ -221,7 +244,11 @@ async function requestTokens(body: URLSearchParams) {
     throw new Error(`Cognito token exchange failed: ${detail || response.status}`)
   }
 
-  return toTokens((await response.json()) as TokenResponse)
+  const parsed = tokenResponseSchema.safeParse(await response.json())
+  if (!parsed.success) {
+    throw new Error('Cognito token exchange failed: unexpected token response')
+  }
+  return toTokens(parsed.data)
 }
 
 async function completeCognitoSignInInternal(callbackUrl: string): Promise<CompleteSignInResult> {
@@ -315,21 +342,22 @@ export async function getAccessToken() {
   }
 }
 
-function decodeBase64UrlJson<T>(value: string): T | null {
+function decodeBase64UrlJson(value: string): unknown {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
   const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=')
-  try {
-    return JSON.parse(window.atob(padded)) as T
-  } catch {
-    return null
-  }
+  return JSON.parse(window.atob(padded))
 }
 
 export function decodeJwtClaims(token?: string): AuthClaims | null {
   if (!token || typeof window === 'undefined') return null
   const [, payload] = token.split('.')
   if (!payload) return null
-  return decodeBase64UrlJson<AuthClaims>(payload)
+  try {
+    const parsed = authClaimsSchema.safeParse(decodeBase64UrlJson(payload))
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
 }
 
 export function getSignedInClaims() {

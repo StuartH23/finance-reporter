@@ -7,7 +7,8 @@ import {
   updateTransactionCategory,
 } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
-import type { CashFlowGranularity, Transaction } from '../api/types'
+import type { CashFlowGranularity, Transaction, TransactionId } from '../api/types'
+import { isLedgerSort, isLedgerType, isSortDirection } from '../utils/guards'
 import EmptyState from './primitives/EmptyState'
 import Skeleton from './primitives/Skeleton'
 
@@ -68,7 +69,7 @@ function TransactionList({
   const sourceFiles = useMemo(() => uniqueValues(rows, 'source_file'), [rows])
 
   const editMutation = useMutation({
-    mutationFn: ({ id, nextCategory }: { id: string; nextCategory: string }) =>
+    mutationFn: ({ id, nextCategory }: { id: TransactionId; nextCategory: string }) =>
       updateTransactionCategory(id, nextCategory),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ledger'] })
@@ -152,7 +153,7 @@ function TransactionList({
         <select
           value={type ?? ''}
           onChange={(event) =>
-            setType((event.target.value || undefined) as LedgerTransactionOptions['type'])
+            setType(isLedgerType(event.target.value) ? event.target.value : undefined)
           }
         >
           <option value="">All types</option>
@@ -172,8 +173,8 @@ function TransactionList({
           value={`${sort}:${direction}`}
           onChange={(event) => {
             const [nextSort, nextDirection] = event.target.value.split(':')
-            setSort(nextSort as LedgerTransactionOptions['sort'])
-            setDirection(nextDirection as LedgerTransactionOptions['direction'])
+            if (nextSort && isLedgerSort(nextSort)) setSort(nextSort)
+            if (nextDirection && isSortDirection(nextDirection)) setDirection(nextDirection)
           }}
         >
           <option value="date:asc">Date asc</option>

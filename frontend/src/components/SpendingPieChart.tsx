@@ -71,6 +71,11 @@ interface SpendingTooltipProps {
   }>
 }
 
+function readSliceShare(payload: unknown): number | undefined {
+  if (typeof payload !== 'object' || payload === null || !('share' in payload)) return undefined
+  return typeof payload.share === 'number' ? payload.share : undefined
+}
+
 function hashCategory(category: string) {
   let hash = 0
   for (let i = 0; i < category.length; i += 1) {
@@ -222,9 +227,7 @@ function SpendingPieChart({ showBreakdownTable = true, year }: SpendingPieChartP
 
   const renderPrimaryLabels = (props: PieLabelRenderProps & { category?: string }) => {
     const category = props.category ?? ''
-    const share = Number(
-      (props.payload as { share?: number } | undefined)?.share ?? props.percent ?? 0,
-    )
+    const share = Number(readSliceShare(props.payload) ?? props.percent ?? 0)
     if (!shouldRenderLabel(share)) return null
     const text = `${category} ${pct(share)}`
     const width = profileWidth || 680
